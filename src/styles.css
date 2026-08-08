@@ -230,8 +230,28 @@
 }
 
 @utility red-glow {
-  box-shadow: 0 0 0 1px oklch(0.62 0.235 27 / 0.4), 0 18px 60px -22px oklch(0.62 0.235 27 / 0.75);
+  box-shadow:
+    0 0 0 1px oklch(0.82 0.135 88 / 0.35),
+    0 0 26px -6px oklch(0.66 0.23 30 / 0.5),
+    0 20px 60px -22px oklch(0.66 0.23 30 / 0.8);
 }
+
+/* Warm marquee lighting wash behind poster reels */
+@utility marquee-lights {
+  background-image:
+    radial-gradient(60% 120% at 12% 50%, oklch(0.6 0.22 28 / 0.22) 0%, transparent 70%),
+    radial-gradient(55% 120% at 88% 50%, oklch(0.82 0.135 88 / 0.16) 0%, transparent 72%);
+}
+
+@utility gold-rule {
+  background-image: linear-gradient(
+    to right,
+    oklch(0.66 0.23 30 / 0.85),
+    oklch(0.82 0.135 88 / 0.55),
+    transparent
+  );
+}
+
 
 @keyframes reveal-up {
   from { opacity: 0; transform: translate3d(0, 22px, 0); }
