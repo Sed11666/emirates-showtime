@@ -49,11 +49,13 @@ export function SiteHeader() {
 
 
         <div className="ml-auto flex items-center gap-2">
-          <Button asChild variant="gold" size="sm">
-            <Link to="/admin">
-              <PlusCircle /> Add listing
-            </Link>
-          </Button>
+          {isAdmin ? (
+            <Button asChild variant="gold" size="sm">
+              <Link to="/admin">
+                <PlusCircle /> Add listing
+              </Link>
+            </Button>
+          ) : null}
           {user ? (
             <Button
               variant="ghost"
