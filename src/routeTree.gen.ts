@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CinemasRouteImport } from './routes/cinemas'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as MoviesRouteImport } from './routes/movies'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
@@ -30,6 +31,11 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CinemasRoute = CinemasRouteImport.update({
+  id: '/cinemas',
+  path: '/cinemas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsRoute = EventsRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/cinemas': typeof CinemasRoute
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
   '/listing/$id': typeof ListingIdRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/cinemas': typeof CinemasRoute
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
   '/listing/$id': typeof ListingIdRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/cinemas': typeof CinemasRoute
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
   '/listing/$id': typeof ListingIdRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/cinemas'
     | '/events'
     | '/movies'
     | '/listing/$id'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/cinemas'
     | '/events'
     | '/movies'
     | '/listing/$id'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/cinemas'
     | '/events'
     | '/movies'
     | '/listing/$id'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  CinemasRoute: typeof CinemasRoute
   EventsRoute: typeof EventsRoute
   MoviesRoute: typeof MoviesRoute
   ListingIdRoute: typeof ListingIdRoute
@@ -143,6 +156,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cinemas': {
+      id: '/cinemas'
+      path: '/cinemas'
+      fullPath: '/cinemas'
+      preLoaderRoute: typeof CinemasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  CinemasRoute: CinemasRoute,
   EventsRoute: EventsRoute,
   MoviesRoute: MoviesRoute,
   ListingIdRoute: ListingIdRoute,
