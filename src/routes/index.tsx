@@ -29,15 +29,19 @@ export const Route = createFileRoute("/")({
 function Home() {
   const [search, setSearch] = useState("");
   const [city, setCity] = useState<string>("All");
+  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
   const { data, isLoading } = useQuery({ queryKey: ["listings"], queryFn: () => fetchListings() });
 
   const listings = useMemo(() => {
     return (data ?? []).filter((l) => {
       const matchesCity = city === "All" || l.city === city;
       const matchesSearch = l.title.toLowerCase().includes(search.toLowerCase());
-      return matchesCity && matchesSearch;
+      const matchesDay =
+        day === "any" || !l.starts_at || toDayKey(new Date(l.starts_at)) === day;
+      return matchesCity && matchesSearch && matchesDay;
     });
-  }, [data, city, search]);
+  }, [data, city, search, day]);
+
 
   const featured = listings.filter((l) => l.featured);
   const movies = listings.filter((l) => l.kind === "movie");
