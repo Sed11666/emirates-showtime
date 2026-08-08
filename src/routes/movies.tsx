@@ -49,7 +49,7 @@ function MoviesPage() {
     <main>
       <section className="relative isolate overflow-hidden border-b border-border/50">
         <PosterReel posters={posters} />
-        <div className="relative mx-auto max-w-6xl px-4 py-24 sm:py-32">
+        <div className="relative mx-auto max-w-6xl px-4 py-28 sm:py-40">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-gold/40 bg-background/40 px-3 py-1 text-xs uppercase tracking-widest text-gold backdrop-blur">
             <Film className="size-3.5" /> Now in cinemas
           </p>
