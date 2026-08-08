@@ -114,16 +114,16 @@ function Home() {
           title="Today's Showtimes"
           subtitle="Quick look at what's playing tonight"
         >
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-5">
             {showtimeBoard.map(({ film, venues }) => (
               <div
                 key={film.id}
-                className="rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur"
+                className="overflow-hidden rounded-2xl border border-border/60 bg-card/40"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
+                <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <Film className="size-4 shrink-0 text-gold" />
-                    <p className="truncate font-display text-sm font-bold uppercase tracking-wide">
+                    <p className="truncate font-display text-base font-bold uppercase tracking-wide">
                       {film.title}
                     </p>
                     {film.rating ? (
@@ -141,19 +141,23 @@ function Home() {
                   </Link>
                 </div>
 
-                <div className="mt-4 space-y-4">
+                <div className="divide-y divide-border/50">
                   {venues.map((venue) => (
-                    <div key={venue.venue}>
-                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <MapPin className="size-3.5 text-primary" /> {venue.venue}
+                    <div
+                      key={venue.venue}
+                      className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                    >
+                      <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{venue.venue}</span>
                       </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 sm:justify-end">
                         {venue.times.map((time) => (
                           <Link
                             key={time}
                             to="/cinemas"
                             search={{ movie: film.title }}
-                            className="rounded-lg border border-border/70 bg-background/60 px-2.5 py-1.5 text-xs transition-colors hover:border-gold/60 hover:text-gold"
+                            className="rounded-md border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-medium transition-colors hover:border-gold/60 hover:text-gold"
                           >
                             {time}
                           </Link>
@@ -165,6 +169,7 @@ function Home() {
               </div>
             ))}
           </div>
+
         </SectionShell>
       ) : null}
 
