@@ -70,7 +70,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
       <div className="mx-auto grid h-16 max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-4">
         <div className="flex items-center gap-5">
           <Link to="/" className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="relative mt-24 border-t border-border/60 bg-[linear-gradient(180deg,transparent,oklch(0.19_0.05_22/0.6))] py-14">
+    <footer className="relative mt-24 border-t border-border/60 bg-[linear-gradient(180deg,transparent,oklch(0.19_0.04_280/0.6))] py-14">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:grid-cols-3">
         <div>
           <p className="font-display text-lg font-bold">
