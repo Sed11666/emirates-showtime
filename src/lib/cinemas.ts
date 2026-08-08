@@ -86,6 +86,41 @@ export function hasDatedShowtimes(value: unknown): boolean {
   return parseShowtimes(value).some((e) => e.date);
 }
 
+export type VenueShowtimes = { venue: string; times: string[] };
+
+/**
+ * Showtimes grouped by venue for the "Today's showtimes" board: each venue
+ * lists its own time chips for the selected day.
+ */
+export function showtimesByVenue(
+  value: unknown,
+  dayKey: string,
+  fallbackVenue?: string,
+): VenueShowtimes[] {
+  if (!Array.isArray(value)) return [];
+  const groups = new Map<string, string[]>();
+  const dated = value.some(
+    (e) => e && typeof e === "object" && parseDayKey((e as Record<string, unknown>)["date"]),
+  );
+
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const time = typeof row["time"] === "string" ? row["time"].trim() : "";
+    if (!time) continue;
+    if (dayKey !== "any" && dated && parseDayKey(row["date"]) !== dayKey) continue;
+    const venue =
+      (typeof row["venue"] === "string" && row["venue"].trim()) || fallbackVenue || "All screens";
+    const list = groups.get(venue) ?? [];
+    if (!list.includes(time)) list.push(time);
+    groups.set(venue, list);
+  }
+
+  return [...groups.entries()]
+    .map(([venue, times]) => ({ venue, times: times.slice(0, 8) }))
+    .slice(0, 4);
+}
+
 
 /* ── Format + de-duplication ─────────────────────────────── */
 
