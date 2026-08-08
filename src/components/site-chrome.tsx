@@ -13,7 +13,7 @@ export function SiteHeader() {
         <Link to="/" className="flex items-center gap-2">
           <Ticket className="size-6 text-primary" />
           <span className="font-display text-xl font-bold tracking-tight">
-            Show<span className="text-gold-gradient">UAE</span>
+            Show<span className="text-gold-gradient">Souk</span>
           </span>
         </Link>
 
@@ -68,7 +68,7 @@ export function SiteFooter() {
   return (
     <footer className="mt-20 border-t border-border/70 py-10">
       <div className="mx-auto max-w-6xl px-4 text-sm text-muted-foreground">
-        <p className="font-display text-base text-foreground">ShowUAE</p>
+        <p className="font-display text-base text-foreground">ShowSouk</p>
         <p className="mt-1">
           Movies, concerts and experiences across Dubai, Abu Dhabi, Sharjah and the Northern
           Emirates.

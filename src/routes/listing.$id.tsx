@@ -9,12 +9,12 @@ import { fetchListing, formatAED, formatWhen } from "@/lib/listings";
 export const Route = createFileRoute("/listing/$id")({
   head: () => ({
     meta: [
-      { title: "Listing details | ShowUAE" },
+      { title: "Listing details | ShowSouk" },
       {
         name: "description",
         content: "Showtimes, venue, language and ticket pricing for this UAE listing.",
       },
-      { property: "og:title", content: "Listing details | ShowUAE" },
+      { property: "og:title", content: "Listing details | ShowSouk" },
       {
         property: "og:description",
         content: "Showtimes, venue and ticket pricing for this UAE listing.",

@@ -22,13 +22,13 @@ import { UAE_CITIES, formatWhen, type Listing, type ListingKind } from "@/lib/li
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Add a movie or event | ShowUAE" },
+      { title: "Add a movie or event | ShowSouk" },
       {
         name: "description",
         content:
-          "Publish a new cinema release or live event to the ShowUAE listings across the Emirates.",
+          "Publish a new cinema release or live event to the ShowSouk listings across the Emirates.",
       },
-      { property: "og:title", content: "Add a movie or event | ShowUAE" },
+      { property: "og:title", content: "Add a movie or event | ShowSouk" },
       {
         property: "og:description",
         content: "Publish your own UAE movie or event listing in seconds.",
@@ -156,7 +156,7 @@ function AdminPage() {
       <main className="mx-auto max-w-md px-4 py-24 text-center">
         <h1 className="text-3xl font-bold">Sign in to add listings</h1>
         <p className="mt-3 text-muted-foreground">
-          Publishing movies and events requires a ShowUAE account.
+          Publishing movies and events requires a ShowSouk account.
         </p>
         <Button asChild variant="hero" className="mt-6">
           <Link to="/auth">Sign in or sign up</Link>
@@ -169,7 +169,7 @@ function AdminPage() {
     <main className="mx-auto max-w-4xl px-4 py-14">
       <h1 className="text-3xl font-bold">Add a movie or event</h1>
       <p className="mt-2 text-muted-foreground">
-        Your listing goes live on ShowUAE the moment you publish it.
+        Your listing goes live on ShowSouk the moment you publish it.
       </p>
 
       <form

@@ -79,14 +79,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ShowUAE — Movies & Events Across the Emirates" },
+      { title: "ShowSouk — Movies & Events Across the Emirates" },
       {
         name: "description",
         content:
           "Discover and book movies, concerts and live events across Dubai, Abu Dhabi, Sharjah and the UAE.",
       },
-      { name: "author", content: "ShowUAE" },
-      { property: "og:title", content: "ShowUAE — Movies & Events Across the Emirates" },
+      { name: "author", content: "ShowSouk" },
+      { property: "og:title", content: "ShowSouk — Movies & Events Across the Emirates" },
       {
         property: "og:description",
         content: "Cinema, concerts and live experiences across the United Arab Emirates.",

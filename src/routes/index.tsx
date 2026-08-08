@@ -10,13 +10,13 @@ import { fetchListings, UAE_CITIES, type Listing } from "@/lib/listings";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ShowUAE — Book Movies & Events Across the Emirates" },
+      { title: "ShowSouk — Book Movies & Events Across the Emirates" },
       {
         name: "description",
         content:
           "Discover and book cinema tickets, concerts and live events in Dubai, Abu Dhabi, Sharjah and across the UAE.",
       },
-      { property: "og:title", content: "ShowUAE — Book Movies & Events Across the Emirates" },
+      { property: "og:title", content: "ShowSouk — Book Movies & Events Across the Emirates" },
       {
         property: "og:description",
         content: "Cinema, concerts and live experiences across the United Arab Emirates.",
