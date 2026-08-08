@@ -45,6 +45,7 @@ function CinemasPage() {
   const [cinema, setCinema] = useState<string>("all");
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
+  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["cinema-films"],
@@ -60,15 +61,21 @@ function CinemasPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return films.filter((film) => {
-      if (cinema !== "all" && film.cinema !== cinema) return false;
-      if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
-      if (language !== "all" && film.language !== language) return false;
-      if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
-        return false;
-      return true;
-    });
-  }, [films, search, cinema, city, language]);
+    return films
+      .filter((film) => {
+        if (cinema !== "all" && film.cinema !== cinema) return false;
+        if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
+        if (language !== "all" && film.language !== language) return false;
+        if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
+          return false;
+        if (day !== "any" && hasDatedShowtimes(film.showtimes)) {
+          return showtimesForDay(film.showtimes, day).length > 0;
+        }
+        return true;
+      })
+      .map((film) => ({ film, times: showtimesForDay(film.showtimes, day) }));
+  }, [films, search, cinema, city, language, day]);
+
 
   const lastUpdated = films.reduce<string | null>(
     (latest, film) => (!latest || film.last_seen_at > latest ? film.last_seen_at : latest),
