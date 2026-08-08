@@ -1,39 +1,38 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, MapPin, Search, Ticket } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Bell, ChevronRight, Clock, Film, MapPin, Search, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ListingCard } from "@/components/listing-card";
-import { MovieMarquee } from "@/components/movie-marquee";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
 import { Reveal } from "@/components/reveal";
-import { fetchListings, UAE_CITIES, type Listing } from "@/lib/listings";
-import {
-  fetchCinemaFilms,
-  showtimeList,
-  mergeFilmsByTitle,
-  CINEMAS,
-  CINEMA_LABELS,
-} from "@/lib/cinemas";
-
-import { fetchLiveEvents, formatEventDate, EVENT_SOURCE_LABELS } from "@/lib/live-events";
 import { DaySelector } from "@/components/day-selector";
 import { toDayKey } from "@/lib/days";
+import {
+  fetchCinemaFilms,
+  filmFormats,
+  mergeFilmsByTitle,
+  showtimeList,
+  showtimesByVenue,
+  CINEMAS,
+  CINEMA_LABELS,
+  type MergedFilm,
+} from "@/lib/cinemas";
+import { VENUES } from "@/lib/venues";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ShowSouk — Movies, Cinemas & Live Events in the UAE" },
+      { title: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },
       {
         name: "description",
         content:
-          "Book cinema tickets and live events across Dubai, Abu Dhabi and the Emirates. Now showing, coming soon and arena shows in one premium ticketing platform.",
+          "What's on across VOX, Reel, Novo and Roxy cinemas in Dubai, Abu Dhabi and the Emirates — now showing, today's showtimes and booking links in one place.",
       },
-      { property: "og:title", content: "ShowSouk — Movies, Cinemas & Live Events in the UAE" },
+      { property: "og:title", content: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },
       {
         property: "og:description",
-        content: "A cinematic way to discover what's playing tonight across the Emirates.",
+        content: "Today's showtimes across UAE cinema chains, updated daily.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -42,256 +41,180 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+/** Popularity heuristic: playing at more chains, venues and times ranks higher. */
+function popularityScore(film: MergedFilm) {
+  const showtimes = Array.isArray(film.showtimes) ? film.showtimes.length : 0;
+  return film.cinemas.length * 100 + film.venues.length * 10 + showtimes;
+}
+
 function Home() {
-  const [search, setSearch] = useState("");
-  const [city, setCity] = useState<string>("All");
+  const [query, setQuery] = useState("");
   const [day, setDay] = useState<string>(() => toDayKey(new Date()));
 
-  const { data: listings } = useQuery({ queryKey: ["listings"], queryFn: () => fetchListings() });
   const { data: films } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
-  const { data: liveEvents } = useQuery({ queryKey: ["live-events"], queryFn: fetchLiveEvents });
 
-  const filteredListings = useMemo(() => {
-    return (listings ?? []).filter((l) => {
-      const matchesCity = city === "All" || l.city === city;
-      const matchesSearch = l.title.toLowerCase().includes(search.toLowerCase());
-      const matchesDay = day === "any" || !l.starts_at || toDayKey(new Date(l.starts_at)) === day;
-      return matchesCity && matchesSearch && matchesDay;
-    });
-  }, [listings, city, search, day]);
-
-  // One entry per movie: the same title across VOX/Reel/Novo/Roxy is merged.
-  const withPosters = useMemo(
-    () => mergeFilmsByTitle((films ?? []).filter((f) => f.poster_url?.startsWith("http"))),
+  const merged = useMemo(
+    () => mergeFilmsByTitle(films ?? []).sort((a, b) => popularityScore(b) - popularityScore(a)),
     [films],
   );
 
+  /** Top 4 most popular titles — the sliding hero cards. */
+  const featured = useMemo(
+    () => merged.filter((f) => f.poster_url?.startsWith("http")).slice(0, 4),
+    [merged],
+  );
+  const featuredIds = new Set(featured.map((f) => f.id));
 
-  const matchesQuery = (title: string, filmCity: string | null) =>
-    title.toLowerCase().includes(search.toLowerCase()) && (city === "All" || filmCity === city);
-
-  const nowShowing = useMemo<PosterItem[]>(
-    () =>
-      withPosters
-        .filter((f) => showtimeList(f.showtimes).length > 0 && matchesQuery(f.title, f.city))
-        .map(filmToPoster),
-    [withPosters, search, city],
+  /** Everything else goes into the Now Showing grid below. */
+  const rest = useMemo<PosterItem[]>(
+    () => merged.filter((f) => !featuredIds.has(f.id)).map(filmToPoster),
+    [merged],
   );
 
-  const comingSoon = useMemo<PosterItem[]>(
+  const showtimeBoard = useMemo(
     () =>
-      withPosters
-        .filter((f) => showtimeList(f.showtimes).length === 0 && matchesQuery(f.title, f.city))
-        .map(filmToPoster),
-    [withPosters, search, city],
+      merged
+        .filter((f) => showtimeList(f.showtimes).length > 0)
+        .slice(0, 6)
+        .map((film) => ({
+          film,
+          venues: showtimesByVenue(film.showtimes, day, film.venues[0]),
+        }))
+        .filter((row) => row.venues.length > 0),
+    [merged, day],
   );
-
-  const popular = useMemo<PosterItem[]>(() => {
-    const pool = nowShowing.length > 0 ? nowShowing : withPosters.map(filmToPoster);
-    return pool.slice(0, 12);
-  }, [nowShowing, withPosters]);
-
-  const reelItems = nowShowing.length > 0 ? nowShowing : withPosters.map(filmToPoster);
-  const heroPosters = reelItems.slice(0, 14).map((p) => p.poster).filter(Boolean) as string[];
-
-  const movies = filteredListings.filter((l) => l.kind === "movie");
-  const events = filteredListings.filter((l) => l.kind === "event");
-  const arenaEvents = (liveEvents ?? []).slice(0, 6);
 
   return (
     <div className="overflow-x-hidden">
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <section id="discover" className="film-grain relative isolate overflow-hidden">
-        <HeroBackdrop posters={heroPosters} />
+      <HeroSlider films={featured} query={query} setQuery={setQuery} day={day} setDay={setDay} />
 
-        <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-24 sm:pt-32">
-          <p className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-background/50 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-primary backdrop-blur">
-            <Ticket className="size-3.5" /> United Arab Emirates
-          </p>
-          <h1 className="mt-6 max-w-4xl text-5xl font-extrabold leading-[0.95] tracking-tight sm:text-7xl">
-            The house lights are down.
-            <br />
-            <span className="text-gold-gradient">Your seat is waiting.</span>
-          </h1>
-          <p className="mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
-            Every screen, stage and showtime across the Emirates — now showing, coming soon and on
-            sale tonight.
-          </p>
-
-          <div className="mt-9 flex max-w-2xl items-center gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 backdrop-blur-xl">
-            <Search className="ml-2 size-4 text-primary" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search movies, concerts, arenas…"
-              className="border-0 bg-transparent focus-visible:ring-0"
-              aria-label="Search listings"
-            />
-            <Button asChild variant="hero" size="sm">
-              <Link to="/cinemas" search={{}}>Explore</Link>
-            </Button>
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-2">
-            {["All", ...UAE_CITIES].map((c) => (
-              <button
-                key={c}
-                onClick={() => setCity(c)}
-                className={`rounded-full border px-3.5 py-1.5 text-xs transition-all ${
-                  city === c
-                    ? "border-primary bg-primary text-primary-foreground red-glow"
-                    : "border-border/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-7 max-w-3xl rounded-2xl border border-border/60 bg-card/50 p-4 backdrop-blur-xl">
-            <p className="mb-3 text-sm font-medium">Show me what&apos;s on</p>
-            <DaySelector value={day} onChange={setDay} />
-          </div>
-        </div>
-      </section>
-
-      {/* ── Now showing marquee ────────────────────────────── */}
+      {/* ── Now showing ─────────────────────────────────────── */}
       <SectionShell
         id="now-showing"
-        eyebrow="In cinemas tonight"
+        eyebrow="In cinemas"
         title="Now Showing"
-        action={{ to: "/cinemas", label: "All showtimes" }}
-        bleed
+        subtitle="What's on across UAE cinemas this week"
+        action={{ label: "All showtimes" }}
       >
-        {reelItems.length > 0 ? (
-          <MovieMarquee items={reelItems} duration={90} size="lg" />
+        {rest.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {rest.map((item) => (
+              <MoviePosterCard key={item.id} item={item} className="w-full" />
+            ))}
+          </div>
         ) : (
-          <p className="px-4 text-muted-foreground">Loading the reel…</p>
+          <p className="text-muted-foreground">Showtimes are updating…</p>
         )}
       </SectionShell>
 
-      {/* ── Popular ────────────────────────────────────────── */}
-      <SectionShell
-        eyebrow="Trending across the Emirates"
-        title="Popular Movies"
-        action={{ to: "/cinemas", label: "View all" }}
-      >
-        <div className="-mx-4 flex gap-5 overflow-x-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {popular.map((item) => (
-            <MoviePosterCard key={item.id} item={item} />
-          ))}
-        </div>
-      </SectionShell>
+      {/* ── Today's showtimes ───────────────────────────────── */}
+      {showtimeBoard.length > 0 ? (
+        <SectionShell
+          eyebrow="Today's schedule"
+          title="Today's Showtimes"
+          subtitle="Quick look at what's playing tonight"
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            {showtimeBoard.map(({ film, venues }) => (
+              <div
+                key={film.id}
+                className="rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Film className="size-4 shrink-0 text-gold" />
+                    <p className="truncate font-display text-sm font-bold uppercase tracking-wide">
+                      {film.title}
+                    </p>
+                    {film.rating ? (
+                      <span className="shrink-0 rounded-md border border-gold/50 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
+                        {film.rating}
+                      </span>
+                    ) : null}
+                  </div>
+                  <Link
+                    to="/cinemas"
+                    search={{ movie: film.title }}
+                    className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
+                  >
+                    All times <ChevronRight className="size-3.5" />
+                  </Link>
+                </div>
 
-      {/* ── Coming soon ────────────────────────────────────── */}
-      {comingSoon.length > 0 ? (
-        <SectionShell id="coming-soon" eyebrow="Book ahead" title="Coming Soon" bleed>
-          <MovieMarquee items={comingSoon} duration={110} size="md" />
+                <div className="mt-4 space-y-4">
+                  {venues.map((venue) => (
+                    <div key={venue.venue}>
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="size-3.5 text-primary" /> {venue.venue}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {venue.times.map((time) => (
+                          <Link
+                            key={time}
+                            to="/cinemas"
+                            search={{ movie: film.title }}
+                            className="rounded-lg border border-border/70 bg-background/60 px-2.5 py-1.5 text-xs transition-colors hover:border-gold/60 hover:text-gold"
+                          >
+                            {time}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </SectionShell>
       ) : null}
 
-      {/* ── Cinema discovery ───────────────────────────────── */}
-      <SectionShell eyebrow="Where to watch" title="Book Tickets by Cinema">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* ── Cinema chains ───────────────────────────────────── */}
+      <SectionShell eyebrow="UAE cinema chains" title="Book by Cinema">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {CINEMAS.map((chain) => {
-            const count = (films ?? []).filter((f) => f.cinema === chain.key).length;
+            const locations = VENUES.filter((v) => v.cinema === chain.key).length;
             return (
               <Link
                 key={chain.key}
                 to="/cinemas"
                 search={{}}
-                className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-6 transition-all hover:-translate-y-1 hover:border-primary/60 hover:red-glow"
+                className="group rounded-2xl border border-border/60 bg-card/50 px-5 py-7 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:red-glow"
               >
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <p className="font-display text-lg font-bold">{chain.label}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {count > 0 ? `${count} films playing` : "Showtimes updating"}
+                <p className="font-display text-sm font-bold uppercase tracking-wide">
+                  {CINEMA_LABELS[chain.key]}
                 </p>
-                <span className="mt-6 inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-primary">
-                  Browse <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-                </span>
+                <p className="mt-1.5 text-xs text-muted-foreground">{locations} locations</p>
               </Link>
             );
           })}
         </div>
       </SectionShell>
 
-      {/* ── Upcoming events ────────────────────────────────── */}
-      {arenaEvents.length > 0 ? (
-        <SectionShell
-          eyebrow="Live at the arenas"
-          title="Upcoming Events"
-          action={{ to: "/events", label: "All events" }}
-        >
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {arenaEvents.map((event) => (
-              <a
-                key={event.id}
-                href={event.ticket_url ?? event.source_url ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all hover:-translate-y-1 hover:border-primary/60 hover:red-glow"
-              >
-                <div className="relative aspect-[16/9] overflow-hidden bg-muted">
-                  {event.image_url ? (
-                    <img
-                      src={event.image_url}
-                      alt={`${event.title} artwork`}
-                      loading="lazy"
-                      className="size-full object-cover opacity-85 transition-all duration-700 group-hover:scale-105 group-hover:opacity-100"
-                    />
-                  ) : null}
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
-                </div>
-                <div className="space-y-1.5 p-5">
-                  <p className="text-[11px] uppercase tracking-widest text-primary">
-                    {EVENT_SOURCE_LABELS[event.source] ?? event.venue}
-                  </p>
-                  <h3 className="line-clamp-1 text-base font-semibold">{event.title}</h3>
-                  <p className="line-clamp-1 text-xs text-muted-foreground">
-                    {formatEventDate(event)}
-                  </p>
-                  <p className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-                    <MapPin className="size-3.5 text-primary" /> {event.city ?? "UAE"}
-                  </p>
-                </div>
-              </a>
-            ))}
-          </div>
-        </SectionShell>
-      ) : null}
-
-      {/* ── Listings from ShowSouk ─────────────────────────── */}
-      {movies.length + events.length > 0 ? (
-        <SectionShell eyebrow="Curated on ShowSouk" title="Handpicked This Week">
-          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            {[...movies, ...events].slice(0, 8).map((l: Listing) => (
-              <ListingCard key={l.id} listing={l} />
-            ))}
-          </div>
-        </SectionShell>
-      ) : null}
-
-      {/* ── Promo banner ───────────────────────────────────── */}
+      {/* ── Never miss a showtime ───────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-16">
         <Reveal>
-          <div className="film-grain relative overflow-hidden rounded-3xl border border-gold/30 bg-[radial-gradient(120%_140%_at_8%_0%,oklch(0.5_0.21_28)_0%,oklch(0.24_0.06_35)_45%,oklch(0.17_0.012_40)_100%)] px-8 py-14 sm:px-14">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_70%_at_92%_10%,oklch(0.85_0.13_88/0.28)_0%,transparent_70%)]" />
-            <div className="relative max-w-xl">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-gold">
-                ShowSouk members
+          <div className="film-grain relative overflow-hidden rounded-3xl border border-gold/25">
+            <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_10%_0%,oklch(0.4_0.16_28)_0%,oklch(0.2_0.03_40)_55%,oklch(0.16_0.01_40)_100%)]" />
+            <div className="relative px-7 py-14 sm:px-14">
+              <p className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-gold">
+                <Bell className="size-3.5" /> Stay updated
               </p>
-
-              <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl">
-                Front-row alerts before the box office opens.
+              <h2 className="mt-4 max-w-xl font-display text-3xl font-extrabold uppercase leading-tight sm:text-4xl">
+                Never miss a showtime
               </h2>
-              <p className="mt-4 text-muted-foreground">
-                Create a free account to follow cinemas near you and get notified the moment tickets
-                drop for {CINEMA_LABELS["vox"]}, arenas and festivals.
+              <p className="mt-4 max-w-lg text-sm text-muted-foreground">
+                Get notified when your favourite movies hit UAE cinemas. Showtimes, trailers and
+                booking links — all in one place.
               </p>
-              <Button asChild variant="hero" size="lg" className="mt-7">
-                <Link to="/auth">Create free account</Link>
-              </Button>
+              <div className="mt-7 max-w-sm space-y-3">
+                <Input placeholder="Your email address" aria-label="Your email address" />
+                <Button asChild variant="gold" className="w-full">
+                  <Link to="/auth">Notify Me</Link>
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  Free. No spam. Unsubscribe anytime.
+                </p>
+              </div>
             </div>
           </div>
         </Reveal>
@@ -300,40 +223,145 @@ function Home() {
   );
 }
 
-/** Cinematic hero backdrop: drifting posters under heavy red-lit darkness. */
-function HeroBackdrop({ posters }: { posters: string[] }) {
-  if (posters.length === 0) {
-    return <div className="absolute inset-0 -z-10 bg-hero-gradient" />;
-  }
-  const row = [...posters, ...posters];
+/** Full-bleed hero: the top 4 popular movies slide through automatically. */
+function HeroSlider({
+  films,
+  query,
+  setQuery,
+  day,
+  setDay,
+}: {
+  films: MergedFilm[];
+  query: string;
+  setQuery: (v: string) => void;
+  day: string;
+  setDay: (v: string) => void;
+}) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (films.length < 2) return;
+    const id = window.setInterval(() => setIndex((i) => (i + 1) % films.length), 6000);
+    return () => window.clearInterval(id);
+  }, [films.length]);
+
+  const active = films[index % Math.max(films.length, 1)];
+
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute inset-0 flex flex-col justify-center gap-4 opacity-[0.35]">
-        {[0, 1].map((r) => (
-          <div
-            key={r}
-            className="marquee-track gap-4"
-            style={{ animationDuration: r === 0 ? "120s" : "170s" }}
-          >
-            {[...row, ...row].map((src, i) => (
-              <img
-                key={`${r}-${i}`}
-                src={src}
-                alt=""
-                loading="lazy"
-                className="h-56 w-40 shrink-0 rounded-xl object-cover sm:h-72 sm:w-52"
+    <section className="film-grain relative isolate min-h-[78vh] overflow-hidden">
+      <div aria-hidden className="absolute inset-0 -z-10">
+        {films.map((film, i) => (
+          <img
+            key={film.id}
+            src={film.poster_url ?? ""}
+            alt=""
+            className={`absolute inset-0 size-full object-cover transition-opacity duration-1000 ${
+              i === index ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        ))}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.13_0.008_40/0.55)_0%,oklch(0.15_0.01_40/0.82)_45%,oklch(0.155_0.008_40)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(85%_75%_at_20%_30%,oklch(0.13_0.01_40/0.75)_0%,transparent_75%)]" />
+        {films.length === 0 ? <div className="absolute inset-0 bg-hero-gradient" /> : null}
+      </div>
+
+      <div className="relative mx-auto flex min-h-[78vh] max-w-7xl flex-col justify-end px-4 pb-14 pt-28">
+        {active ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {[active.genre, active.language].filter(Boolean).map((chip) => (
+                <span
+                  key={chip as string}
+                  className="rounded-md border border-gold/40 bg-background/50 px-2.5 py-1 text-[11px] uppercase tracking-wider text-gold backdrop-blur"
+                >
+                  {chip}
+                </span>
+              ))}
+              {filmFormats(active)
+                .slice(0, 2)
+                .map((format) => (
+                  <span
+                    key={format}
+                    className="rounded-md border border-gold/40 bg-background/50 px-2.5 py-1 text-[11px] uppercase tracking-wider text-gold backdrop-blur"
+                  >
+                    {format}
+                  </span>
+                ))}
+            </div>
+
+            <h1 className="mt-5 max-w-4xl font-display text-5xl font-extrabold uppercase leading-[0.95] tracking-tight sm:text-7xl">
+              {active.title}
+            </h1>
+
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              {active.rating ? (
+                <span className="inline-flex items-center gap-1.5 text-gold">
+                  <Star className="size-4 fill-gold text-gold" /> {active.rating}
+                </span>
+              ) : null}
+              {active.duration_mins ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="size-4" /> {Math.floor(active.duration_mins / 60)}h{" "}
+                  {active.duration_mins % 60}m
+                </span>
+              ) : null}
+              <span>Now Showing in UAE</span>
+            </div>
+
+            <Button asChild variant="gold" size="lg" className="mt-7 w-fit">
+              <Link to="/cinemas" search={{ movie: active.title }}>
+                Get Showtimes <ChevronRight className="size-4" />
+              </Link>
+            </Button>
+          </>
+        ) : (
+          <h1 className="font-display text-5xl font-extrabold uppercase leading-[0.95] sm:text-7xl">
+            ShowSouk
+          </h1>
+        )}
+
+        <div className="mt-9 flex max-w-2xl items-center gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 backdrop-blur-xl">
+          <Search className="ml-2 size-4 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && query.trim()) {
+                window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
+              }
+            }}
+            placeholder="Search movies, cinemas, or locations"
+            className="border-0 bg-transparent focus-visible:ring-0"
+            aria-label="Search ShowSouk"
+          />
+          <Button asChild variant="gold" size="sm">
+            <Link to="/search" search={{ q: query }}>
+              Search
+            </Link>
+          </Button>
+        </div>
+
+        {films.length > 1 ? (
+          <div className="mt-6 flex gap-2">
+            {films.map((film, i) => (
+              <button
+                key={film.id}
+                onClick={() => setIndex(i)}
+                aria-label={`Show ${film.title}`}
+                className={`h-1 rounded-full transition-all ${
+                  i === index ? "w-8 bg-gold" : "w-4 bg-border hover:bg-muted-foreground"
+                }`}
               />
             ))}
           </div>
-        ))}
-      </div>
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.13_0.008_40/0.9)_0%,oklch(0.16_0.012_40/0.88)_55%,oklch(0.155_0.008_40)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(65%_55%_at_18%_8%,oklch(0.62_0.23_28/0.42)_0%,transparent_70%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(55%_50%_at_85%_12%,oklch(0.85_0.13_88/0.22)_0%,transparent_72%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(85%_75%_at_50%_45%,transparent_20%,oklch(0.1_0.008_40/0.6)_92%)]" />
-      <div className="absolute inset-0 backdrop-blur-[3px]" />
-    </div>
+        ) : null}
 
+        <div className="mt-7 max-w-3xl rounded-2xl border border-border/60 bg-card/50 p-4 backdrop-blur-xl">
+          <p className="mb-3 text-sm font-medium">Show me what&apos;s on</p>
+          <DaySelector value={day} onChange={setDay} />
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -341,39 +369,45 @@ function SectionShell({
   id,
   eyebrow,
   title,
+  subtitle,
   action,
-  bleed,
   children,
 }: {
   id?: string;
   eyebrow: string;
   title: string;
-  action?: { to: string; label: string };
-  bleed?: boolean;
+  subtitle?: string;
+  action?: { label: string };
   children: React.ReactNode;
 }) {
   return (
     <section id={id} className="py-14 sm:py-20">
       <Reveal>
         <div className="mx-auto max-w-7xl px-4">
-          <div className="mb-8 flex items-end justify-between gap-4">
+          <div className="mb-6 flex items-end justify-between gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-primary">{eyebrow}</p>
-              <h2 className="mt-2 text-3xl font-extrabold sm:text-4xl">{title}</h2>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-gold">{eyebrow}</p>
+              <h2 className="mt-2 font-display text-3xl font-extrabold uppercase sm:text-4xl">
+                {title}
+              </h2>
+              {subtitle ? (
+                <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+              ) : null}
             </div>
             {action ? (
               <Link
-                to={action.to}
-                className="group inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary"
+                to="/cinemas"
+                search={{}}
+                className="group inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-gold"
               >
                 {action.label}
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                <ChevronRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
             ) : null}
           </div>
           <div className="gold-rule mb-8 h-px" />
+          {children}
         </div>
-        <div className={bleed ? "" : "mx-auto max-w-7xl px-4"}>{children}</div>
       </Reveal>
     </section>
   );
