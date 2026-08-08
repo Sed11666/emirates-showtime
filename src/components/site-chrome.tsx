@@ -2,10 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { Film, Ticket, PlusCircle, LogOut, Sparkles, Clapperboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 
 export function SiteHeader() {
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur">
@@ -49,11 +51,13 @@ export function SiteHeader() {
 
 
         <div className="ml-auto flex items-center gap-2">
-          <Button asChild variant="gold" size="sm">
-            <Link to="/admin">
-              <PlusCircle /> Add listing
-            </Link>
-          </Button>
+          {isAdmin ? (
+            <Button asChild variant="gold" size="sm">
+              <Link to="/admin">
+                <PlusCircle /> Add listing
+              </Link>
+            </Button>
+          ) : null}
           {user ? (
             <Button
               variant="ghost"
