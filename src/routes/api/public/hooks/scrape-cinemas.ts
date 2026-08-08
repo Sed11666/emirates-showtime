@@ -28,7 +28,19 @@ const EXTRACT_SCHEMA = {
           city: { type: "string" },
           venues: { type: "array", items: { type: "string" } },
           formats: { type: "array", items: { type: "string" } },
-          showtimes: { type: "array", items: { type: "string" } },
+          showtimes: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                venue: { type: "string" },
+                date: { type: "string" },
+                time: { type: "string" },
+                format: { type: "string" },
+              },
+              required: ["time"],
+            },
+          },
           booking_url: { type: "string" },
         },
         required: ["title"],
@@ -39,7 +51,14 @@ const EXTRACT_SCHEMA = {
 } as const;
 
 const EXTRACT_PROMPT =
-  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.), any listed showtimes as plain strings, and the booking link. Ignore adverts, offers and non-film content.";
+  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.) and the booking link. For showtimes, return one object per screening with the exact clock time (e.g. '19:45' or '7:45 PM'), the calendar date in yyyy-mm-dd form when the page shows or implies one (use the currently selected date if the page shows a date tab), the venue/cinema name for that screening, and the screen format. Never invent times. Ignore adverts, offers and non-film content.";
+
+type RawShowtime = {
+  venue?: string;
+  date?: string;
+  time?: string;
+  format?: string;
+};
 
 type RawFilm = {
   title?: string;
@@ -52,9 +71,29 @@ type RawFilm = {
   city?: string;
   venues?: string[];
   formats?: string[];
-  showtimes?: string[];
+  showtimes?: Array<string | RawShowtime>;
   booking_url?: string;
 };
+
+function normalizeShowtimes(value: unknown): Array<Record<string, string>> {
+  if (!Array.isArray(value)) return [];
+  const out: Array<Record<string, string>> = [];
+  for (const entry of value.slice(0, 80)) {
+    if (typeof entry === "string" && entry.trim()) {
+      out.push({ time: entry.trim() });
+    } else if (entry && typeof entry === "object") {
+      const row = entry as RawShowtime;
+      const time = row.time?.trim();
+      if (!time) continue;
+      const item: Record<string, string> = { time };
+      if (row.date?.trim()) item["date"] = row.date.trim();
+      if (row.venue?.trim()) item["venue"] = row.venue.trim();
+      if (row.format?.trim()) item["format"] = row.format.trim();
+      out.push(item);
+    }
+  }
+  return out;
+}
 
 function titleKey(title: string) {
   return title
@@ -98,6 +137,95 @@ async function firecrawlScrape(url: string, lovableKey: string, firecrawlKey: st
   const json = (payload["json"] ?? {}) as { films?: RawFilm[] };
   return { markdown, films: Array.isArray(json.films) ? json.films : [] };
 }
+
+const SHOWTIME_SCHEMA = {
+  type: "object",
+  properties: {
+    showtimes: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          venue: { type: "string" },
+          time: { type: "string" },
+          format: { type: "string" },
+        },
+        required: ["venue", "time"],
+      },
+    },
+  },
+  required: ["showtimes"],
+} as const;
+
+const SHOWTIME_PROMPT =
+  "This is a cinema film page listing today's screenings. Extract every single screening as an object with the cinema/venue name (e.g. 'Mall of the Emirates', 'Dragon Mart'), the exact start time exactly as printed (e.g. '7:45pm' or '10:15 PM'), and the screen format/experience if shown (Standard, MAX, IMAX, GOLD, THEATRE, 4DX, 2D, 7STAR). Include every venue and every time. Do not invent or round times, and ignore trailers, other movie suggestions and promotions.";
+
+/** Second pass: film detail pages carry the real per-venue showtimes. */
+async function scrapeShowtimesForFilms(
+  cinema: CinemaKey,
+  today: string,
+  lovableKey: string,
+  firecrawlKey: string,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: films } = await supabaseAdmin
+    .from("cinema_films")
+    .select("id, booking_url, source_url")
+    .eq("cinema", cinema)
+    .eq("is_active", true);
+
+  const targets = (films ?? []).filter((f) => f.booking_url?.startsWith("http"));
+  let updated = 0;
+
+  for (let i = 0; i < targets.length; i += 5) {
+    const batch = targets.slice(i, i + 5);
+    await Promise.all(
+      batch.map(async (film) => {
+        try {
+          const response = await fetch(
+            "https://connector-gateway.lovable.dev/firecrawl/v2/scrape",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${lovableKey}`,
+                "X-Connection-Api-Key": firecrawlKey,
+              },
+              body: JSON.stringify({
+                url: film.booking_url,
+                onlyMainContent: true,
+                waitFor: 8000,
+                location: { country: "AE", languages: ["en"] },
+                formats: [{ type: "json", schema: SHOWTIME_SCHEMA, prompt: SHOWTIME_PROMPT }],
+              }),
+            },
+          );
+          if (!response.ok) return;
+          const parsed = (await response.json()) as Record<string, unknown>;
+          const payload = (parsed["data"] ?? parsed) as Record<string, unknown>;
+          const json = (payload["json"] ?? {}) as { showtimes?: RawShowtime[] };
+          const showtimes = normalizeShowtimes(
+            (json.showtimes ?? []).map((s) => ({ ...s, date: s.date || today })),
+          );
+          if (showtimes.length === 0) return;
+          const venues = [
+            ...new Set(showtimes.map((s) => s["venue"]).filter(Boolean) as string[]),
+          ].slice(0, 40);
+          await supabaseAdmin
+            .from("cinema_films")
+            .update({ showtimes, ...(venues.length > 0 ? { venues } : {}) })
+            .eq("id", film.id);
+          updated += 1;
+        } catch {
+          // A single film page failing must not abort the run.
+        }
+      }),
+    );
+  }
+
+  return updated;
+}
+
 
 async function scrapeCinema(
   cinema: CinemaKey,
@@ -158,7 +286,7 @@ async function scrapeCinema(
           poster_url: film.poster_url?.trim() || null,
           synopsis: film.synopsis?.trim() || null,
           formats: Array.isArray(film.formats) ? film.formats.filter(Boolean).slice(0, 20) : [],
-          showtimes: Array.isArray(film.showtimes) ? film.showtimes.filter(Boolean).slice(0, 60) : [],
+          showtimes: normalizeShowtimes(film.showtimes),
           booking_url: film.booking_url?.trim() || null,
           source_url: url,
           is_active: true,
@@ -236,9 +364,27 @@ async function runScrape(request: Request) {
     return Response.json({ error: "Unknown cinema" }, { status: 400 });
   }
 
-  const results = await Promise.all(
-    keys.map((key) => scrapeCinema(key, force, lovableKey, firecrawlKey)),
-  );
+  const results: Array<Record<string, unknown> & { cinema: CinemaKey; error?: string }> =
+    await Promise.all(keys.map((key) => scrapeCinema(key, force, lovableKey, firecrawlKey)));
+
+  // Second pass for real per-venue showtimes (skip with times=0).
+  if (url.searchParams.get("times") !== "0") {
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Dubai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    for (const result of results) {
+      if (result.error) continue;
+      result["showtimesUpdated"] = await scrapeShowtimesForFilms(
+        result.cinema,
+        today,
+        lovableKey,
+        firecrawlKey,
+      );
+    }
+  }
 
   return Response.json({ ok: true, ranAt: new Date().toISOString(), results });
 }
