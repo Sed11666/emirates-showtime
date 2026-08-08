@@ -79,6 +79,10 @@ export function SiteHeader() {
           </span>
         </Link>
 
+        <div className="flex items-center gap-1">
+          <LocationSelector />
+        </div>
+
         <nav className="hidden items-center gap-0.5 text-sm md:flex">
           {NAV.map(({ to, label, icon: Icon }) => (
             <Link
@@ -103,7 +107,6 @@ export function SiteHeader() {
           >
             <Search className="size-4" />
           </button>
-          <LocationSelector />
           {isAdmin ? (
             <Button asChild variant="gold" size="sm">
               <Link to="/admin">
