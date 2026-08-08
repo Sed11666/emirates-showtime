@@ -90,15 +90,6 @@ export function SiteHeader() {
               </span>
             </Link>
           ))}
-          <Link
-            to="/"
-            hash="coming-soon"
-            className="rounded-full px-3.5 py-2 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Timer className="size-4" /> Coming Soon
-            </span>
-          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
