@@ -204,7 +204,7 @@ function CinemasPage() {
           })}
         </div>
       </main>
-      <SiteFooter />
+
     </div>
   );
 }
