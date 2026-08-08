@@ -108,14 +108,18 @@ function Home() {
       </SectionShell>
 
       {/* ── Today's showtimes ───────────────────────────────── */}
-      {/* ── Today's showtimes ───────────────────────────────── */}
       <SectionShell
         eyebrow="Today's schedule"
         title="Today's Showtimes"
         subtitle="Quick look at what's playing tonight"
       >
-
+        {showtimeBoard.length === 0 ? (
+          <p className="text-muted-foreground">
+            Showtimes are being refreshed — check back in a few minutes.
+          </p>
+        ) : (
           <div className="space-y-5">
+
             {showtimeBoard.map(({ film, venues }) => (
               <div
                 key={film.id}
