@@ -315,11 +315,13 @@ function HeroBackdrop({ posters }: { posters: string[] }) {
           </div>
         ))}
       </div>
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.1_0.01_20/0.92)_0%,oklch(0.13_0.03_22/0.9)_50%,oklch(0.14_0.012_20)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(70%_55%_at_20%_10%,oklch(0.45_0.2_25/0.35)_0%,transparent_70%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(80%_70%_at_50%_45%,transparent_10%,oklch(0.08_0.01_20/0.75)_85%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.13_0.008_40/0.9)_0%,oklch(0.16_0.012_40/0.88)_55%,oklch(0.155_0.008_40)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(65%_55%_at_18%_8%,oklch(0.62_0.23_28/0.42)_0%,transparent_70%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(55%_50%_at_85%_12%,oklch(0.85_0.13_88/0.22)_0%,transparent_72%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(85%_75%_at_50%_45%,transparent_20%,oklch(0.1_0.008_40/0.6)_92%)]" />
       <div className="absolute inset-0 backdrop-blur-[3px]" />
     </div>
+
   );
 }
 
