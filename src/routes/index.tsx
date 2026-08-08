@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ListingCard } from "@/components/listing-card";
 import { fetchListings, UAE_CITIES, type Listing } from "@/lib/listings";
+import { DaySelector } from "@/components/day-selector";
+import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/")({
   head: () => ({
