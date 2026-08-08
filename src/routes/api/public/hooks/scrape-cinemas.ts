@@ -75,25 +75,42 @@ type RawFilm = {
   booking_url?: string;
 };
 
-function normalizeShowtimes(value: unknown): Array<Record<string, string>> {
+function dubaiToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function normalizeShowtimes(
+  value: unknown,
+  defaults?: { date?: string; venue?: string },
+): Array<Record<string, string>> {
   if (!Array.isArray(value)) return [];
+  const fallbackDate = defaults?.date || dubaiToday();
   const out: Array<Record<string, string>> = [];
   for (const entry of value.slice(0, 80)) {
     if (typeof entry === "string" && entry.trim()) {
-      out.push({ time: entry.trim() });
+      const item: Record<string, string> = { time: entry.trim(), date: fallbackDate };
+      if (defaults?.venue) item["venue"] = defaults.venue;
+      out.push(item);
     } else if (entry && typeof entry === "object") {
       const row = entry as RawShowtime;
       const time = row.time?.trim();
       if (!time) continue;
       const item: Record<string, string> = { time };
-      if (row.date?.trim()) item["date"] = row.date.trim();
-      if (row.venue?.trim()) item["venue"] = row.venue.trim();
+      item["date"] = row.date?.trim() || fallbackDate;
+      const venue = row.venue?.trim() || defaults?.venue;
+      if (venue) item["venue"] = venue;
       if (row.format?.trim()) item["format"] = row.format.trim();
       out.push(item);
     }
   }
   return out;
 }
+
 
 function titleKey(title: string) {
   return title
