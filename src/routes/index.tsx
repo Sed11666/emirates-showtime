@@ -359,7 +359,7 @@ function SectionShell({
               </Link>
             ) : null}
           </div>
-          <div className="mb-8 h-px bg-gradient-to-r from-primary/60 via-border/40 to-transparent" />
+          <div className="gold-rule mb-8 h-px" />
         </div>
         <div className={bleed ? "" : "mx-auto max-w-7xl px-4"}>{children}</div>
       </Reveal>
