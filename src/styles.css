@@ -187,3 +187,59 @@
     animation: none !important;
   }
 }
+
+/* ── Marquee: continuous right → left cinema reel ───────────────── */
+@keyframes marquee-rtl {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+@utility marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee-rtl linear infinite;
+}
+
+@utility marquee-edges {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    oklch(0 0 0) 7%,
+    oklch(0 0 0) 93%,
+    transparent 100%
+  );
+}
+
+@utility film-grain {
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.12;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.55'/></svg>");
+  }
+}
+
+@utility red-glow {
+  box-shadow: 0 0 0 1px oklch(0.62 0.235 27 / 0.4), 0 18px 60px -22px oklch(0.62 0.235 27 / 0.75);
+}
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translate3d(0, 22px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+@utility reveal-on-scroll {
+  opacity: 0;
+  &.is-visible {
+    animation: reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none !important; }
+  .reveal-on-scroll { opacity: 1 !important; animation: none !important; }
+}
