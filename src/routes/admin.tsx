@@ -67,6 +67,7 @@ const empty = {
 
 function AdminPage() {
   const { user, loading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useIsAdmin();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(empty);
   const [busy, setBusy] = useState(false);
