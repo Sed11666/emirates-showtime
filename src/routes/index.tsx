@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Bell, ChevronRight, Clock, Film, MapPin, Search, Star } from "lucide-react";
@@ -99,7 +99,7 @@ function Home() {
         {rest.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {rest.map((item) => (
-              <MoviePosterCard key={item.id} item={item} className="w-full" />
+              <MoviePosterCard key={item.id} item={item} fullWidth />
             ))}
           </div>
         ) : (
@@ -238,6 +238,7 @@ function HeroSlider({
   setDay: (v: string) => void;
 }) {
   const [index, setIndex] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (films.length < 2) return;
@@ -327,7 +328,7 @@ function HeroSlider({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && query.trim()) {
-                window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
+                navigate({ to: "/search", search: { q: query.trim(), tab: "all" } });
               }
             }}
             placeholder="Search movies, cinemas, or locations"
@@ -335,7 +336,7 @@ function HeroSlider({
             aria-label="Search ShowSouk"
           />
           <Button asChild variant="gold" size="sm">
-            <Link to="/search" search={{ q: query }}>
+            <Link to="/search" search={{ q: query, tab: "all" as const }}>
               Search
             </Link>
           </Button>
