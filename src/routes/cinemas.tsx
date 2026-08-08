@@ -65,11 +65,14 @@ function CinemasPage() {
 
   // Arriving from a poster: focus that film and rank screens nearest first.
   useEffect(() => {
-    if (movie) setSearch(movie);
+    if (!movie) return;
+    setSearch(movie);
+    requestLocation(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [movie]);
 
 
-  const requestLocation = () => {
+  const requestLocation = (filterToNearby = true) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGeoState("denied");
       return;
@@ -77,14 +80,13 @@ function CinemasPage() {
     setGeoState("loading");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const venues = nearestVenues({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
+        const point = { lat: position.coords.latitude, lng: position.coords.longitude };
+        const venues = nearestVenues(point);
+        setCoords(point);
         setNearby(venues);
-        setNearOnly(true);
+        setNearOnly(filterToNearby);
         setGeoState("idle");
-        if (venues[0]) setCity(venues[0].city);
+        if (filterToNearby && venues[0]) setCity(venues[0].city);
       },
       () => setGeoState("denied"),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
@@ -122,8 +124,14 @@ function CinemasPage() {
         }
         return true;
       })
-      .map((film) => ({ film, times: showtimesForDay(film.showtimes, day) }));
-  }, [films, search, cinema, city, language, day, nearOnly, nearby]);
+      .map((film) => ({
+        film,
+        times: showtimesForDay(film.showtimes, day),
+        distance: coords ? filmDistanceKm(film.cinema, film.venues, coords) : null,
+      }))
+      // Nearest screens first once we know where the visitor is.
+      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+  }, [films, search, cinema, city, language, day, nearOnly, nearby, coords]);
 
 
 
@@ -164,7 +172,7 @@ function CinemasPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={requestLocation} disabled={geoState === "loading"}>
+              <Button size="sm" variant="outline" onClick={() => requestLocation()} disabled={geoState === "loading"}>
                 <Locate className={`size-3.5 ${geoState === "loading" ? "animate-pulse" : ""}`} />
                 {nearby ? "Update location" : "Use my location"}
               </Button>
@@ -262,7 +270,7 @@ function CinemasPage() {
         )}
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ film, times }) => {
+          {filtered.map(({ film, times, distance }) => {
             return (
               <article
                 key={film.id}
@@ -283,7 +291,16 @@ function CinemasPage() {
                 <div className="flex flex-1 flex-col gap-2 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <Badge variant="secondary">{CINEMA_LABELS[film.cinema] ?? film.cinema}</Badge>
-                    {film.rating && <Badge variant="outline">{film.rating}</Badge>}
+                    <div className="flex items-center gap-2">
+                      {distance !== null && (
+                        <Badge variant="outline" className="text-primary">
+                          {distance < 1
+                            ? `${Math.round(distance * 1000)} m`
+                            : `${distance.toFixed(1)} km`}
+                        </Badge>
+                      )}
+                      {film.rating && <Badge variant="outline">{film.rating}</Badge>}
+                    </div>
                   </div>
                   <h2 className="font-display text-lg font-semibold leading-tight">{film.title}</h2>
                   <p className="text-xs text-muted-foreground">
