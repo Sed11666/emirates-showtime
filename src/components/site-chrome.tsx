@@ -1,16 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import {
   Clapperboard,
-  Film,
+  Home,
   LogOut,
   MapPin,
   PlusCircle,
   Search,
   Sparkles,
   Ticket,
-  Timer,
   UserRound,
 } from "lucide-react";
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,10 +25,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { UAE_CITIES } from "@/lib/listings";
 
 const NAV = [
-  { to: "/movies", label: "Movies", icon: Film },
-  { to: "/cinemas", label: "Cinemas", icon: Clapperboard },
+  { to: "/", label: "Home", icon: Home },
   { to: "/events", label: "Events", icon: Sparkles },
+  { to: "/cinemas", label: "Cinemas", icon: Clapperboard },
 ] as const;
+
 
 function LocationSelector() {
   const [city, setCity] = useState("Dubai");
@@ -89,15 +90,6 @@ export function SiteHeader() {
               </span>
             </Link>
           ))}
-          <Link
-            to="/"
-            hash="coming-soon"
-            className="rounded-full px-3.5 py-2 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Timer className="size-4" /> Coming Soon
-            </span>
-          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
@@ -156,13 +148,8 @@ export function SiteFooter() {
           <p className="mb-3 text-xs uppercase tracking-widest text-primary">Browse</p>
           <ul className="space-y-2 text-muted-foreground">
             <li>
-              <Link to="/movies" className="hover:text-foreground">
-                Movies
-              </Link>
-            </li>
-            <li>
-              <Link to="/cinemas" className="hover:text-foreground">
-                Cinemas
+              <Link to="/" className="hover:text-foreground">
+                Home
               </Link>
             </li>
             <li>
@@ -170,6 +157,12 @@ export function SiteFooter() {
                 Events
               </Link>
             </li>
+            <li>
+              <Link to="/cinemas" className="hover:text-foreground">
+                Cinemas
+              </Link>
+            </li>
+
           </ul>
         </div>
         <div className="text-sm">

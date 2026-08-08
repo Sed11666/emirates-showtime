@@ -119,7 +119,7 @@ function Home() {
               aria-label="Search listings"
             />
             <Button asChild variant="hero" size="sm">
-              <Link to="/movies">Explore</Link>
+              <Link to="/cinemas">Explore</Link>
             </Button>
           </div>
 
@@ -165,7 +165,7 @@ function Home() {
       <SectionShell
         eyebrow="Trending across the Emirates"
         title="Popular Movies"
-        action={{ to: "/movies", label: "View all" }}
+        action={{ to: "/cinemas", label: "View all" }}
       >
         <div className="-mx-4 flex gap-5 overflow-x-auto px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {popular.map((item) => (
