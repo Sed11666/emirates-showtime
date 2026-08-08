@@ -9,7 +9,14 @@ import { MovieMarquee } from "@/components/movie-marquee";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
 import { Reveal } from "@/components/reveal";
 import { fetchListings, UAE_CITIES, type Listing } from "@/lib/listings";
-import { fetchCinemaFilms, showtimeList, CINEMAS, CINEMA_LABELS } from "@/lib/cinemas";
+import {
+  fetchCinemaFilms,
+  showtimeList,
+  mergeFilmsByTitle,
+  CINEMAS,
+  CINEMA_LABELS,
+} from "@/lib/cinemas";
+
 import { fetchLiveEvents, formatEventDate, EVENT_SOURCE_LABELS } from "@/lib/live-events";
 import { DaySelector } from "@/components/day-selector";
 import { toDayKey } from "@/lib/days";
@@ -53,10 +60,12 @@ function Home() {
     });
   }, [listings, city, search, day]);
 
+  // One entry per movie: the same title across VOX/Reel/Novo/Roxy is merged.
   const withPosters = useMemo(
-    () => (films ?? []).filter((f) => f.poster_url?.startsWith("http")),
+    () => mergeFilmsByTitle((films ?? []).filter((f) => f.poster_url?.startsWith("http"))),
     [films],
   );
+
 
   const matchesQuery = (title: string, filmCity: string | null) =>
     title.toLowerCase().includes(search.toLowerCase()) && (city === "All" || filmCity === city);

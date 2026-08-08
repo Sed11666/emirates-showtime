@@ -83,3 +83,30 @@ export function matchesVenues(filmVenues: string[], venues: NearbyVenue[]) {
     return targets.some((target) => name.includes(target) || target.includes(name));
   });
 }
+
+const FORMAT_ORDER = ["IMAX", "4DX", "MAX", "3D", "2D"];
+export const KNOWN_FORMATS = FORMAT_ORDER;
+
+/**
+ * Distance from `coords` to the closest screen of a film: prefers venues named
+ * on the film, falls back to any venue of that chain.
+ */
+export function filmDistanceKm(
+  cinema: string,
+  filmVenues: string[],
+  coords: Coords,
+): number | null {
+  const chain = VENUES.filter((v) => v.cinema === cinema);
+  if (chain.length === 0) return null;
+  const named = filmVenues.length
+    ? chain.filter((v) => {
+        const target = normalize(v.name);
+        return filmVenues.some((raw) => {
+          const name = normalize(raw);
+          return name.includes(target) || target.includes(name);
+        });
+      })
+    : [];
+  const pool = named.length > 0 ? named : chain;
+  return Math.min(...pool.map((v) => distanceKm(coords, v)));
+}

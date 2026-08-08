@@ -1,6 +1,7 @@
 import { Clock, Star, Ticket } from "lucide-react";
-import type { CinemaFilm } from "@/lib/cinemas";
-import { CINEMA_LABELS } from "@/lib/cinemas";
+import { Link } from "@tanstack/react-router";
+import type { MergedFilm } from "@/lib/cinemas";
+import { filmFormats } from "@/lib/cinemas";
 
 export type PosterItem = {
   id: string;
@@ -9,11 +10,12 @@ export type PosterItem = {
   meta: string[];
   rating: string | null;
   duration: number | null;
-  href: string | null;
+  /** Screen formats (IMAX, 4DX, 3D, 2D…) shown on the poster. */
+  formats: string[];
   tag: string | null;
 };
 
-export function filmToPoster(film: CinemaFilm): PosterItem {
+export function filmToPoster(film: MergedFilm): PosterItem {
   return {
     id: film.id,
     title: film.title,
@@ -21,14 +23,15 @@ export function filmToPoster(film: CinemaFilm): PosterItem {
     meta: [film.genre, film.language, film.city].filter(Boolean) as string[],
     rating: film.rating,
     duration: film.duration_mins,
-    href: film.booking_url ?? film.source_url,
-    tag: CINEMA_LABELS[film.cinema] ?? null,
+    formats: film.screenFormats ?? filmFormats(film),
+    tag: null,
   };
 }
 
 /**
  * Poster-first movie card: artwork fills the frame, details slide up out of a
- * dark gradient on hover with a red booking CTA.
+ * dark gradient on hover with a red booking CTA that opens the cinema page
+ * with nearby screens listed first.
  */
 export function MoviePosterCard({
   item,
@@ -39,18 +42,15 @@ export function MoviePosterCard({
   className?: string;
   size?: "md" | "lg";
 }) {
-  const Wrapper = item.href ? "a" : "div";
-  const wrapperProps = item.href
-    ? { href: item.href, target: "_blank" as const, rel: "noopener noreferrer" }
-    : {};
-
   return (
-    <Wrapper
-      {...wrapperProps}
+    <Link
+      to="/cinemas"
+      search={{ movie: item.title }}
       className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:red-glow ${
         size === "lg" ? "w-[13rem] sm:w-[15.5rem]" : "w-[10.5rem] sm:w-[12rem]"
       } ${className}`}
     >
+
 
       <div className="relative aspect-[2/3] overflow-hidden bg-muted">
         {item.poster ? (
@@ -66,10 +66,17 @@ export function MoviePosterCard({
           </div>
         )}
 
-        {item.tag ? (
-          <span className="absolute left-2.5 top-2.5 rounded-full border border-gold/50 bg-background/70 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
-            {item.tag}
-          </span>
+        {item.formats.length > 0 ? (
+          <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1">
+            {item.formats.slice(0, 3).map((format) => (
+              <span
+                key={format}
+                className="rounded-md border border-gold/50 bg-background/75 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold backdrop-blur"
+              >
+                {format}
+              </span>
+            ))}
+          </div>
         ) : null}
 
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/85 to-transparent p-3 pt-14">
@@ -93,12 +100,13 @@ export function MoviePosterCard({
                 ) : null}
               </div>
               <span className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-all group-hover:brightness-110">
-                <Ticket className="size-3.5" /> Book now
+                <Ticket className="size-3.5" /> Book tickets
               </span>
             </div>
           </div>
         </div>
       </div>
-    </Wrapper>
+    </Link>
+
   );
 }
