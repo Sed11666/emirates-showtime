@@ -329,10 +329,23 @@ async function scrapeCinema(
       const unique = new Map<string, (typeof rows)[number]>();
       for (const row of rows) unique.set(`${row.title_key}|${row.city ?? ""}`, row);
 
-      const { error: upsertError } = await supabaseAdmin
-        .from("cinema_films")
-        .upsert([...unique.values()], { onConflict: "cinema,title_key,city" });
-      if (upsertError) throw new Error(upsertError.message);
+      // Films whose listing page carries no times keep the schedule we already
+      // have, so a rate-limited detail pass never blanks the board.
+      const all = [...unique.values()];
+      const withTimes = all.filter((row) => row.showtimes.length > 0);
+      const withoutTimes = all.map(({ showtimes: _showtimes, ...rest }) => rest).filter((row) => {
+        const match = all.find((r) => r.title_key === row.title_key && r.city === row.city);
+        return (match?.showtimes.length ?? 0) === 0;
+      });
+
+      for (const batch of [withTimes, withoutTimes]) {
+        if (batch.length === 0) continue;
+        const { error: upsertError } = await supabaseAdmin
+          .from("cinema_films")
+          .upsert(batch, { onConflict: "cinema,title_key,city" });
+        if (upsertError) throw new Error(upsertError.message);
+      }
+
 
       // Anything not seen in this run is no longer showing.
       const { data: removed } = await supabaseAdmin
