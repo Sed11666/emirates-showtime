@@ -13,7 +13,7 @@ export function SiteHeader() {
         <Link to="/" className="flex items-center gap-2">
           <Ticket className="size-6 text-primary" />
           <span className="font-display text-xl font-bold tracking-tight">
-            Show<span className="text-gold-gradient">UAE</span>
+            Show<span className="text-gold-gradient">Souk</span>
           </span>
         </Link>
 
