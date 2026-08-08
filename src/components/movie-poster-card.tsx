@@ -37,18 +37,23 @@ export function MoviePosterCard({
   item,
   className = "",
   size = "md",
+  fullWidth = false,
 }: {
   item: PosterItem;
   className?: string;
   size?: "md" | "lg";
+  fullWidth?: boolean;
 }) {
+  const width = fullWidth
+    ? "w-full"
+    : size === "lg"
+      ? "w-[13rem] sm:w-[15.5rem]"
+      : "w-[10.5rem] sm:w-[12rem]";
   return (
     <Link
       to="/cinemas"
       search={{ movie: item.title }}
-      className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:red-glow ${
-        size === "lg" ? "w-[13rem] sm:w-[15.5rem]" : "w-[10.5rem] sm:w-[12rem]"
-      } ${className}`}
+      className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:red-glow ${width} ${className}`}
     >
 
 
