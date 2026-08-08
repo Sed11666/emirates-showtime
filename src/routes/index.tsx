@@ -324,7 +324,7 @@ function HeroSlider({
             </div>
 
             <Button asChild variant="gold" size="lg" className="mt-7 w-fit">
-              <Link to="/cinemas" search={{ movie: active.title }}>
+              <Link to="/movie/$slug" params={{ slug: filmSlug(active.title) }}>
                 Get Showtimes <ChevronRight className="size-4" />
               </Link>
             </Button>
