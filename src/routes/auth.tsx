@@ -41,7 +41,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (user) navigate({ to: "/admin" });
+    if (user) navigate({ to: "/" });
   }, [user, navigate]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -57,7 +57,7 @@ function AuthPage() {
         ? await supabase.auth.signInWithPassword(parsed.data)
         : await supabase.auth.signUp({
             ...parsed.data,
-            options: { emailRedirectTo: `${window.location.origin}/admin` },
+            options: { emailRedirectTo: window.location.origin },
           });
     setBusy(false);
     if (error) {
