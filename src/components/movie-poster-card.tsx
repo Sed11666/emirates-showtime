@@ -47,10 +47,11 @@ export function MoviePosterCard({
   return (
     <Wrapper
       {...wrapperProps}
-      className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:border-primary/60 hover:red-glow ${
+      className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:red-glow ${
         size === "lg" ? "w-[13rem] sm:w-[15.5rem]" : "w-[10.5rem] sm:w-[12rem]"
       } ${className}`}
     >
+
       <div className="relative aspect-[2/3] overflow-hidden bg-muted">
         {item.poster ? (
           <img
