@@ -107,7 +107,6 @@ export function SiteHeader() {
           >
             <Search className="size-4" />
           </button>
-          <LocationSelector />
           {isAdmin ? (
             <Button asChild variant="gold" size="sm">
               <Link to="/admin">
