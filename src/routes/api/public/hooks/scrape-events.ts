@@ -63,6 +63,15 @@ function titleKey(title: string) {
     .trim();
 }
 
+const PRICE_NOISE = /^(find tickets?|buy tickets?|get tickets?|book now|more info|register now|coming soon|tickets?|sold out|on sale.*)$/i;
+
+/** Arena pages put CTA labels where a price should be — drop those. */
+function cleanPrice(value?: string): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed || PRICE_NOISE.test(trimmed)) return null;
+  return trimmed;
+}
+
 function isoDate(value?: string): string | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -167,7 +176,7 @@ async function scrapeSource(source: SourceKey, force: boolean, lovableKey: strin
           ends_on: isoDate(event.ends_on),
           image_url: absoluteUrl(event.image_url, url),
           description: event.description?.trim() || null,
-          price_text: event.price_text?.trim() || null,
+          price_text: cleanPrice(event.price_text),
           ticket_url: absoluteUrl(event.ticket_url, url),
           source_url: url,
           is_active: true,
