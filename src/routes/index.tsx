@@ -242,14 +242,10 @@ function HeroSlider({
   films,
   query,
   setQuery,
-  day,
-  setDay,
 }: {
   films: MergedFilm[];
   query: string;
   setQuery: (v: string) => void;
-  day: string;
-  setDay: (v: string) => void;
 }) {
   const [index, setIndex] = useState(0);
   const navigate = useNavigate();
