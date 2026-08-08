@@ -148,13 +148,8 @@ export function SiteFooter() {
           <p className="mb-3 text-xs uppercase tracking-widest text-primary">Browse</p>
           <ul className="space-y-2 text-muted-foreground">
             <li>
-              <Link to="/movies" className="hover:text-foreground">
-                Movies
-              </Link>
-            </li>
-            <li>
-              <Link to="/cinemas" className="hover:text-foreground">
-                Cinemas
+              <Link to="/" className="hover:text-foreground">
+                Home
               </Link>
             </li>
             <li>
@@ -162,6 +157,12 @@ export function SiteFooter() {
                 Events
               </Link>
             </li>
+            <li>
+              <Link to="/cinemas" className="hover:text-foreground">
+                Cinemas
+              </Link>
+            </li>
+
           </ul>
         </div>
         <div className="text-sm">
