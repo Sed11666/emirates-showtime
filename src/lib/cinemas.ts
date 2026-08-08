@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { parseDayKey } from "@/lib/days";
 
 export type CinemaKey = "vox" | "reel" | "novo" | "roxy";
 

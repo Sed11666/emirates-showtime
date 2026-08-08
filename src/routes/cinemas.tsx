@@ -6,7 +6,14 @@ import { Clapperboard, Clock, MapPin, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CINEMAS, CINEMA_LABELS, fetchCinemaFilms, showtimeList } from "@/lib/cinemas";
+import { DaySelector } from "@/components/day-selector";
+import {
+  CINEMAS,
+  CINEMA_LABELS,
+  fetchCinemaFilms,
+  hasDatedShowtimes,
+  showtimesForDay,
+} from "@/lib/cinemas";
 import { UAE_CITIES } from "@/lib/listings";
 
 export const Route = createFileRoute("/cinemas")({
