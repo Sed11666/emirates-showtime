@@ -3,11 +3,12 @@ import { createFileRoute } from "@tanstack/react-router";
 type CinemaKey = "vox" | "reel" | "novo" | "roxy";
 
 const SOURCES: Record<CinemaKey, string[]> = {
-  vox: ["https://uae.voxcinemas.com/movies/nowshowing", "https://uae.voxcinemas.com/movies"],
-  reel: ["https://reelcinemas.com/en/movies", "https://reelcinemas.com/movies"],
-  novo: ["https://uae.novocinemas.com/movies/now-showing", "https://uae.novocinemas.com/movies"],
-  roxy: ["https://www.roxycinemas.com/movies/now-showing", "https://www.roxycinemas.com/movies"],
+  vox: ["https://uae.voxcinemas.com/movies/whatson", "https://uae.voxcinemas.com/"],
+  reel: ["https://reelcinemas.com/en-ae/showtime", "https://reelcinemas.com/en-ae"],
+  novo: ["https://uae.novocinemas.com/moviePages", "https://uae.novocinemas.com/showTime"],
+  roxy: ["https://www.theroxycinemas.com/en/movies", "https://www.theroxycinemas.com/en"],
 };
+
 
 const EXTRACT_SCHEMA = {
   type: "object",
