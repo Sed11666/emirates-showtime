@@ -194,7 +194,7 @@ function Home() {
       <section className="mx-auto max-w-7xl px-4 py-16">
         <Reveal>
           <div className="film-grain relative overflow-hidden rounded-3xl border border-gold/25">
-            <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_10%_0%,oklch(0.4_0.16_28)_0%,oklch(0.2_0.03_40)_55%,oklch(0.16_0.01_40)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_10%_0%,oklch(0.4_0.16_285)_0%,oklch(0.2_0.03_280)_55%,oklch(0.16_0.015_280)_100%)]" />
             <div className="relative px-7 py-14 sm:px-14">
               <p className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-gold">
                 <Bell className="size-3.5" /> Stay updated
