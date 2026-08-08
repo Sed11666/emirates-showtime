@@ -1,16 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import {
   Clapperboard,
-  Film,
+  Home,
   LogOut,
   MapPin,
   PlusCircle,
   Search,
   Sparkles,
   Ticket,
-  Timer,
   UserRound,
 } from "lucide-react";
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,10 +25,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { UAE_CITIES } from "@/lib/listings";
 
 const NAV = [
-  { to: "/movies", label: "Movies", icon: Film },
-  { to: "/cinemas", label: "Cinemas", icon: Clapperboard },
+  { to: "/", label: "Home", icon: Home },
   { to: "/events", label: "Events", icon: Sparkles },
+  { to: "/cinemas", label: "Cinemas", icon: Clapperboard },
 ] as const;
+
 
 function LocationSelector() {
   const [city, setCity] = useState("Dubai");
