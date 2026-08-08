@@ -25,10 +25,8 @@ import { UAE_CITIES } from "@/lib/listings";
 import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/cinemas")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    movie: typeof search["movie"] === "string" ? (search["movie"] as string) : undefined,
-  }),
   head: () => ({
+
     meta: [
       { title: "UAE Cinema Showtimes — VOX, Reel, Novo & Roxy | ShowSouk" },
       {
