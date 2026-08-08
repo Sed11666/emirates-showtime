@@ -177,6 +177,12 @@ export function titleKey(title: string) {
     .trim();
 }
 
+/** URL-safe id for a film title, e.g. "Toy Story 5" → "toy-story-5". */
+export function filmSlug(title: string) {
+  return titleKey(title).replace(/\s+/g, "-") || "film";
+}
+
+
 export type MergedFilm = CinemaFilm & { cinemas: string[]; screenFormats: string[] };
 
 /**

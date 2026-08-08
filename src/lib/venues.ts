@@ -51,6 +51,19 @@ export const VENUES: Venue[] = [
 
 export type Coords = { lat: number; lng: number };
 
+/** Approximate city centres, used when precise location isn't available. */
+export const CITY_CENTERS: Record<string, Coords> = {
+  Dubai: { lat: 25.2048, lng: 55.2708 },
+  "Abu Dhabi": { lat: 24.4539, lng: 54.3773 },
+  Sharjah: { lat: 25.3463, lng: 55.4209 },
+  Ajman: { lat: 25.4052, lng: 55.5136 },
+  "Ras Al Khaimah": { lat: 25.7895, lng: 55.9432 },
+  Fujairah: { lat: 25.1288, lng: 56.3265 },
+  "Umm Al Quwain": { lat: 25.5647, lng: 55.5532 },
+  "Al Ain": { lat: 24.2075, lng: 55.7447 },
+};
+
+
 export function distanceKm(a: Coords, b: Coords): number {
   const toRad = (v: number) => (v * Math.PI) / 180;
   const R = 6371;

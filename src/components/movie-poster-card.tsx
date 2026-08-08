@@ -1,7 +1,8 @@
 import { Clock, Star, Ticket } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { MergedFilm } from "@/lib/cinemas";
-import { filmFormats } from "@/lib/cinemas";
+import { filmFormats, filmSlug } from "@/lib/cinemas";
+
 
 export type PosterItem = {
   id: string;
@@ -51,8 +52,9 @@ export function MoviePosterCard({
       : "w-[10.5rem] sm:w-[12rem]";
   return (
     <Link
-      to="/cinemas"
-      search={{ movie: item.title }}
+      to="/movie/$slug"
+      params={{ slug: filmSlug(item.title) }}
+
       className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:gold-glow ${width} ${className}`}
     >
 

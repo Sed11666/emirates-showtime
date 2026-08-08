@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { CINEMA_LABELS } from "@/lib/cinemas";
+import { CINEMA_LABELS, filmSlug } from "@/lib/cinemas";
 import { VENUES } from "@/lib/venues";
 
 export type SearchCategory = "movies" | "events" | "cinemas";
@@ -12,9 +12,9 @@ export type SearchResult = {
   meta: string;
   imageUrl: string | null;
   /** Route to open when the result is clicked. */
-  to: "/cinemas" | "/events" | "/listing/$id";
-  params?: { id: string };
-  search?: { movie?: string };
+  to: "/cinemas" | "/events" | "/listing/$id" | "/movie/$slug";
+  params?: { id: string } | { slug: string };
+
 };
 
 export type SearchResults = {
@@ -80,8 +80,9 @@ export async function searchShowSouk(rawQuery: string): Promise<SearchResults> {
         .filter(Boolean)
         .join(" · "),
       imageUrl: film.poster_url,
-      to: "/cinemas",
-      search: { movie: film.title },
+      to: "/movie/$slug",
+      params: { slug: filmSlug(film.title) },
+
     });
   }
 

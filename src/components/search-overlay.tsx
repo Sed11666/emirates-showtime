@@ -37,10 +37,13 @@ export const CATEGORY_META = {
 export function ResultRow({ result, onNavigate }: { result: SearchResult; onNavigate?: () => void }) {
   const linkProps =
     result.to === "/listing/$id"
-      ? ({ to: "/listing/$id", params: result.params! } as const)
-      : result.to === "/cinemas"
-        ? ({ to: "/cinemas", search: result.search ?? {} } as const)
-        : ({ to: "/events" } as const);
+      ? ({ to: "/listing/$id", params: result.params as { id: string } } as const)
+      : result.to === "/movie/$slug"
+        ? ({ to: "/movie/$slug", params: result.params as { slug: string } } as const)
+        : result.to === "/cinemas"
+          ? ({ to: "/cinemas" } as const)
+          : ({ to: "/events" } as const);
+
 
   return (
     <Link
