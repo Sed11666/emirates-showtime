@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Film, Ticket, PlusCircle, LogOut, Sparkles } from "lucide-react";
+import { Film, Ticket, PlusCircle, LogOut, Sparkles, Clapperboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +36,17 @@ export function SiteHeader() {
               <Sparkles className="size-4" /> Events
             </span>
           </Link>
+          <Link
+            to="/cinemas"
+            className="rounded-md px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            activeProps={{ className: "text-foreground bg-accent" }}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Clapperboard className="size-4" /> Cinemas
+            </span>
+          </Link>
         </nav>
+
 
         <div className="ml-auto flex items-center gap-2">
           <Button asChild variant="gold" size="sm">
