@@ -21,10 +21,12 @@ export function MovieMarquee({
 
   return (
     <div className="marquee-edges group/marquee relative overflow-hidden py-2">
+      <div aria-hidden className="marquee-lights pointer-events-none absolute inset-0" />
       <div
-        className="marquee-track gap-5 hover:[animation-play-state:paused]"
+        className="marquee-track relative gap-5 hover:[animation-play-state:paused]"
         style={{ animationDuration: `${duration}s` }}
       >
+
         {[...filled, ...filled].map((item, i) => (
           <MoviePosterCard key={`${item.id}-${i}`} item={item} size={size} />
         ))}
