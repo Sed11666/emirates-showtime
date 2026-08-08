@@ -53,7 +53,7 @@ export function MoviePosterCard({
     <Link
       to="/cinemas"
       search={{ movie: item.title }}
-      className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:red-glow ${width} ${className}`}
+      className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:gold-glow ${width} ${className}`}
     >
 
 
