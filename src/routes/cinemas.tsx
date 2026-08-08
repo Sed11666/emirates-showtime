@@ -50,8 +50,7 @@ export const Route = createFileRoute("/cinemas")({
 });
 
 function CinemasPage() {
-  const { movie } = Route.useSearch();
-  const [search, setSearch] = useState(movie ?? "");
+  const [search, setSearch] = useState("");
   const [cinema, setCinema] = useState<string>("all");
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
@@ -61,13 +60,7 @@ function CinemasPage() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle");
 
-  // Arriving from a poster: focus that film and rank screens nearest first.
-  useEffect(() => {
-    if (!movie) return;
-    setSearch(movie);
-    requestLocation(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movie]);
+
 
 
   const requestLocation = (filterToNearby = true) => {
