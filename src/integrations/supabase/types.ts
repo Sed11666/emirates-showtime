@@ -125,6 +125,45 @@ export type Database = {
         }
         Relationships: []
       }
+      event_scrape_runs: {
+        Row: {
+          changed: boolean
+          content_hash: string | null
+          created_at: string
+          error: string | null
+          events_deactivated: number
+          events_upserted: number
+          id: string
+          source: string
+          source_url: string | null
+          status: string
+        }
+        Insert: {
+          changed?: boolean
+          content_hash?: string | null
+          created_at?: string
+          error?: string | null
+          events_deactivated?: number
+          events_upserted?: number
+          id?: string
+          source: string
+          source_url?: string | null
+          status?: string
+        }
+        Update: {
+          changed?: boolean
+          content_hash?: string | null
+          created_at?: string
+          error?: string | null
+          events_deactivated?: number
+          events_upserted?: number
+          id?: string
+          source?: string
+          source_url?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       listings: {
         Row: {
           certification: string | null
@@ -180,6 +219,75 @@ export type Database = {
           price_aed?: number
           starts_at?: string | null
           title?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
+      live_events: {
+        Row: {
+          category: string | null
+          city: string | null
+          created_at: string
+          date_text: string | null
+          description: string | null
+          ends_on: string | null
+          first_seen_at: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          last_seen_at: string
+          price_text: string | null
+          source: string
+          source_url: string | null
+          starts_on: string | null
+          ticket_url: string | null
+          title: string
+          title_key: string
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          date_text?: string | null
+          description?: string | null
+          ends_on?: string | null
+          first_seen_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          last_seen_at?: string
+          price_text?: string | null
+          source: string
+          source_url?: string | null
+          starts_on?: string | null
+          ticket_url?: string | null
+          title: string
+          title_key: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          category?: string | null
+          city?: string | null
+          created_at?: string
+          date_text?: string | null
+          description?: string | null
+          ends_on?: string | null
+          first_seen_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          last_seen_at?: string
+          price_text?: string | null
+          source?: string
+          source_url?: string | null
+          starts_on?: string | null
+          ticket_url?: string | null
+          title?: string
+          title_key?: string
           updated_at?: string
           venue?: string | null
         }
