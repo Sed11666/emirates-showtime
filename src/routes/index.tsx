@@ -108,12 +108,13 @@ function Home() {
       </SectionShell>
 
       {/* ── Today's showtimes ───────────────────────────────── */}
-      {showtimeBoard.length > 0 ? (
-        <SectionShell
-          eyebrow="Today's schedule"
-          title="Today's Showtimes"
-          subtitle="Quick look at what's playing tonight"
-        >
+      {/* ── Today's showtimes ───────────────────────────────── */}
+      <SectionShell
+        eyebrow="Today's schedule"
+        title="Today's Showtimes"
+        subtitle="Quick look at what's playing tonight"
+      >
+
           <div className="space-y-5">
             {showtimeBoard.map(({ film, venues }) => (
               <div

@@ -303,7 +303,10 @@ async function scrapeCinema(
           poster_url: film.poster_url?.trim() || null,
           synopsis: film.synopsis?.trim() || null,
           formats: Array.isArray(film.formats) ? film.formats.filter(Boolean).slice(0, 20) : [],
-          showtimes: normalizeShowtimes(film.showtimes),
+          showtimes: normalizeShowtimes(film.showtimes, {
+            venue: Array.isArray(film.venues) ? film.venues.filter(Boolean)[0] : undefined,
+          }),
+
           booking_url: film.booking_url?.trim() || null,
           source_url: url,
           is_active: true,
