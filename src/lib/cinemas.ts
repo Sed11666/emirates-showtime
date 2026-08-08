@@ -44,18 +44,44 @@ export async function fetchCinemaFilms(): Promise<CinemaFilm[]> {
   return (data ?? []) as CinemaFilm[];
 }
 
-export function showtimeList(value: unknown): string[] {
+type ParsedShowtime = { date: string | null; text: string };
+
+function parseShowtimes(value: unknown): ParsedShowtime[] {
   if (!Array.isArray(value)) return [];
   return value
-    .map((entry) => {
-      if (typeof entry === "string") return entry;
+    .map((entry): ParsedShowtime | null => {
+      if (typeof entry === "string") return { date: null, text: entry };
       if (entry && typeof entry === "object") {
         const row = entry as Record<string, unknown>;
         const parts = [row["venue"], row["date"], row["time"]].filter(Boolean);
-        return parts.join(" · ");
+        const text = parts.join(" · ");
+        if (!text) return null;
+        return { date: parseDayKey(row["date"]), text };
       }
-      return "";
+      return null;
     })
-    .filter(Boolean)
+    .filter((entry): entry is ParsedShowtime => Boolean(entry));
+}
+
+export function showtimeList(value: unknown): string[] {
+  return parseShowtimes(value)
+    .map((entry) => entry.text)
     .slice(0, 12);
 }
+
+/**
+ * Showtimes for a given day key ("any" = no filter). Films whose showtimes carry
+ * no date information keep their full schedule.
+ */
+export function showtimesForDay(value: unknown, dayKey: string): string[] {
+  const parsed = parseShowtimes(value);
+  if (dayKey === "any") return parsed.map((e) => e.text).slice(0, 12);
+  const dated = parsed.filter((e) => e.date);
+  if (dated.length === 0) return parsed.map((e) => e.text).slice(0, 12);
+  return dated.filter((e) => e.date === dayKey).map((e) => e.text).slice(0, 12);
+}
+
+export function hasDatedShowtimes(value: unknown): boolean {
+  return parseShowtimes(value).some((e) => e.date);
+}
+
