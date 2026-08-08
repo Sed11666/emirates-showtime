@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CinemasRouteImport } from './routes/cinemas'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as MoviesRouteImport } from './routes/movies'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as ApiPublicHooksScrapeCinemasRouteImport } from './routes/api/public/hooks/scrape-cinemas'
 import { Route as ApiPublicHooksScrapeEventsRouteImport } from './routes/api/public/hooks/scrape-events'
@@ -49,6 +50,11 @@ const MoviesRoute = MoviesRouteImport.update({
   path: '/movies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListingIdRoute = ListingIdRouteImport.update({
   id: '/listing/$id',
   path: '/listing/$id',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/cinemas': typeof CinemasRoute
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
+  '/search': typeof SearchRoute
   '/listing/$id': typeof ListingIdRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/cinemas': typeof CinemasRoute
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
+  '/search': typeof SearchRoute
   '/listing/$id': typeof ListingIdRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/cinemas': typeof CinemasRoute
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
+  '/search': typeof SearchRoute
   '/listing/$id': typeof ListingIdRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/cinemas'
     | '/events'
     | '/movies'
+    | '/search'
     | '/listing/$id'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/cinemas'
     | '/events'
     | '/movies'
+    | '/search'
     | '/listing/$id'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/cinemas'
     | '/events'
     | '/movies'
+    | '/search'
     | '/listing/$id'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   CinemasRoute: typeof CinemasRoute
   EventsRoute: typeof EventsRoute
   MoviesRoute: typeof MoviesRoute
+  SearchRoute: typeof SearchRoute
   ListingIdRoute: typeof ListingIdRoute
   ApiPublicHooksScrapeCinemasRoute: typeof ApiPublicHooksScrapeCinemasRoute
   ApiPublicHooksScrapeEventsRoute: typeof ApiPublicHooksScrapeEventsRoute
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoviesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/listing/$id': {
       id: '/listing/$id'
       path: '/listing/$id'
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   CinemasRoute: CinemasRoute,
   EventsRoute: EventsRoute,
   MoviesRoute: MoviesRoute,
+  SearchRoute: SearchRoute,
   ListingIdRoute: ListingIdRoute,
   ApiPublicHooksScrapeCinemasRoute: ApiPublicHooksScrapeCinemasRoute,
   ApiPublicHooksScrapeEventsRoute: ApiPublicHooksScrapeEventsRoute,
@@ -231,13 +252,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
