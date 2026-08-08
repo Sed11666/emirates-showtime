@@ -206,7 +206,7 @@ async function scrapeShowtimesForFilms(
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: films } = await supabaseAdmin
     .from("cinema_films")
-    .select("id, booking_url, source_url")
+    .select("id, booking_url, source_url, showtimes")
     .eq("cinema", cinema)
     .eq("is_active", true);
 
@@ -229,7 +229,8 @@ async function scrapeShowtimesForFilms(
           onlyMainContent: true,
           waitFor: 8000,
           location: { country: "AE", languages: ["en"] },
-          formats: [{ type: "json", schema: SHOWTIME_SCHEMA, prompt: SHOWTIME_PROMPT }],
+          // Markdown carries the anchor hrefs the extractor needs for per-time links.
+          formats: ["markdown", { type: "json", schema: SHOWTIME_SCHEMA, prompt: SHOWTIME_PROMPT }],
         }),
       });
       // Firecrawl caps requests per minute; back off and retry instead of
@@ -247,6 +248,23 @@ async function scrapeShowtimesForFilms(
         ...(film.booking_url ? { base: film.booking_url } : {}),
       });
       if (showtimes.length === 0) return;
+      // Keep per-screening links captured on the listing pass when the detail
+      // pass could not find an href for that time.
+      const previous = Array.isArray(film.showtimes)
+        ? (film.showtimes as Array<Record<string, unknown>>)
+        : [];
+      const priorLinks = new Map<string, string>();
+      for (const row of previous) {
+        const link = typeof row["booking_url"] === "string" ? row["booking_url"] : "";
+        const time = typeof row["time"] === "string" ? row["time"] : "";
+        if (link && time) priorLinks.set(`${String(row["venue"] ?? "")}|${time}`.toLowerCase(), link);
+      }
+      for (const row of showtimes) {
+        if (row["booking_url"]) continue;
+        const key = `${row["venue"] ?? ""}|${row["time"] ?? ""}`.toLowerCase();
+        const link = priorLinks.get(key) ?? priorLinks.get(`|${row["time"] ?? ""}`.toLowerCase());
+        if (link) row["booking_url"] = link;
+      }
       const venues = [
         ...new Set(showtimes.map((s) => s["venue"]).filter(Boolean) as string[]),
       ].slice(0, 40);
