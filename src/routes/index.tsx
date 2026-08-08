@@ -1,7 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, ChevronRight, Clock, Film, MapPin, Search, Star } from "lucide-react";
+import { Bell, ChevronRight, Clock, Film, MapPin, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
@@ -50,7 +50,6 @@ function popularityScore(film: MergedFilm) {
 }
 
 function Home() {
-  const [query, setQuery] = useState("");
   const today = toDayKey(new Date());
 
   const { data: films } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
@@ -88,7 +87,7 @@ function Home() {
 
   return (
     <div className="overflow-x-hidden">
-      <HeroSlider films={featured} query={query} setQuery={setQuery} />
+      <HeroSlider films={featured} />
 
       {/* ── Now showing ─────────────────────────────────────── */}
       <SectionShell
@@ -238,17 +237,8 @@ function Home() {
 }
 
 /** Full-bleed hero: the top 4 popular movies slide through automatically. */
-function HeroSlider({
-  films,
-  query,
-  setQuery,
-}: {
-  films: MergedFilm[];
-  query: string;
-  setQuery: (v: string) => void;
-}) {
+function HeroSlider({ films }: { films: MergedFilm[] }) {
   const [index, setIndex] = useState(0);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (films.length < 2) return;
@@ -331,27 +321,6 @@ function HeroSlider({
           </h1>
         )}
 
-        <div className="mt-9 flex max-w-2xl items-center gap-2 rounded-2xl border border-border/70 bg-card/70 p-2 backdrop-blur-xl">
-          <Search className="ml-2 size-4 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && query.trim()) {
-                navigate({ to: "/search", search: { q: query.trim(), tab: "all" } });
-              }
-            }}
-            placeholder="Search movies, cinemas, or locations"
-            className="border-0 bg-transparent focus-visible:ring-0"
-            aria-label="Search ShowSouk"
-          />
-          <Button asChild variant="gold" size="sm">
-            <Link to="/search" search={{ q: query, tab: "all" as const }}>
-              Search
-            </Link>
-          </Button>
-        </div>
-
         {films.length > 1 ? (
           <div className="mt-6 flex gap-2">
             {films.map((film, i) => (
@@ -366,7 +335,6 @@ function HeroSlider({
             ))}
           </div>
         ) : null}
-
       </div>
     </section>
   );
