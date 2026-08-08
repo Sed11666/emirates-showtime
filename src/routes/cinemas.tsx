@@ -19,6 +19,9 @@ import { UAE_CITIES } from "@/lib/listings";
 import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/cinemas")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    movie: typeof search["movie"] === "string" ? (search["movie"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "UAE Cinema Showtimes — VOX, Reel, Novo & Roxy | ShowSouk" },
@@ -43,14 +46,22 @@ export const Route = createFileRoute("/cinemas")({
 });
 
 function CinemasPage() {
-  const [search, setSearch] = useState("");
+  const { movie } = Route.useSearch();
+  const [search, setSearch] = useState(movie ?? "");
   const [cinema, setCinema] = useState<string>("all");
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
   const [day, setDay] = useState<string>(() => toDayKey(new Date()));
   const [nearby, setNearby] = useState<NearbyVenue[] | null>(null);
   const [nearOnly, setNearOnly] = useState(false);
+  const [coords, setCoords] = useState<Coords | null>(null);
   const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle");
+
+  // Arriving from a poster: focus that film and rank screens nearest first.
+  useEffect(() => {
+    if (movie) setSearch(movie);
+  }, [movie]);
+
 
   const requestLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
