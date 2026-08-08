@@ -98,10 +98,6 @@ export function MoviePosterCard({
             </div>
           </div>
         </div>
-
-            </div>
-          </div>
-        </div>
       </div>
     </Wrapper>
   );
