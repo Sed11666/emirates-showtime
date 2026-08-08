@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Clapperboard, Clock, MapPin, RefreshCw, Search } from "lucide-react";
+import { Clapperboard, Clock, Locate, MapPin, Navigation, RefreshCw, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   hasDatedShowtimes,
   showtimesForDay,
 } from "@/lib/cinemas";
+import { matchesVenues, nearestVenues, type NearbyVenue } from "@/lib/venues";
 import { UAE_CITIES } from "@/lib/listings";
 import { toDayKey } from "@/lib/days";
 
@@ -47,6 +48,31 @@ function CinemasPage() {
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
   const [day, setDay] = useState<string>(() => toDayKey(new Date()));
+  const [nearby, setNearby] = useState<NearbyVenue[] | null>(null);
+  const [nearOnly, setNearOnly] = useState(false);
+  const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle");
+
+  const requestLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoState("denied");
+      return;
+    }
+    setGeoState("loading");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const venues = nearestVenues({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setNearby(venues);
+        setNearOnly(true);
+        setGeoState("idle");
+        if (venues[0]) setCity(venues[0].city);
+      },
+      () => setGeoState("denied"),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
+    );
+  };
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["cinema-films"],
@@ -69,13 +95,19 @@ function CinemasPage() {
         if (language !== "all" && film.language !== language) return false;
         if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
           return false;
+        if (nearOnly && nearby && nearby.length > 0) {
+          const nearChains = new Set(nearby.map((v) => v.cinema as string));
+          if (!nearChains.has(film.cinema)) return false;
+          if (film.venues.length > 0 && !matchesVenues(film.venues, nearby)) return false;
+        }
         if (day !== "any" && hasDatedShowtimes(film.showtimes)) {
           return showtimesForDay(film.showtimes, day).length > 0;
         }
         return true;
       })
       .map((film) => ({ film, times: showtimesForDay(film.showtimes, day) }));
-  }, [films, search, cinema, city, language, day]);
+  }, [films, search, cinema, city, language, day, nearOnly, nearby]);
+
 
 
   const lastUpdated = films.reduce<string | null>(
@@ -101,6 +133,73 @@ function CinemasPage() {
             </Button>
           </div>
         </header>
+
+        <section className="mb-6 rounded-xl border border-border/70 bg-card/50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+                <Navigation className="size-4 text-primary" /> Cinemas near you
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {nearby
+                  ? "Suggested chains based on your current location."
+                  : "Share your location to see the closest VOX, Reel, Novo and Roxy screens."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={requestLocation} disabled={geoState === "loading"}>
+                <Locate className={`size-3.5 ${geoState === "loading" ? "animate-pulse" : ""}`} />
+                {nearby ? "Update location" : "Use my location"}
+              </Button>
+              {nearby && (
+                <Button
+                  size="sm"
+                  variant={nearOnly ? "default" : "ghost"}
+                  onClick={() => setNearOnly((value) => !value)}
+                >
+                  {nearOnly ? "Showing nearby only" : "Filter to nearby"}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {geoState === "denied" && (
+            <p className="mt-3 text-xs text-destructive">
+              Location unavailable. Allow location access in your browser, or pick a city below.
+            </p>
+          )}
+
+          {nearby && nearby.length > 0 && (
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {nearby.map((venue) => (
+                <li
+                  key={`${venue.cinema}-${venue.name}`}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/40 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{venue.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {CINEMA_LABELS[venue.cinema]} · {venue.city}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCinema(venue.cinema);
+                      setCity(venue.city);
+                    }}
+                    className="shrink-0 rounded-full border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+                  >
+                    {venue.distanceKm < 1
+                      ? `${Math.round(venue.distanceKm * 1000)} m`
+                      : `${venue.distanceKm.toFixed(1)} km`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
 
         <div className="mb-6 space-y-4 rounded-xl border border-border/70 bg-card/50 p-4">
           <div className="relative">
