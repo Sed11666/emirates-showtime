@@ -174,9 +174,9 @@ function Home() {
               </div>
             ))}
           </div>
+        )}
+      </SectionShell>
 
-        </SectionShell>
-      ) : null}
 
       {/* ── Cinema chains ───────────────────────────────────── */}
       <SectionShell eyebrow="UAE cinema chains" title="Book by Cinema">
