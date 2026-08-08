@@ -146,3 +146,42 @@
 @utility shadow-glow {
   box-shadow: var(--shadow-glow);
 }
+
+/* Cinematic poster marquee — endless reel background */
+@keyframes poster-reel-left {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes poster-reel-right {
+  from { transform: translate3d(-50%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@utility poster-reel-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation-name: poster-reel-left;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@utility poster-reel-reverse {
+  animation-name: poster-reel-right;
+}
+
+@utility poster-reel-mask {
+  mask-image: radial-gradient(
+    120% 90% at 50% 45%,
+    oklch(0 0 0) 35%,
+    oklch(0 0 0 / 0.55) 65%,
+    transparent 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-reel-track {
+    animation: none !important;
+  }
+}
