@@ -304,8 +304,11 @@ async function scrapeCinema(
           synopsis: film.synopsis?.trim() || null,
           formats: Array.isArray(film.formats) ? film.formats.filter(Boolean).slice(0, 20) : [],
           showtimes: normalizeShowtimes(film.showtimes, {
-            venue: Array.isArray(film.venues) ? film.venues.filter(Boolean)[0] : undefined,
+            ...(Array.isArray(film.venues) && film.venues.filter(Boolean)[0]
+              ? { venue: film.venues.filter(Boolean)[0] as string }
+              : {}),
           }),
+
 
           booking_url: film.booking_url?.trim() || null,
           source_url: url,
