@@ -51,7 +51,7 @@ function popularityScore(film: MergedFilm) {
 
 function Home() {
   const [query, setQuery] = useState("");
-  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
+  const today = toDayKey(new Date());
 
   const { data: films } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
 
@@ -80,15 +80,15 @@ function Home() {
         .slice(0, 6)
         .map((film) => ({
           film,
-          venues: showtimesByVenue(film.showtimes, day, film.venues[0]),
+          venues: showtimesByVenue(film.showtimes, today, film.venues[0]),
         }))
         .filter((row) => row.venues.length > 0),
-    [merged, day],
+    [merged, today],
   );
 
   return (
     <div className="overflow-x-hidden">
-      <HeroSlider films={featured} query={query} setQuery={setQuery} day={day} setDay={setDay} />
+      <HeroSlider films={featured} query={query} setQuery={setQuery} />
 
       {/* ── Now showing ─────────────────────────────────────── */}
       <SectionShell
