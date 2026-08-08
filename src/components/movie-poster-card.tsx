@@ -67,7 +67,7 @@ export function MoviePosterCard({
         )}
 
         {item.tag ? (
-          <span className="absolute left-2.5 top-2.5 rounded-full border border-primary/40 bg-background/70 px-2.5 py-1 text-[10px] uppercase tracking-widest text-foreground/90 backdrop-blur">
+          <span className="absolute left-2.5 top-2.5 rounded-full border border-gold/50 bg-background/70 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
             {item.tag}
           </span>
         ) : null}
@@ -82,8 +82,8 @@ export function MoviePosterCard({
             <div className="overflow-hidden">
               <div className="flex items-center gap-3 pt-2 text-[11px] text-muted-foreground">
                 {item.rating ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Star className="size-3 text-primary" /> {item.rating}
+                  <span className="inline-flex items-center gap-1 text-gold">
+                    <Star className="size-3 fill-gold text-gold" /> {item.rating}
                   </span>
                 ) : null}
                 {item.duration ? (
@@ -92,9 +92,13 @@ export function MoviePosterCard({
                   </span>
                 ) : null}
               </div>
-              <span className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors group-hover:bg-gold">
+              <span className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-all group-hover:brightness-110">
                 <Ticket className="size-3.5" /> Book now
               </span>
+            </div>
+          </div>
+        </div>
+
             </div>
           </div>
         </div>
