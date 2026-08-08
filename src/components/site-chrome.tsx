@@ -52,7 +52,7 @@ function LocationSelector() {
           <MapPin className="size-3.5 text-primary" /> {city}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="center">
         {UAE_CITIES.map((c) => (
           <DropdownMenuItem key={c} onSelect={() => pick(c)}>
             {c}
@@ -71,6 +71,11 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="pointer-events-auto">
+          <LocationSelector />
+        </div>
+      </div>
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-5 px-4">
         <Link to="/" className="flex items-center gap-2">
           <Ticket className="size-6 text-primary" />
@@ -78,10 +83,6 @@ export function SiteHeader() {
             Show<span className="text-gold-gradient">Souk</span>
           </span>
         </Link>
-
-        <div className="flex items-center gap-1">
-          <LocationSelector />
-        </div>
 
         <nav className="hidden items-center gap-0.5 text-sm md:flex">
           {NAV.map(({ to, label, icon: Icon }) => (
