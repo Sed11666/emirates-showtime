@@ -12,12 +12,12 @@ import { useAuth } from "@/hooks/useAuth";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in to publish listings | ShowUAE" },
+      { title: "Sign in to publish listings | ShowSouk" },
       {
         name: "description",
-        content: "Sign in or create a ShowUAE account to publish movies and events in the UAE.",
+        content: "Sign in or create a ShowSouk account to publish movies and events in the UAE.",
       },
-      { property: "og:title", content: "Sign in to publish listings | ShowUAE" },
+      { property: "og:title", content: "Sign in to publish listings | ShowSouk" },
       {
         property: "og:description",
         content: "Create an account to add your own UAE movies and events.",
@@ -80,7 +80,7 @@ function AuthPage() {
         {mode === "signin" ? "Sign in" : "Create your account"}
       </h1>
       <p className="mt-2 text-muted-foreground">
-        You need an account to publish movies and events on ShowUAE.
+        You need an account to publish movies and events on ShowSouk.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">

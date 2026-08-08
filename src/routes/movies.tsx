@@ -6,13 +6,13 @@ import { fetchListings } from "@/lib/listings";
 export const Route = createFileRoute("/movies")({
   head: () => ({
     meta: [
-      { title: "Movies Now Showing in the UAE | ShowUAE" },
+      { title: "Movies Now Showing in the UAE | ShowSouk" },
       {
         name: "description",
         content:
           "Cinema listings across Dubai, Abu Dhabi and Sharjah — showtimes, languages, certifications and ticket prices in AED.",
       },
-      { property: "og:title", content: "Movies Now Showing in the UAE | ShowUAE" },
+      { property: "og:title", content: "Movies Now Showing in the UAE | ShowSouk" },
       {
         property: "og:description",
         content: "Browse every film playing across UAE cinemas this week.",
