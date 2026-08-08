@@ -86,3 +86,81 @@ export function hasDatedShowtimes(value: unknown): boolean {
   return parseShowtimes(value).some((e) => e.date);
 }
 
+
+/* ── Format + de-duplication ─────────────────────────────── */
+
+const FORMAT_PATTERNS: Array<[RegExp, string]> = [
+  [/imax/i, "IMAX"],
+  [/4\s*dx/i, "4DX"],
+  [/\b3\s*d\b/i, "3D"],
+  [/\b2\s*d\b/i, "2D"],
+  [/max|dolby|atmos/i, "MAX"],
+  [/gold|theatre|platinum|vip|7\s*star/i, "PREMIUM"],
+];
+
+const FORMAT_ORDER = ["IMAX", "4DX", "MAX", "PREMIUM", "3D", "2D"];
+
+/** Canonical screen formats for a film, derived from formats + showtimes. */
+export function filmFormats(film: CinemaFilm): string[] {
+  const raw: string[] = [...(film.formats ?? [])];
+  if (Array.isArray(film.showtimes)) {
+    for (const entry of film.showtimes) {
+      if (entry && typeof entry === "object") {
+        const value = (entry as Record<string, unknown>)["format"];
+        if (typeof value === "string") raw.push(value);
+      }
+    }
+  }
+  const found = new Set<string>();
+  for (const value of raw) {
+    for (const [pattern, label] of FORMAT_PATTERNS) {
+      if (pattern.test(value)) found.add(label);
+    }
+  }
+  if (found.size === 0) found.add("2D");
+  return FORMAT_ORDER.filter((f) => found.has(f));
+}
+
+export function titleKey(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/\(.*?\)/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export type MergedFilm = CinemaFilm & { cinemas: string[]; screenFormats: string[] };
+
+/**
+ * One card per movie: the same title playing at VOX, Reel, Novo and Roxy is
+ * collapsed into a single entry carrying every chain and screen format.
+ */
+export function mergeFilmsByTitle(films: CinemaFilm[]): MergedFilm[] {
+  const map = new Map<string, MergedFilm>();
+  for (const film of films) {
+    const key = titleKey(film.title);
+    const existing = map.get(key);
+    const formats = filmFormats(film);
+    if (!existing) {
+      map.set(key, { ...film, cinemas: [film.cinema], screenFormats: formats });
+      continue;
+    }
+    existing.cinemas = [...new Set([...existing.cinemas, film.cinema])];
+    existing.screenFormats = FORMAT_ORDER.filter((f) =>
+      new Set([...existing.screenFormats, ...formats]).has(f),
+    );
+    existing.venues = [...new Set([...existing.venues, ...film.venues])];
+    if (!existing.poster_url && film.poster_url) existing.poster_url = film.poster_url;
+    if (!existing.synopsis && film.synopsis) existing.synopsis = film.synopsis;
+    if (!existing.rating && film.rating) existing.rating = film.rating;
+    if (!existing.duration_mins && film.duration_mins) existing.duration_mins = film.duration_mins;
+    if (!existing.genre && film.genre) existing.genre = film.genre;
+    if (!existing.language && film.language) existing.language = film.language;
+    if (Array.isArray(film.showtimes) && Array.isArray(existing.showtimes)) {
+      existing.showtimes = [...existing.showtimes, ...film.showtimes];
+    } else if (!existing.showtimes) {
+      existing.showtimes = film.showtimes;
+    }
+  }
+  return [...map.values()];
+}
