@@ -178,7 +178,7 @@ function Home() {
                 key={chain.key}
                 to="/cinemas"
                 search={{}}
-                className="group rounded-2xl border border-border/60 bg-card/50 px-5 py-7 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:red-glow"
+                className="group rounded-2xl border border-border/60 bg-card/50 px-5 py-7 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:gold-glow"
               >
                 <p className="font-display text-sm font-bold uppercase tracking-wide">
                   {CINEMA_LABELS[chain.key]}
