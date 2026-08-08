@@ -128,7 +128,7 @@ function Home() {
               aria-label="Search listings"
             />
             <Button asChild variant="hero" size="sm">
-              <Link to="/cinemas">Explore</Link>
+              <Link to="/cinemas" search={{}}>Explore</Link>
             </Button>
           </div>
 
@@ -199,6 +199,7 @@ function Home() {
               <Link
                 key={chain.key}
                 to="/cinemas"
+                search={{}}
                 className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-6 transition-all hover:-translate-y-1 hover:border-primary/60 hover:red-glow"
               >
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />

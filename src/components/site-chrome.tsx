@@ -13,6 +13,7 @@ import {
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SearchOverlay } from "@/components/search-overlay";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,7 @@ function LocationSelector() {
 export function SiteHeader() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -93,14 +95,14 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            to="/"
-            hash="discover"
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
             aria-label="Search"
             className="inline-flex size-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
           >
             <Search className="size-4" />
-          </Link>
+          </button>
           <LocationSelector />
           {isAdmin ? (
             <Button asChild variant="gold" size="sm">
@@ -127,6 +129,7 @@ export function SiteHeader() {
           )}
         </div>
       </div>
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 }
@@ -158,7 +161,7 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link to="/cinemas" className="hover:text-foreground">
+              <Link to="/cinemas" search={{}} className="hover:text-foreground">
                 Cinemas
               </Link>
             </li>
