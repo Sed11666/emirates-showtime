@@ -261,8 +261,8 @@ function HeroSlider({
             }`}
           />
         ))}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.13_0.008_40/0.55)_0%,oklch(0.15_0.01_40/0.82)_45%,oklch(0.155_0.008_40)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(85%_75%_at_20%_30%,oklch(0.13_0.01_40/0.75)_0%,transparent_75%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.13_0.02_280/0.55)_0%,oklch(0.15_0.02_280/0.82)_45%,oklch(0.155_0.015_280)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(85%_75%_at_20%_30%,oklch(0.13_0.015_280/0.75)_0%,transparent_75%)]" />
         {films.length === 0 ? <div className="absolute inset-0 bg-hero-gradient" /> : null}
       </div>
 
