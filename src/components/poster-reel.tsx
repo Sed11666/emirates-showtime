@@ -70,8 +70,8 @@ export function PosterReel({ posters }: { posters: string[] }) {
       </div>
 
       {/* Cinematic darkening: gradient wash, vignette, fade into page background */}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.12_0.015_40/0.8)_0%,oklch(0.14_0.015_40/0.72)_45%,oklch(0.17_0.018_40/0.98)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(75%_60%_at_50%_45%,transparent_0%,oklch(0.1_0.01_40/0.55)_70%,oklch(0.1_0.01_40/0.92)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.12_0.02_280/0.8)_0%,oklch(0.14_0.02_280/0.72)_45%,oklch(0.17_0.02_280/0.98)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(75%_60%_at_50%_45%,transparent_0%,oklch(0.1_0.015_280/0.55)_70%,oklch(0.1_0.015_280/0.92)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background" />
       <div className="absolute inset-0 backdrop-blur-[1.5px]" />
     </div>
