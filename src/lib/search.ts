@@ -12,9 +12,9 @@ export type SearchResult = {
   meta: string;
   imageUrl: string | null;
   /** Route to open when the result is clicked. */
-  to: "/cinemas" | "/events" | "/listing/$id";
-  params?: { id: string };
-  search?: { movie?: string };
+  to: "/cinemas" | "/events" | "/listing/$id" | "/movie/$slug";
+  params?: { id: string } | { slug: string };
+
 };
 
 export type SearchResults = {
