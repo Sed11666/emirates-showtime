@@ -2,7 +2,12 @@ import { parseDayKey } from "@/lib/days";
 import type { CinemaFilm } from "@/lib/cinemas";
 import { distanceKm, VENUES, type Coords } from "@/lib/venues";
 
-export type Screening = { time: string; minutes: number; format: string | null };
+export type Screening = {
+  time: string;
+  minutes: number;
+  format: string | null;
+  bookingUrl: string | null;
+};
 
 export type VenueBlock = {
   key: string;
@@ -73,6 +78,7 @@ export function venueBlocks(films: CinemaFilm[], dayKey: string, coords: Coords 
         let venue = film.venues[0] ?? "All screens";
         let format: string | null = null;
         let date: string | null = null;
+        let screeningUrl: string | null = null;
 
         if (typeof entry === "string") {
           time = entry.trim();
@@ -83,6 +89,8 @@ export function venueBlocks(films: CinemaFilm[], dayKey: string, coords: Coords 
           if (typeof row["venue"] === "string" && row["venue"].trim()) venue = row["venue"].trim();
           if (typeof row["format"] === "string" && row["format"].trim())
             format = row["format"].trim();
+          if (typeof row["booking_url"] === "string" && row["booking_url"].trim())
+            screeningUrl = row["booking_url"].trim();
         }
         if (!time) continue;
         if (filterDay && dayKey !== "any" && date && date !== dayKey) continue;
@@ -100,7 +108,12 @@ export function venueBlocks(films: CinemaFilm[], dayKey: string, coords: Coords 
             screenings: [],
           } satisfies VenueBlock);
         if (!block.screenings.some((s) => s.time === time && s.format === format)) {
-          block.screenings.push({ time, minutes: timeToMinutes(time), format });
+          block.screenings.push({
+            time,
+            minutes: timeToMinutes(time),
+            format,
+            bookingUrl: screeningUrl ?? block.bookingUrl,
+          });
         }
         groups.set(key, block);
       }

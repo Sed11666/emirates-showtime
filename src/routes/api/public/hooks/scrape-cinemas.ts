@@ -37,6 +37,7 @@ const EXTRACT_SCHEMA = {
                 date: { type: "string" },
                 time: { type: "string" },
                 format: { type: "string" },
+                booking_url: { type: "string" },
               },
               required: ["time"],
             },
@@ -51,14 +52,29 @@ const EXTRACT_SCHEMA = {
 } as const;
 
 const EXTRACT_PROMPT =
-  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.) and the booking link. For showtimes, return one object per screening with the exact clock time (e.g. '19:45' or '7:45 PM'), the calendar date in yyyy-mm-dd form when the page shows or implies one (use the currently selected date if the page shows a date tab), the venue/cinema name for that screening, and the screen format. Never invent times. Ignore adverts, offers and non-film content.";
+  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.) and the booking link. For showtimes, return one object per screening with the exact clock time (e.g. '19:45' or '7:45 PM'), the calendar date in yyyy-mm-dd form when the page shows or implies one (use the currently selected date if the page shows a date tab), the venue/cinema name for that screening, the screen format, and booking_url set to the absolute href of the link/button behind that exact time (the seat-selection or booking URL for that single screening). Never invent times. Ignore adverts, offers and non-film content.";
 
 type RawShowtime = {
   venue?: string;
   date?: string;
   time?: string;
   format?: string;
+  booking_url?: string;
 };
+
+/** Screening links are often relative; anchor them to the scraped page. */
+function absoluteUrl(raw: string | undefined, base: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  try {
+    const resolved = base ? new URL(value, base) : new URL(value);
+    return resolved.protocol === "http:" || resolved.protocol === "https:"
+      ? resolved.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 type RawFilm = {
   title?: string;
@@ -86,7 +102,7 @@ function dubaiToday() {
 
 function normalizeShowtimes(
   value: unknown,
-  defaults?: { date?: string; venue?: string },
+  defaults?: { date?: string; venue?: string; base?: string },
 ): Array<Record<string, string>> {
   if (!Array.isArray(value)) return [];
   const fallbackDate = defaults?.date || dubaiToday();
@@ -105,6 +121,8 @@ function normalizeShowtimes(
       const venue = row.venue?.trim() || defaults?.venue;
       if (venue) item["venue"] = venue;
       if (row.format?.trim()) item["format"] = row.format.trim();
+      const link = absoluteUrl(row.booking_url, defaults?.base);
+      if (link) item["booking_url"] = link;
       out.push(item);
     }
   }
@@ -166,6 +184,7 @@ const SHOWTIME_SCHEMA = {
           venue: { type: "string" },
           time: { type: "string" },
           format: { type: "string" },
+          booking_url: { type: "string" },
         },
         required: ["venue", "time"],
       },
@@ -175,7 +194,7 @@ const SHOWTIME_SCHEMA = {
 } as const;
 
 const SHOWTIME_PROMPT =
-  "This is a cinema film page listing today's screenings. Extract every single screening as an object with the cinema/venue name (e.g. 'Mall of the Emirates', 'Dragon Mart'), the exact start time exactly as printed (e.g. '7:45pm' or '10:15 PM'), and the screen format/experience if shown (Standard, MAX, IMAX, GOLD, THEATRE, 4DX, 2D, 7STAR). Include every venue and every time. Do not invent or round times, and ignore trailers, other movie suggestions and promotions.";
+  "This is a cinema film page listing today's screenings. Extract every single screening as an object with the cinema/venue name (e.g. 'Mall of the Emirates', 'Dragon Mart'), the exact start time exactly as printed (e.g. '7:45pm' or '10:15 PM'), the screen format/experience if shown (Standard, MAX, IMAX, GOLD, THEATRE, 4DX, 2D, 7STAR), and booking_url set to the absolute href of the anchor/button wrapping that exact time (the seat-selection or booking link for that single screening). Include every venue and every time. Do not invent or round times, and ignore trailers, other movie suggestions and promotions.";
 
 /** Second pass: film detail pages carry the real per-venue showtimes. */
 async function scrapeShowtimesForFilms(
@@ -223,7 +242,10 @@ async function scrapeShowtimesForFilms(
       const parsed = (await response.json()) as Record<string, unknown>;
       const payload = (parsed["data"] ?? parsed) as Record<string, unknown>;
       const json = (payload["json"] ?? {}) as { showtimes?: RawShowtime[] };
-      const showtimes = normalizeShowtimes(json.showtimes ?? [], { date: today });
+      const showtimes = normalizeShowtimes(json.showtimes ?? [], {
+        date: today,
+        ...(film.booking_url ? { base: film.booking_url } : {}),
+      });
       if (showtimes.length === 0) return;
       const venues = [
         ...new Set(showtimes.map((s) => s["venue"]).filter(Boolean) as string[]),
@@ -309,6 +331,7 @@ async function scrapeCinema(
           synopsis: film.synopsis?.trim() || null,
           formats: Array.isArray(film.formats) ? film.formats.filter(Boolean).slice(0, 20) : [],
           showtimes: normalizeShowtimes(film.showtimes, {
+            base: url,
             ...(Array.isArray(film.venues) && film.venues.filter(Boolean)[0]
               ? { venue: film.venues.filter(Boolean)[0] as string }
               : {}),

@@ -289,7 +289,7 @@ function MovieShowtimesPage() {
                   {block.screenings.map((screening) => (
                     <a
                       key={`${screening.time}-${screening.format ?? ""}`}
-                      href={block.bookingUrl ?? "#"}
+                      href={screening.bookingUrl ?? block.bookingUrl ?? "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex min-w-[6.25rem] flex-col items-center rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-center transition-colors hover:border-gold/60 hover:text-gold"
