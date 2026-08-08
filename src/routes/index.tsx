@@ -367,10 +367,6 @@ function HeroSlider({
           </div>
         ) : null}
 
-        <div className="mt-7 max-w-3xl rounded-2xl border border-border/60 bg-card/50 p-4 backdrop-blur-xl">
-          <p className="mb-3 text-sm font-medium">Show me what&apos;s on</p>
-          <DaySelector value={day} onChange={setDay} />
-        </div>
       </div>
     </section>
   );
