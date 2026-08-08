@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
 import { Reveal } from "@/components/reveal";
-import { DaySelector } from "@/components/day-selector";
 import { toDayKey } from "@/lib/days";
 import {
   fetchCinemaFilms,
@@ -21,6 +20,7 @@ import {
 } from "@/lib/cinemas";
 
 import { VENUES } from "@/lib/venues";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
