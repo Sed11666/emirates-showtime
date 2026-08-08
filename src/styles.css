@@ -111,9 +111,10 @@
 
 
 .dark {
-  --background: oklch(0.14 0.012 20);
-  --foreground: oklch(0.97 0.004 20);
+  --background: oklch(0.155 0.008 40);
+  --foreground: oklch(0.98 0.004 60);
 }
+
 
 
 @layer base {
