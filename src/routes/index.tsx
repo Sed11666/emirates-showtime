@@ -53,10 +53,12 @@ function Home() {
     });
   }, [listings, city, search, day]);
 
+  // One entry per movie: the same title across VOX/Reel/Novo/Roxy is merged.
   const withPosters = useMemo(
-    () => (films ?? []).filter((f) => f.poster_url?.startsWith("http")),
+    () => mergeFilmsByTitle((films ?? []).filter((f) => f.poster_url?.startsWith("http"))),
     [films],
   );
+
 
   const matchesQuery = (title: string, filmCity: string | null) =>
     title.toLowerCase().includes(search.toLowerCase()) && (city === "All" || filmCity === city);
