@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ListingCard } from "@/components/listing-card";
-import { fetchListings, UAE_CITIES } from "@/lib/listings";
+import { fetchListings, UAE_CITIES, type Listing } from "@/lib/listings";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -114,7 +114,7 @@ function Section({
   link,
 }: {
   title: string;
-  items: ReturnType<typeof Array.prototype.filter> extends never ? never : any[];
+  items: Listing[];
   link?: string;
 }) {
   if (items.length === 0) return null;
