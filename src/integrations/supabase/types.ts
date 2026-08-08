@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      listings: {
+        Row: {
+          certification: string | null
+          city: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_mins: number | null
+          featured: boolean
+          genre: string | null
+          id: string
+          kind: Database["public"]["Enums"]["listing_kind"]
+          language: string | null
+          poster_url: string | null
+          price_aed: number
+          starts_at: string | null
+          title: string
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          certification?: string | null
+          city?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_mins?: number | null
+          featured?: boolean
+          genre?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["listing_kind"]
+          language?: string | null
+          poster_url?: string | null
+          price_aed?: number
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          certification?: string | null
+          city?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_mins?: number | null
+          featured?: boolean
+          genre?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["listing_kind"]
+          language?: string | null
+          poster_url?: string | null
+          price_aed?: number
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +82,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      listing_kind: "movie" | "event"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +209,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      listing_kind: ["movie", "event"],
+    },
   },
 } as const
