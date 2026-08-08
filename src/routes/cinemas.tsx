@@ -176,11 +176,15 @@ function CinemasPage() {
                     )}
                     {times.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
-                        {times.map((time) => (
-                          <span key={time} className="rounded bg-muted px-2 py-1 text-[11px]">
+                        {times.map((time, index) => (
+                          <span
+                            key={`${time}-${index}`}
+                            className="rounded bg-muted px-2 py-1 text-[11px]"
+                          >
                             {time}
                           </span>
                         ))}
+
                       </div>
                     )}
                     {(film.booking_url || film.source_url) && (
