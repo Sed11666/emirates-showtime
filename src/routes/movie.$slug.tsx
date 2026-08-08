@@ -152,13 +152,12 @@ function MovieShowtimesPage() {
             </span>
             {days.map((option) => {
               const active = option.value === day;
-              const [dayNumber, weekday] = [
-                option.sublabel.split(" ")[0],
-                new Intl.DateTimeFormat("en-AE", {
-                  timeZone: "Asia/Dubai",
-                  weekday: "short",
-                }).format(new Date(`${option.value}T12:00:00`)),
-              ];
+              const dayNumber = option.sublabel.split(" ")[0] ?? "";
+              const weekday = new Intl.DateTimeFormat("en-AE", {
+                timeZone: "Asia/Dubai",
+                weekday: "short",
+              }).format(new Date(`${option.value}T12:00:00`));
+
               return (
                 <button
                   key={option.value}
