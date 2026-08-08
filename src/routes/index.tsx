@@ -11,6 +11,7 @@ import { toDayKey } from "@/lib/days";
 import {
   fetchCinemaFilms,
   filmFormats,
+  filmSlug,
   mergeFilmsByTitle,
   showtimeList,
   showtimesByVenue,
@@ -18,6 +19,7 @@ import {
   CINEMA_LABELS,
   type MergedFilm,
 } from "@/lib/cinemas";
+
 import { VENUES } from "@/lib/venues";
 
 export const Route = createFileRoute("/")({
@@ -138,12 +140,13 @@ function Home() {
                     ) : null}
                   </div>
                   <Link
-                    to="/cinemas"
-                    search={{ movie: film.title }}
+                    to="/movie/$slug"
+                    params={{ slug: filmSlug(film.title) }}
                     className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
                   >
                     All times <ChevronRight className="size-3.5" />
                   </Link>
+
                 </div>
 
                 <div className="divide-y divide-border/50">
@@ -160,10 +163,11 @@ function Home() {
                         {venue.times.map((time) => (
                           <Link
                             key={time}
-                            to="/cinemas"
-                            search={{ movie: film.title }}
+                            to="/movie/$slug"
+                            params={{ slug: filmSlug(film.title) }}
                             className="rounded-md border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-medium transition-colors hover:border-gold/60 hover:text-gold"
                           >
+
                             {time}
                           </Link>
                         ))}
