@@ -80,8 +80,9 @@ export async function searchShowSouk(rawQuery: string): Promise<SearchResults> {
         .filter(Boolean)
         .join(" · "),
       imageUrl: film.poster_url,
-      to: "/cinemas",
-      search: { movie: film.title },
+      to: "/movie/$slug",
+      params: { slug: filmSlug(film.title) },
+
     });
   }
 
