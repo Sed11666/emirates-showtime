@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { Film } from "lucide-react";
 import { ListingCard } from "@/components/listing-card";
+import { PosterReel } from "@/components/poster-reel";
 import { fetchListings } from "@/lib/listings";
+import { fetchCinemaFilms } from "@/lib/cinemas";
+
 
 export const Route = createFileRoute("/movies")({
   head: () => ({
