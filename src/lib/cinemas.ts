@@ -77,9 +77,11 @@ export function showtimeList(value: unknown): string[] {
 export function showtimesForDay(value: unknown, dayKey: string): string[] {
   const parsed = parseShowtimes(value);
   if (dayKey === "any") return parsed.map((e) => e.text).slice(0, 12);
-  const dated = parsed.filter((e) => e.date);
-  if (dated.length === 0) return parsed.map((e) => e.text).slice(0, 12);
-  return dated.filter((e) => e.date === dayKey).map((e) => e.text).slice(0, 12);
+  // Undated entries always count; dated ones must match the selected day.
+  const matching = parsed.filter((e) => !e.date || e.date === dayKey);
+  if (matching.length > 0) return matching.map((e) => e.text).slice(0, 12);
+  // Nothing for that day: fall back to the latest schedule we have.
+  return parsed.map((e) => e.text).slice(0, 12);
 }
 
 export function hasDatedShowtimes(value: unknown): boolean {
@@ -90,7 +92,9 @@ export type VenueShowtimes = { venue: string; times: string[] };
 
 /**
  * Showtimes grouped by venue for the "Today's showtimes" board: each venue
- * lists its own time chips for the selected day.
+ * lists its own time chips for the selected day. Bare string times (Reel and
+ * Roxy) are grouped under the film's known venue, and when nothing matches the
+ * selected day we fall back to the latest schedule rather than showing nothing.
  */
 export function showtimesByVenue(
   value: unknown,
@@ -98,28 +102,37 @@ export function showtimesByVenue(
   fallbackVenue?: string,
 ): VenueShowtimes[] {
   if (!Array.isArray(value)) return [];
-  const groups = new Map<string, string[]>();
-  const dated = value.some(
-    (e) => e && typeof e === "object" && parseDayKey((e as Record<string, unknown>)["date"]),
-  );
 
-  for (const entry of value) {
-    if (!entry || typeof entry !== "object") continue;
-    const row = entry as Record<string, unknown>;
-    const time = typeof row["time"] === "string" ? row["time"].trim() : "";
-    if (!time) continue;
-    if (dayKey !== "any" && dated && parseDayKey(row["date"]) !== dayKey) continue;
-    const venue =
-      (typeof row["venue"] === "string" && row["venue"].trim()) || fallbackVenue || "All screens";
-    const list = groups.get(venue) ?? [];
-    if (!list.includes(time)) list.push(time);
-    groups.set(venue, list);
-  }
+  const build = (filterDay: boolean): VenueShowtimes[] => {
+    const groups = new Map<string, string[]>();
+    for (const entry of value) {
+      let time = "";
+      let venue = fallbackVenue || "All screens";
+      let date: string | null = null;
 
-  return [...groups.entries()]
-    .map(([venue, times]) => ({ venue, times: times.slice(0, 8) }))
-    .slice(0, 4);
+      if (typeof entry === "string") {
+        time = entry.trim();
+      } else if (entry && typeof entry === "object") {
+        const row = entry as Record<string, unknown>;
+        time = typeof row["time"] === "string" ? row["time"].trim() : "";
+        date = parseDayKey(row["date"]);
+        if (typeof row["venue"] === "string" && row["venue"].trim()) venue = row["venue"].trim();
+      }
+      if (!time) continue;
+      if (filterDay && dayKey !== "any" && date && date !== dayKey) continue;
+
+      const list = groups.get(venue) ?? [];
+      if (!list.includes(time)) list.push(time);
+      groups.set(venue, list);
+    }
+    return [...groups.entries()].map(([venue, times]) => ({ venue, times: times.slice(0, 8) }));
+  };
+
+  const filtered = build(true);
+  const result = filtered.length > 0 ? filtered : build(false);
+  return result.slice(0, 4);
 }
+
 
 
 /* ── Format + de-duplication ─────────────────────────────── */

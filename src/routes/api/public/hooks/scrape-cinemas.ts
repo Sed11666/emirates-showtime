@@ -75,25 +75,42 @@ type RawFilm = {
   booking_url?: string;
 };
 
-function normalizeShowtimes(value: unknown): Array<Record<string, string>> {
+function dubaiToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function normalizeShowtimes(
+  value: unknown,
+  defaults?: { date?: string; venue?: string },
+): Array<Record<string, string>> {
   if (!Array.isArray(value)) return [];
+  const fallbackDate = defaults?.date || dubaiToday();
   const out: Array<Record<string, string>> = [];
   for (const entry of value.slice(0, 80)) {
     if (typeof entry === "string" && entry.trim()) {
-      out.push({ time: entry.trim() });
+      const item: Record<string, string> = { time: entry.trim(), date: fallbackDate };
+      if (defaults?.venue) item["venue"] = defaults.venue;
+      out.push(item);
     } else if (entry && typeof entry === "object") {
       const row = entry as RawShowtime;
       const time = row.time?.trim();
       if (!time) continue;
       const item: Record<string, string> = { time };
-      if (row.date?.trim()) item["date"] = row.date.trim();
-      if (row.venue?.trim()) item["venue"] = row.venue.trim();
+      item["date"] = row.date?.trim() || fallbackDate;
+      const venue = row.venue?.trim() || defaults?.venue;
+      if (venue) item["venue"] = venue;
       if (row.format?.trim()) item["format"] = row.format.trim();
       out.push(item);
     }
   }
   return out;
 }
+
 
 function titleKey(title: string) {
   return title
@@ -177,51 +194,56 @@ async function scrapeShowtimesForFilms(
   const targets = (films ?? []).filter((f) => f.booking_url?.startsWith("http"));
   let updated = 0;
 
-  for (let i = 0; i < targets.length; i += 5) {
-    const batch = targets.slice(i, i + 5);
-    await Promise.all(
-      batch.map(async (film) => {
-        try {
-          const response = await fetch(
-            "https://connector-gateway.lovable.dev/firecrawl/v2/scrape",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${lovableKey}`,
-                "X-Connection-Api-Key": firecrawlKey,
-              },
-              body: JSON.stringify({
-                url: film.booking_url,
-                onlyMainContent: true,
-                waitFor: 8000,
-                location: { country: "AE", languages: ["en"] },
-                formats: [{ type: "json", schema: SHOWTIME_SCHEMA, prompt: SHOWTIME_PROMPT }],
-              }),
-            },
-          );
-          if (!response.ok) return;
-          const parsed = (await response.json()) as Record<string, unknown>;
-          const payload = (parsed["data"] ?? parsed) as Record<string, unknown>;
-          const json = (payload["json"] ?? {}) as { showtimes?: RawShowtime[] };
-          const showtimes = normalizeShowtimes(
-            (json.showtimes ?? []).map((s) => ({ ...s, date: s.date || today })),
-          );
-          if (showtimes.length === 0) return;
-          const venues = [
-            ...new Set(showtimes.map((s) => s["venue"]).filter(Boolean) as string[]),
-          ].slice(0, 40);
-          await supabaseAdmin
-            .from("cinema_films")
-            .update({ showtimes, ...(venues.length > 0 ? { venues } : {}) })
-            .eq("id", film.id);
-          updated += 1;
-        } catch {
-          // A single film page failing must not abort the run.
-        }
-      }),
-    );
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const scrapeOne = async (film: (typeof targets)[number], attempt = 0): Promise<void> => {
+    try {
+      const response = await fetch("https://connector-gateway.lovable.dev/firecrawl/v2/scrape", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${lovableKey}`,
+          "X-Connection-Api-Key": firecrawlKey,
+        },
+        body: JSON.stringify({
+          url: film.booking_url,
+          onlyMainContent: true,
+          waitFor: 8000,
+          location: { country: "AE", languages: ["en"] },
+          formats: [{ type: "json", schema: SHOWTIME_SCHEMA, prompt: SHOWTIME_PROMPT }],
+        }),
+      });
+      // Firecrawl caps requests per minute; back off and retry instead of
+      // silently leaving the film without showtimes.
+      if (response.status === 429 && attempt < 2) {
+        await sleep(35_000);
+        return scrapeOne(film, attempt + 1);
+      }
+      if (!response.ok) return;
+      const parsed = (await response.json()) as Record<string, unknown>;
+      const payload = (parsed["data"] ?? parsed) as Record<string, unknown>;
+      const json = (payload["json"] ?? {}) as { showtimes?: RawShowtime[] };
+      const showtimes = normalizeShowtimes(json.showtimes ?? [], { date: today });
+      if (showtimes.length === 0) return;
+      const venues = [
+        ...new Set(showtimes.map((s) => s["venue"]).filter(Boolean) as string[]),
+      ].slice(0, 40);
+      await supabaseAdmin
+        .from("cinema_films")
+        .update({ showtimes, ...(venues.length > 0 ? { venues } : {}) })
+        .eq("id", film.id);
+      updated += 1;
+    } catch {
+      // A single film page failing must not abort the run.
+    }
+  };
+
+  // Batches of 3 with a pause keep us inside the Firecrawl rate limit.
+  for (let i = 0; i < targets.length; i += 3) {
+    await Promise.all(targets.slice(i, i + 3).map((film) => scrapeOne(film)));
+    if (i + 3 < targets.length) await sleep(6000);
   }
+
 
   return updated;
 }
@@ -286,7 +308,13 @@ async function scrapeCinema(
           poster_url: film.poster_url?.trim() || null,
           synopsis: film.synopsis?.trim() || null,
           formats: Array.isArray(film.formats) ? film.formats.filter(Boolean).slice(0, 20) : [],
-          showtimes: normalizeShowtimes(film.showtimes),
+          showtimes: normalizeShowtimes(film.showtimes, {
+            ...(Array.isArray(film.venues) && film.venues.filter(Boolean)[0]
+              ? { venue: film.venues.filter(Boolean)[0] as string }
+              : {}),
+          }),
+
+
           booking_url: film.booking_url?.trim() || null,
           source_url: url,
           is_active: true,
@@ -301,10 +329,23 @@ async function scrapeCinema(
       const unique = new Map<string, (typeof rows)[number]>();
       for (const row of rows) unique.set(`${row.title_key}|${row.city ?? ""}`, row);
 
-      const { error: upsertError } = await supabaseAdmin
-        .from("cinema_films")
-        .upsert([...unique.values()], { onConflict: "cinema,title_key,city" });
-      if (upsertError) throw new Error(upsertError.message);
+      // Films whose listing page carries no times keep the schedule we already
+      // have, so a rate-limited detail pass never blanks the board.
+      const all = [...unique.values()];
+      const withTimes = all.filter((row) => row.showtimes.length > 0);
+      const withoutTimes = all.map(({ showtimes: _showtimes, ...rest }) => rest).filter((row) => {
+        const match = all.find((r) => r.title_key === row.title_key && r.city === row.city);
+        return (match?.showtimes.length ?? 0) === 0;
+      });
+
+      for (const batch of [withTimes, withoutTimes]) {
+        if (batch.length === 0) continue;
+        const { error: upsertError } = await supabaseAdmin
+          .from("cinema_films")
+          .upsert(batch, { onConflict: "cinema,title_key,city" });
+        if (upsertError) throw new Error(upsertError.message);
+      }
+
 
       // Anything not seen in this run is no longer showing.
       const { data: removed } = await supabaseAdmin
