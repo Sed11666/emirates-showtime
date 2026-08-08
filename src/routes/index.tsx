@@ -94,6 +94,12 @@ function Home() {
               </button>
             ))}
           </div>
+
+          <div className="mt-6 rounded-xl border border-border/70 bg-card/60 p-4">
+            <p className="mb-3 text-sm font-medium">Show me what&apos;s on</p>
+            <DaySelector value={day} onChange={setDay} />
+          </div>
+
         </div>
       </section>
 
