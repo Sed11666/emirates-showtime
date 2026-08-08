@@ -66,10 +66,17 @@ export function MoviePosterCard({
           </div>
         )}
 
-        {item.tag ? (
-          <span className="absolute left-2.5 top-2.5 rounded-full border border-gold/50 bg-background/70 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gold backdrop-blur">
-            {item.tag}
-          </span>
+        {item.formats.length > 0 ? (
+          <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1">
+            {item.formats.slice(0, 3).map((format) => (
+              <span
+                key={format}
+                className="rounded-md border border-gold/50 bg-background/75 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold backdrop-blur"
+              >
+                {format}
+              </span>
+            ))}
+          </div>
         ) : null}
 
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/85 to-transparent p-3 pt-14">
@@ -93,12 +100,13 @@ export function MoviePosterCard({
                 ) : null}
               </div>
               <span className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-all group-hover:brightness-110">
-                <Ticket className="size-3.5" /> Book now
+                <Ticket className="size-3.5" /> Book tickets
               </span>
             </div>
           </div>
         </div>
       </div>
-    </Wrapper>
+    </Link>
+
   );
 }
