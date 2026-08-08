@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clapperboard, Clock, Locate, MapPin, Navigation, RefreshCw, Search } from "lucide-react";
 
@@ -14,7 +14,13 @@ import {
   hasDatedShowtimes,
   showtimesForDay,
 } from "@/lib/cinemas";
-import { matchesVenues, nearestVenues, type NearbyVenue } from "@/lib/venues";
+import {
+  filmDistanceKm,
+  matchesVenues,
+  nearestVenues,
+  type Coords,
+  type NearbyVenue,
+} from "@/lib/venues";
 import { UAE_CITIES } from "@/lib/listings";
 import { toDayKey } from "@/lib/days";
 
