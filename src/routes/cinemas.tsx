@@ -15,6 +15,7 @@ import {
   showtimesForDay,
 } from "@/lib/cinemas";
 import { UAE_CITIES } from "@/lib/listings";
+import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/cinemas")({
   head: () => ({
@@ -143,8 +144,7 @@ function CinemasPage() {
         )}
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((film) => {
-            const times = showtimeList(film.showtimes);
+          {filtered.map(({ film, times }) => {
             return (
               <article
                 key={film.id}
