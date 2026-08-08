@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { CINEMA_LABELS } from "@/lib/cinemas";
+import { CINEMA_LABELS, filmSlug } from "@/lib/cinemas";
 import { VENUES } from "@/lib/venues";
 
 export type SearchCategory = "movies" | "events" | "cinemas";
