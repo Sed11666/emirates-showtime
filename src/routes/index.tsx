@@ -265,11 +265,13 @@ function Home() {
       {/* ── Promo banner ───────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-16">
         <Reveal>
-          <div className="film-grain relative overflow-hidden rounded-3xl border border-primary/30 bg-[radial-gradient(120%_140%_at_10%_0%,oklch(0.32_0.13_25)_0%,oklch(0.15_0.02_20)_60%)] px-8 py-14 sm:px-14">
+          <div className="film-grain relative overflow-hidden rounded-3xl border border-gold/30 bg-[radial-gradient(120%_140%_at_8%_0%,oklch(0.5_0.21_28)_0%,oklch(0.24_0.06_35)_45%,oklch(0.17_0.012_40)_100%)] px-8 py-14 sm:px-14">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_70%_at_92%_10%,oklch(0.85_0.13_88/0.28)_0%,transparent_70%)]" />
             <div className="relative max-w-xl">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-primary">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-gold">
                 ShowSouk members
               </p>
+
               <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl">
                 Front-row alerts before the box office opens.
               </h2>
