@@ -113,6 +113,8 @@ function CinemasPage() {
             />
           </div>
 
+          <DaySelector value={day} onChange={setDay} />
+
           <FilterRow
             label="Cinema"
             value={cinema}
