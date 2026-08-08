@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ListingCard } from "@/components/listing-card";
 import { fetchListings, UAE_CITIES, type Listing } from "@/lib/listings";
+import { DaySelector } from "@/components/day-selector";
+import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,15 +31,19 @@ export const Route = createFileRoute("/")({
 function Home() {
   const [search, setSearch] = useState("");
   const [city, setCity] = useState<string>("All");
+  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
   const { data, isLoading } = useQuery({ queryKey: ["listings"], queryFn: () => fetchListings() });
 
   const listings = useMemo(() => {
     return (data ?? []).filter((l) => {
       const matchesCity = city === "All" || l.city === city;
       const matchesSearch = l.title.toLowerCase().includes(search.toLowerCase());
-      return matchesCity && matchesSearch;
+      const matchesDay =
+        day === "any" || !l.starts_at || toDayKey(new Date(l.starts_at)) === day;
+      return matchesCity && matchesSearch && matchesDay;
     });
-  }, [data, city, search]);
+  }, [data, city, search, day]);
+
 
   const featured = listings.filter((l) => l.featured);
   const movies = listings.filter((l) => l.kind === "movie");
@@ -88,6 +94,12 @@ function Home() {
               </button>
             ))}
           </div>
+
+          <div className="mt-6 rounded-xl border border-border/70 bg-card/60 p-4">
+            <p className="mb-3 text-sm font-medium">Show me what&apos;s on</p>
+            <DaySelector value={day} onChange={setDay} />
+          </div>
+
         </div>
       </section>
 

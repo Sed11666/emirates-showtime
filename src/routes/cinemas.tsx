@@ -6,8 +6,16 @@ import { Clapperboard, Clock, MapPin, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CINEMAS, CINEMA_LABELS, fetchCinemaFilms, showtimeList } from "@/lib/cinemas";
+import { DaySelector } from "@/components/day-selector";
+import {
+  CINEMAS,
+  CINEMA_LABELS,
+  fetchCinemaFilms,
+  hasDatedShowtimes,
+  showtimesForDay,
+} from "@/lib/cinemas";
 import { UAE_CITIES } from "@/lib/listings";
+import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/cinemas")({
   head: () => ({
@@ -38,6 +46,7 @@ function CinemasPage() {
   const [cinema, setCinema] = useState<string>("all");
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
+  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["cinema-films"],
@@ -53,15 +62,21 @@ function CinemasPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return films.filter((film) => {
-      if (cinema !== "all" && film.cinema !== cinema) return false;
-      if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
-      if (language !== "all" && film.language !== language) return false;
-      if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
-        return false;
-      return true;
-    });
-  }, [films, search, cinema, city, language]);
+    return films
+      .filter((film) => {
+        if (cinema !== "all" && film.cinema !== cinema) return false;
+        if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
+        if (language !== "all" && film.language !== language) return false;
+        if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
+          return false;
+        if (day !== "any" && hasDatedShowtimes(film.showtimes)) {
+          return showtimesForDay(film.showtimes, day).length > 0;
+        }
+        return true;
+      })
+      .map((film) => ({ film, times: showtimesForDay(film.showtimes, day) }));
+  }, [films, search, cinema, city, language, day]);
+
 
   const lastUpdated = films.reduce<string | null>(
     (latest, film) => (!latest || film.last_seen_at > latest ? film.last_seen_at : latest),
@@ -98,6 +113,8 @@ function CinemasPage() {
             />
           </div>
 
+          <DaySelector value={day} onChange={setDay} />
+
           <FilterRow
             label="Cinema"
             value={cinema}
@@ -129,8 +146,7 @@ function CinemasPage() {
         )}
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((film) => {
-            const times = showtimeList(film.showtimes);
+          {filtered.map(({ film, times }) => {
             return (
               <article
                 key={film.id}
