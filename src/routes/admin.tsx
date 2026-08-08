@@ -149,7 +149,7 @@ function AdminPage() {
     queryClient.invalidateQueries({ queryKey: ["my-listings"] });
   }
 
-  if (loading) {
+  if (loading || roleLoading) {
     return <div className="mx-auto max-w-4xl px-4 py-20 text-muted-foreground">Loading…</div>;
   }
 
@@ -166,6 +166,22 @@ function AdminPage() {
       </main>
     );
   }
+
+  if (!isAdmin) {
+    return (
+      <main className="mx-auto max-w-md px-4 py-24 text-center">
+        <h1 className="text-3xl font-bold">Admins only</h1>
+        <p className="mt-3 text-muted-foreground">
+          Publishing listings is restricted to ShowSouk staff. You can still browse every movie
+          and event on the site.
+        </p>
+        <Button asChild variant="hero" className="mt-6">
+          <Link to="/">Browse what's on</Link>
+        </Button>
+      </main>
+    );
+  }
+
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-14">
