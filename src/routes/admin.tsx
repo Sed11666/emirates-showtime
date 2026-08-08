@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { UAE_CITIES, formatWhen, type Listing, type ListingKind } from "@/lib/listings";
 
 export const Route = createFileRoute("/admin")({
