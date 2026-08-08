@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as EventsRouteImport } from './routes/events'
 import { Route as MoviesRouteImport } from './routes/movies'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
+import { Route as ApiPublicHooksScrapeCinemasRouteImport } from './routes/api/public/hooks/scrape-cinemas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,12 @@ const ListingIdRoute = ListingIdRouteImport.update({
   path: '/listing/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksScrapeCinemasRoute =
+  ApiPublicHooksScrapeCinemasRouteImport.update({
+    id: '/api/public/hooks/scrape-cinemas',
+    path: '/api/public/hooks/scrape-cinemas',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
   '/listing/$id': typeof ListingIdRoute
+  '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +70,7 @@ export interface FileRoutesByTo {
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
   '/listing/$id': typeof ListingIdRoute
+  '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +80,27 @@ export interface FileRoutesById {
   '/events': typeof EventsRoute
   '/movies': typeof MoviesRoute
   '/listing/$id': typeof ListingIdRoute
+  '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/events' | '/movies' | '/listing/$id'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/events'
+    | '/movies'
+    | '/listing/$id'
+    | '/api/public/hooks/scrape-cinemas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/events' | '/movies' | '/listing/$id'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/events'
+    | '/movies'
+    | '/listing/$id'
+    | '/api/public/hooks/scrape-cinemas'
   id:
     | '__root__'
     | '/'
@@ -85,6 +109,7 @@ export interface FileRouteTypes {
     | '/events'
     | '/movies'
     | '/listing/$id'
+    | '/api/public/hooks/scrape-cinemas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +119,7 @@ export interface RootRouteChildren {
   EventsRoute: typeof EventsRoute
   MoviesRoute: typeof MoviesRoute
   ListingIdRoute: typeof ListingIdRoute
+  ApiPublicHooksScrapeCinemasRoute: typeof ApiPublicHooksScrapeCinemasRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/scrape-cinemas': {
+      id: '/api/public/hooks/scrape-cinemas'
+      path: '/api/public/hooks/scrape-cinemas'
+      fullPath: '/api/public/hooks/scrape-cinemas'
+      preLoaderRoute: typeof ApiPublicHooksScrapeCinemasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,17 +183,8 @@ const rootRouteChildren: RootRouteChildren = {
   EventsRoute: EventsRoute,
   MoviesRoute: MoviesRoute,
   ListingIdRoute: ListingIdRoute,
+  ApiPublicHooksScrapeCinemasRoute: ApiPublicHooksScrapeCinemasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
