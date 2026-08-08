@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Film, Ticket, PlusCircle, LogOut, Sparkles } from "lucide-react";
+import { Film, Ticket, PlusCircle, LogOut, Sparkles, Clapperboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
