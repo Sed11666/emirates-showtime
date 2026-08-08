@@ -14,6 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
+      cinema_films: {
+        Row: {
+          booking_url: string | null
+          cinema: string
+          city: string | null
+          created_at: string
+          duration_mins: number | null
+          first_seen_at: string
+          formats: string[]
+          genre: string | null
+          id: string
+          is_active: boolean
+          language: string | null
+          last_seen_at: string
+          poster_url: string | null
+          rating: string | null
+          showtimes: Json
+          source_url: string | null
+          synopsis: string | null
+          title: string
+          title_key: string
+          updated_at: string
+          venues: string[]
+        }
+        Insert: {
+          booking_url?: string | null
+          cinema: string
+          city?: string | null
+          created_at?: string
+          duration_mins?: number | null
+          first_seen_at?: string
+          formats?: string[]
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          last_seen_at?: string
+          poster_url?: string | null
+          rating?: string | null
+          showtimes?: Json
+          source_url?: string | null
+          synopsis?: string | null
+          title: string
+          title_key: string
+          updated_at?: string
+          venues?: string[]
+        }
+        Update: {
+          booking_url?: string | null
+          cinema?: string
+          city?: string | null
+          created_at?: string
+          duration_mins?: number | null
+          first_seen_at?: string
+          formats?: string[]
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          last_seen_at?: string
+          poster_url?: string | null
+          rating?: string | null
+          showtimes?: Json
+          source_url?: string | null
+          synopsis?: string | null
+          title?: string
+          title_key?: string
+          updated_at?: string
+          venues?: string[]
+        }
+        Relationships: []
+      }
+      cinema_scrape_runs: {
+        Row: {
+          changed: boolean
+          cinema: string
+          content_hash: string | null
+          created_at: string
+          error: string | null
+          films_deactivated: number
+          films_upserted: number
+          id: string
+          source_url: string | null
+          status: string
+        }
+        Insert: {
+          changed?: boolean
+          cinema: string
+          content_hash?: string | null
+          created_at?: string
+          error?: string | null
+          films_deactivated?: number
+          films_upserted?: number
+          id?: string
+          source_url?: string | null
+          status?: string
+        }
+        Update: {
+          changed?: boolean
+          cinema?: string
+          content_hash?: string | null
+          created_at?: string
+          error?: string | null
+          films_deactivated?: number
+          films_upserted?: number
+          id?: string
+          source_url?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       listings: {
         Row: {
           certification: string | null
