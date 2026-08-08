@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
 import { Reveal } from "@/components/reveal";
-import { DaySelector } from "@/components/day-selector";
 import { toDayKey } from "@/lib/days";
 import {
   fetchCinemaFilms,
@@ -21,6 +20,7 @@ import {
 } from "@/lib/cinemas";
 
 import { VENUES } from "@/lib/venues";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -51,7 +51,7 @@ function popularityScore(film: MergedFilm) {
 
 function Home() {
   const [query, setQuery] = useState("");
-  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
+  const today = toDayKey(new Date());
 
   const { data: films } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
 
@@ -80,15 +80,15 @@ function Home() {
         .slice(0, 6)
         .map((film) => ({
           film,
-          venues: showtimesByVenue(film.showtimes, day, film.venues[0]),
+          venues: showtimesByVenue(film.showtimes, today, film.venues[0]),
         }))
         .filter((row) => row.venues.length > 0),
-    [merged, day],
+    [merged, today],
   );
 
   return (
     <div className="overflow-x-hidden">
-      <HeroSlider films={featured} query={query} setQuery={setQuery} day={day} setDay={setDay} />
+      <HeroSlider films={featured} query={query} setQuery={setQuery} />
 
       {/* ── Now showing ─────────────────────────────────────── */}
       <SectionShell
@@ -242,14 +242,10 @@ function HeroSlider({
   films,
   query,
   setQuery,
-  day,
-  setDay,
 }: {
   films: MergedFilm[];
   query: string;
   setQuery: (v: string) => void;
-  day: string;
-  setDay: (v: string) => void;
 }) {
   const [index, setIndex] = useState(0);
   const navigate = useNavigate();
@@ -371,10 +367,6 @@ function HeroSlider({
           </div>
         ) : null}
 
-        <div className="mt-7 max-w-3xl rounded-2xl border border-border/60 bg-card/50 p-4 backdrop-blur-xl">
-          <p className="mb-3 text-sm font-medium">Show me what&apos;s on</p>
-          <DaySelector value={day} onChange={setDay} />
-        </div>
       </div>
     </section>
   );
