@@ -1,3 +1,25 @@
+/**
+ * POST/GET /api/public/hooks/scrape-cinemas — Cinema showtime scraper.
+ *
+ * WRITE side of the cinema pipeline. Runs on the server (Cloudflare Worker
+ * runtime), never in the browser. Scheduled by pg_cron: incremental every 3h,
+ * full refresh daily at 05:00 Dubai.
+ *
+ * Pipeline per chain (vox | reel | novo | roxy):
+ *  1. Firecrawl "extract" against SOURCES with EXTRACT_SCHEMA -> film list
+ *     (title, poster, genre, rating, formats, per-venue showtimes, links).
+ *  2. Optional detail pass per film for venue-level times; results are MERGED
+ *     with pass 1 so a failed detail scrape never blanks existing data.
+ *  3. absoluteUrl() resolves relative hrefs so every time chip deep-links to
+ *     that exact screening on the chain's own site.
+ *  4. normalizeShowtimes() shapes rows, then upsert into `cinema_films` keyed
+ *     by (cinema, title_key); rows not seen this run are deactivated.
+ *  5. Every run is logged to `cinema_scrape_runs` (content hash, counts, error).
+ *
+ * Batching + retries guard against Firecrawl rate limits. This route lives
+ * under /api/public/* so schedulers can call it without site auth — keep the
+ * handler side-effect-safe and do not return user data.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 
 type CinemaKey = "vox" | "reel" | "novo" | "roxy";
