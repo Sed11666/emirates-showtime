@@ -1,3 +1,7 @@
+/**
+ * listing-card.tsx — Card for a manually curated `listings` row; links to
+ * /listing/$id. Scraped cinema films use movie-poster-card.tsx instead.
+ */
 import { Link } from "@tanstack/react-router";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
