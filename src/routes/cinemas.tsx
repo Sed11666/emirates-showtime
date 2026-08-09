@@ -5,21 +5,23 @@
  * and nearest-to-farthest ordering. Search + day selector filter the same
  * `cinema_films` dataset the home page uses.
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Locate, Navigation, RefreshCw, Search } from "lucide-react";
+import { ChevronRight, Film, Locate, MapPin, Navigation, RefreshCw, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DaySelector } from "@/components/day-selector";
-import { MoviePosterCard, filmToPoster } from "@/components/movie-poster-card";
+
 import {
   CINEMAS,
   CINEMA_LABELS,
   fetchCinemaFilms,
+  filmSlug,
   hasDatedShowtimes,
   mergeFilmsByTitle,
+  showtimesByVenue,
   showtimesForDay,
   titleKey,
 } from "@/lib/cinemas";
@@ -263,13 +265,14 @@ function CinemasPage() {
 
 
         <div className="mb-6 space-y-4 rounded-xl border border-border/70 bg-card/50 p-4">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          {/* Same field treatment as the header search overlay. */}
+          <div className="flex items-center gap-2 rounded-2xl border border-gold/25 bg-card px-4 py-1">
+            <Search className="size-4 shrink-0 text-primary" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search film, genre or venue"
-              className="pl-9"
+              placeholder="Search movies, cinemas & events"
+              className="border-0 bg-transparent px-0 focus-visible:ring-0"
             />
           </div>
 
@@ -305,18 +308,83 @@ function CinemasPage() {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {filtered.map(({ film, distance }) => (
-            <div key={film.id} className="relative">
-              <MoviePosterCard item={filmToPoster(film)} fullWidth />
-              {distance !== null ? (
-                <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full border border-gold/40 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-gold backdrop-blur">
-                  {distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`}
-                </span>
-              ) : null}
-            </div>
-          ))}
+        {/* Same showtimes-board treatment as the home page. */}
+        <div className="space-y-5">
+          {filtered.map(({ film, distance }) => {
+            const venues = showtimesByVenue(
+              film.showtimes,
+              day === "any" ? toDayKey(new Date()) : day,
+              film.venues[0],
+            );
+            return (
+              <div
+                key={film.id}
+                className="overflow-hidden rounded-2xl border border-border/60 bg-card/40"
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Film className="size-4 shrink-0 text-gold" />
+                    <p className="truncate font-display text-base font-bold uppercase tracking-wide">
+                      {film.title}
+                    </p>
+                    {film.rating ? (
+                      <span className="shrink-0 rounded-md border border-gold/50 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
+                        {film.rating}
+                      </span>
+                    ) : null}
+                    {distance !== null ? (
+                      <span className="shrink-0 rounded-md border border-gold/40 px-1.5 py-0.5 text-[10px] font-medium text-gold">
+                        {distance < 1
+                          ? `${Math.round(distance * 1000)} m`
+                          : `${distance.toFixed(1)} km`}
+                      </span>
+                    ) : null}
+                  </div>
+                  <Link
+                    to="/movie/$slug"
+                    params={{ slug: filmSlug(film.title) }}
+                    className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
+                  >
+                    All times <ChevronRight className="size-3.5" />
+                  </Link>
+                </div>
+
+                {venues.length > 0 ? (
+                  <div className="divide-y divide-border/50">
+                    {venues.map((venue) => (
+                      <div
+                        key={venue.venue}
+                        className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                      >
+                        <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                          <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{venue.venue}</span>
+                        </p>
+                        <div className="flex flex-wrap gap-2 sm:justify-end">
+                          {venue.times.map((time) => (
+                            <Link
+                              key={time}
+                              to="/movie/$slug"
+                              params={{ slug: filmSlug(film.title) }}
+                              className="rounded-md border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-medium transition-colors hover:border-gold/60 hover:text-gold"
+                            >
+                              {time}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-5 py-4 text-sm text-muted-foreground">
+                    No listed times for this day yet.
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
+
 
       </main>
 
