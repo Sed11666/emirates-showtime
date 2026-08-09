@@ -1,3 +1,8 @@
+/**
+ * Route "/auth" — Customer sign in / sign up (email + Google OAuth via
+ * Lovable Cloud). OAuth redirects back to window.location.origin. Admin
+ * privileges are separate and come from the `user_roles` table.
+ */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
