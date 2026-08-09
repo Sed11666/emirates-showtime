@@ -1,3 +1,7 @@
+/**
+ * reveal.tsx — Wrapper that fades/slides children in when they scroll into
+ * view (IntersectionObserver). Presentation only.
+ */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Fades a section up into view once it enters the viewport. */

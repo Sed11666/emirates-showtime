@@ -1,3 +1,11 @@
+/**
+ * __root.tsx — Root layout for every route (TanStack Start).
+ *
+ * Provides the QueryClientProvider, global <head> defaults, font <link> tags,
+ * the sonner <Toaster />, and wraps <Outlet /> in the shared site chrome
+ * (header nav + footer, components/site-chrome.tsx). Per-page SEO metadata is
+ * defined by each leaf route's head(), not here.
+ */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,

@@ -1,3 +1,9 @@
+/**
+ * search-overlay.tsx — Premium search dropdown opened from the header icon.
+ *
+ * Debounced queries hit lib/search.ts (our own data only) and render grouped
+ * Movies / Events / Cinemas results. Enter navigates to /search?q=QUERY.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";

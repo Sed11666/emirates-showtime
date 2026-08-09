@@ -1,3 +1,21 @@
+/**
+ * cinemas.ts — Cinema film data layer (READ side of the scraper pipeline).
+ *
+ * Source of truth: the `cinema_films` table, populated by the Firecrawl
+ * scraper at src/routes/api/public/hooks/scrape-cinemas.ts.
+ *
+ * Responsibilities:
+ *  - CINEMAS / CINEMA_LABELS: the four supported UAE chains (vox, reel, novo, roxy).
+ *  - fetchCinemaFilms(): pulls active films from Lovable Cloud (Supabase).
+ *  - showtimeList / showtimesForDay / showtimesByVenue: normalise the loosely
+ *    typed `showtimes` JSONB column into usable shapes, all in Asia/Dubai time.
+ *  - mergeFilmsByTitle(): de-duplicates the same movie across chains so the
+ *    homepage shows one card per title (formats such as IMAX/4DX are merged in).
+ *  - filmSlug()/titleKey(): stable identifiers used by the /movie/$slug route.
+ *
+ * Consumed by: routes/index.tsx, routes/cinemas.tsx, routes/movie.$slug.tsx,
+ * lib/showtimes.ts, lib/search.ts.
+ */
 import { supabase } from "@/integrations/supabase/client";
 import { parseDayKey } from "@/lib/days";
 

@@ -1,3 +1,17 @@
+/**
+ * Route "/" — ShowSouk home (discovery hub), modelled on BookMyShow.
+ *
+ * Sections, top to bottom:
+ *  1. Hero slider — top 4 popular scraped films, auto-advancing.
+ *  2. Now Showing — de-duplicated film grid (mergeFilmsByTitle) with format
+ *     badges (2D/3D/IMAX/4DX) so a title appears once, not once per chain.
+ *  3. Today's Showtimes — single-column board grouped by movie, each row a
+ *     venue with its time chips (showtimesByVenue, Dubai "today").
+ *  4. Cinema chains + newsletter footer.
+ *
+ * All data is live scraped data from `cinema_films`; nothing is mocked.
+ * Clicking a card opens /movie/$slug where cinemas are sorted nearest-first.
+ */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";

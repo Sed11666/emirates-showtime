@@ -1,3 +1,8 @@
+/**
+ * Route "/search" — Full results page for ?q=, grouped into Movies, Events and
+ * Cinemas. Backed only by our own data (lib/search.ts); the header dropdown
+ * (components/search-overlay.tsx) hands off here when the user presses Enter.
+ */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 

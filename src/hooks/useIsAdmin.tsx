@@ -1,3 +1,11 @@
+/**
+ * useIsAdmin — Role check against the `user_roles` table.
+ *
+ * Roles are deliberately stored in their own table (never on a profile row) to
+ * avoid privilege escalation; RLS on `listings` enforces the same rule
+ * server-side. This hook only gates UI (the /admin link and management
+ * controls) — it is never the security boundary.
+ */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

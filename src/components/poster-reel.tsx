@@ -1,3 +1,7 @@
+/**
+ * poster-reel.tsx — Decorative background reel of posters used behind hero
+ * sections (blurred/parallax). Purely presentational, no data fetching.
+ */
 import { useMemo } from "react";
 
 type Row = {

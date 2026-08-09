@@ -1,3 +1,14 @@
+/**
+ * showtimes.ts — Turns raw scraped showtimes into venue-grouped, distance-aware
+ * blocks for the movie detail page (/movie/$slug).
+ *
+ * Flow: CinemaFilm rows (lib/cinemas.ts) -> venueBlocks() -> VenueBlock[] where
+ * each block is one physical cinema (matched against lib/venues.ts for lat/lng)
+ * with its screenings sorted by time. Blocks are ordered nearest-first when the
+ * visitor's coordinates are known (hooks/useUserLocation).
+ *
+ * Booking link fallback order: per-screening URL -> venue film URL -> film source URL.
+ */
 import { parseDayKey } from "@/lib/days";
 import type { CinemaFilm } from "@/lib/cinemas";
 import { distanceKm, VENUES, type Coords } from "@/lib/venues";

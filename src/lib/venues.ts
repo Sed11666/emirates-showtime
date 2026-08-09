@@ -1,3 +1,11 @@
+/**
+ * venues.ts — Static geo directory of UAE cinema locations.
+ *
+ * The scrapers only give us venue names, so this hand-maintained list supplies
+ * lat/lng for each mall/cinema plus CITY_CENTERS for city-level fallback.
+ * distanceKm() is a Haversine helper; nearestVenues()/filmDistanceKm() power
+ * the "cinemas near you" UI and nearest-first showtime sorting.
+ */
 import type { CinemaKey } from "@/lib/cinemas";
 
 export type Venue = {

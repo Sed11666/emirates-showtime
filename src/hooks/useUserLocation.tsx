@@ -1,3 +1,10 @@
+/**
+ * useUserLocation — Visitor position used for nearest-cinema sorting.
+ *
+ * Precise browser geolocation when granted (cached in localStorage under
+ * "showsouk:coords" so we don't re-prompt), otherwise the centre of the city
+ * chosen in the header ("showsouk:city"). Feeds lib/venues + lib/showtimes.
+ */
 import { useEffect, useState } from "react";
 import { CITY_CENTERS, type Coords } from "@/lib/venues";
 

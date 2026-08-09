@@ -1,3 +1,9 @@
+/**
+ * Route "/admin" — Admin-only console for manual `listings` entries.
+ *
+ * Gated twice: useIsAdmin hides the UI, and RLS policies on `listings` reject
+ * writes from non-admins. Regular customers only sign in to browse.
+ */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState } from "react";

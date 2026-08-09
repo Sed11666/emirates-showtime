@@ -1,3 +1,10 @@
+/**
+ * movie-poster-card.tsx — The standard movie tile.
+ *
+ * filmToPoster() adapts a merged CinemaFilm into the PosterItem shape. Format
+ * badges (2D/3D/IMAX/4DX) are shown on the poster so a de-duplicated title
+ * still communicates where/how it is playing. Clicking opens /movie/$slug.
+ */
 import { Clock, Star, Ticket } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { MergedFilm } from "@/lib/cinemas";

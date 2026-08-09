@@ -1,3 +1,9 @@
+/**
+ * movie-marquee.tsx — Signature infinite poster slider (right -> left).
+ *
+ * The list is duplicated and translated with a CSS animation so the loop is
+ * seamless; it pauses on hover. Used for "Currently Playing" style strips.
+ */
 import { MoviePosterCard, type PosterItem } from "@/components/movie-poster-card";
 
 /**

@@ -1,3 +1,14 @@
+/**
+ * search.ts — Internal-only site search.
+ *
+ * IMPORTANT: ShowSouk never queries an external movie catalogue. Results come
+ * exclusively from our own data: `cinema_films`, `live_events`, `listings`
+ * and the static VENUES list. Results are grouped into movies / events /
+ * cinemas and each carries the route to navigate to.
+ *
+ * Consumed by: components/search-overlay.tsx (header dropdown) and
+ * routes/search.tsx (full /search?q= page).
+ */
 import { supabase } from "@/integrations/supabase/client";
 import { CINEMA_LABELS, filmSlug } from "@/lib/cinemas";
 import { VENUES } from "@/lib/venues";

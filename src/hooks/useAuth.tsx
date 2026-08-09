@@ -1,3 +1,10 @@
+/**
+ * useAuth — Current Supabase (Lovable Cloud) session/user.
+ *
+ * Subscribes to onAuthStateChange first, then reads the existing session, so
+ * we never miss an event. Customers sign in for account features; publishing
+ * content additionally requires the admin role (see useIsAdmin).
+ */
 import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";

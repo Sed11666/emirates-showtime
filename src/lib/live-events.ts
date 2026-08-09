@@ -1,3 +1,9 @@
+/**
+ * live-events.ts — Read layer for scraped arena events (`live_events` table),
+ * populated by src/routes/api/public/hooks/scrape-events.ts (Etihad Arena and
+ * Coca-Cola Arena). Note: the /events page currently renders a "Coming Soon"
+ * placeholder, so this data is fetched mainly by search.
+ */
 import { supabase } from "@/integrations/supabase/client";
 
 export type LiveEventSource = "etihad-arena" | "coca-cola-arena";

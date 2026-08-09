@@ -1,3 +1,10 @@
+/**
+ * Route "/cinemas" — Browse scraped films by chain, city, day and venue.
+ *
+ * Includes the "Cinemas near you" panel (browser geolocation -> nearestVenues)
+ * and nearest-to-farthest ordering. Search + day selector filter the same
+ * `cinema_films` dataset the home page uses.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";

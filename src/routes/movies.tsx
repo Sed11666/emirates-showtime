@@ -1,3 +1,8 @@
+/**
+ * Route "/movies" — legacy movies page. The "Movies" nav tab was removed
+ * (nav order is Home, Cinemas, Events); the route is kept so old links and
+ * bookmarks keep resolving. New movie browsing lives on "/" and "/cinemas".
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
