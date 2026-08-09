@@ -1,3 +1,11 @@
+/**
+ * POST/GET /api/public/hooks/scrape-events — Arena events scraper.
+ *
+ * Same shape as scrape-cinemas.ts but for Etihad Arena (Abu Dhabi) and
+ * Coca-Cola Arena (Dubai). Firecrawl extract -> upsert into `live_events`
+ * keyed by (source, title_key), stale rows deactivated, each run logged to
+ * `event_scrape_runs`. Scheduled roughly every 6 hours via pg_cron.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 
 type SourceKey = "etihad-arena" | "coca-cola-arena";
