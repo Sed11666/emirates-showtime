@@ -8,19 +8,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Clapperboard, Clock, Locate, MapPin, Navigation, RefreshCw, Search } from "lucide-react";
+import { Locate, Navigation, RefreshCw, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DaySelector } from "@/components/day-selector";
+import { MoviePosterCard, filmToPoster } from "@/components/movie-poster-card";
 import {
   CINEMAS,
   CINEMA_LABELS,
   fetchCinemaFilms,
   hasDatedShowtimes,
+  mergeFilmsByTitle,
   showtimesForDay,
+  titleKey,
 } from "@/lib/cinemas";
+
 import {
   filmDistanceKm,
   matchesVenues,
