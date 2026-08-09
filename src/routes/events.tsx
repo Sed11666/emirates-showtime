@@ -1,3 +1,9 @@
+/**
+ * Route "/events" — intentionally a "Events Coming Soon" placeholder for this
+ * release (liquid-glass blurred backdrop + gold accents). The scraper
+ * (api/public/hooks/scrape-events) and lib/live-events.ts still run and feed
+ * search, so restoring the full listing UI here is a presentation-only change.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 
