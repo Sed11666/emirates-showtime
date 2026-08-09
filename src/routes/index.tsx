@@ -280,7 +280,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
         {films.length === 0 ? <div className="absolute inset-0 bg-hero-gradient" /> : null}
       </div>
 
-      <div className="relative mx-auto flex min-h-[78vh] max-w-7xl flex-col justify-end px-4 pb-14 pt-28">
+      <div className="relative mx-auto flex min-h-[560px] max-w-7xl flex-col justify-end px-4 pb-10 pt-24 sm:min-h-[78vh] sm:pb-14 sm:pt-28">
         {active ? (
           <>
             <div className="flex flex-wrap gap-2">
