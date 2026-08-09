@@ -105,31 +105,41 @@ function CinemasPage() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return films
-      .filter((film) => {
-        if (cinema !== "all" && film.cinema !== cinema) return false;
-        if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
-        if (language !== "all" && film.language !== language) return false;
-        if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
-          return false;
-        if (nearOnly && nearby && nearby.length > 0) {
-          const nearChains = new Set(nearby.map((v) => v.cinema as string));
-          if (!nearChains.has(film.cinema)) return false;
-          if (film.venues.length > 0 && !matchesVenues(film.venues, nearby)) return false;
-        }
-        if (day !== "any" && hasDatedShowtimes(film.showtimes)) {
-          return showtimesForDay(film.showtimes, day).length > 0;
-        }
-        return true;
-      })
-      .map((film) => ({
-        film,
-        times: showtimesForDay(film.showtimes, day),
-        distance: coords ? filmDistanceKm(film.cinema, film.venues, coords) : null,
-      }))
-      // Nearest screens first once we know where the visitor is.
+    const matching = films.filter((film) => {
+      if (cinema !== "all" && film.cinema !== cinema) return false;
+      if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
+      if (language !== "all" && film.language !== language) return false;
+      if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
+        return false;
+      if (nearOnly && nearby && nearby.length > 0) {
+        const nearChains = new Set(nearby.map((v) => v.cinema as string));
+        if (!nearChains.has(film.cinema)) return false;
+        if (film.venues.length > 0 && !matchesVenues(film.venues, nearby)) return false;
+      }
+      if (day !== "any" && hasDatedShowtimes(film.showtimes)) {
+        return showtimesForDay(film.showtimes, day).length > 0;
+      }
+      return true;
+    });
+
+    // Closest screen across every chain showing this title.
+    const distanceByTitle = new Map<string, number>();
+    if (coords) {
+      for (const film of matching) {
+        const km = filmDistanceKm(film.cinema, film.venues, coords);
+        if (km === null) continue;
+        const key = titleKey(film.title);
+        const current = distanceByTitle.get(key);
+        if (current === undefined || km < current) distanceByTitle.set(key, km);
+      }
+    }
+
+    // One card per movie, nearest first.
+    return mergeFilmsByTitle(matching)
+      .map((film) => ({ film, distance: distanceByTitle.get(titleKey(film.title)) ?? null }))
       .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
   }, [films, search, cinema, city, language, day, nearOnly, nearby, coords]);
+
 
 
 
