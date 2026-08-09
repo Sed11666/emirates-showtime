@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * ShowSouk design system — deep theatre purple-black canvas, gold marquee
+ * ShowSouk design system — deep theatre emerald-black canvas, gold marquee
  * accents. All colors are oklch semantic tokens.
  */
 
@@ -59,59 +59,59 @@
 :root {
   --radius: 0.85rem;
   /* Deep purple-black theatre canvas */
-  --background: oklch(0.14 0.015 280);
+  --background: oklch(0.14 0.015 170);
   --foreground: oklch(0.98 0.004 80);
-  --card: oklch(0.195 0.02 280);
+  --card: oklch(0.195 0.02 170);
   --card-foreground: oklch(0.98 0.004 80);
-  --popover: oklch(0.185 0.02 280);
+  --popover: oklch(0.185 0.02 170);
   --popover-foreground: oklch(0.98 0.004 80);
-  /* Deep amethyst purple accent */
-  --primary: oklch(0.45 0.16 285);
+  /* Primary emerald accent */
+  --primary: oklch(0.38 0.085 165);
   --primary-foreground: oklch(0.99 0.004 80);
-  --secondary: oklch(0.25 0.03 280);
+  --secondary: oklch(0.25 0.03 170);
   --secondary-foreground: oklch(0.97 0.005 80);
-  --muted: oklch(0.245 0.02 280);
+  --muted: oklch(0.245 0.02 170);
   --muted-foreground: oklch(0.74 0.012 80);
-  --accent: oklch(0.3 0.035 285);
+  --accent: oklch(0.30 0.035 168);
   --accent-foreground: oklch(0.98 0.004 80);
   /* Marquee gold — warmer and less saturated than before */
-  --gold: oklch(0.79 0.12 88);
+  --gold: oklch(0.80 0.132 85);
   --gold-foreground: oklch(0.2 0.03 60);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.99 0.004 80);
-  --border: oklch(0.3 0.025 280);
-  --input: oklch(0.28 0.022 280);
-  --ring: oklch(0.5 0.16 285);
-  --chart-1: oklch(0.5 0.16 285);
-  --chart-2: oklch(0.79 0.12 88);
+  --border: oklch(0.3 0.025 170);
+  --input: oklch(0.28 0.022 170);
+  --ring: oklch(0.53 0.108 165);
+  --chart-1: oklch(0.53 0.108 165);
+  --chart-2: oklch(0.80 0.132 85);
   --chart-3: oklch(0.7 0.19 35);
   --chart-4: oklch(0.72 0.15 70);
-  --chart-5: oklch(0.35 0.03 280);
-  --sidebar: oklch(0.175 0.018 280);
+  --chart-5: oklch(0.35 0.03 170);
+  --sidebar: oklch(0.175 0.018 170);
   --sidebar-foreground: oklch(0.98 0.004 80);
-  --sidebar-primary: oklch(0.5 0.16 285);
+  --sidebar-primary: oklch(0.53 0.108 165);
   --sidebar-primary-foreground: oklch(0.99 0.004 80);
-  --sidebar-accent: oklch(0.28 0.03 280);
+  --sidebar-accent: oklch(0.28 0.03 170);
   --sidebar-accent-foreground: oklch(0.98 0.004 80);
-  --sidebar-border: oklch(0.3 0.025 280);
-  --sidebar-ring: oklch(0.79 0.12 88);
+  --sidebar-border: oklch(0.3 0.025 170);
+  --sidebar-ring: oklch(0.80 0.132 85);
 
-  /* Theatre lighting: purple ambient wash, gold marquee flare */
+  /* Theatre lighting: emerald ambient wash, gold marquee flare */
   --gradient-hero: radial-gradient(
       70% 60% at 15% 0%,
-      oklch(0.45 0.16 285 / 0.35) 0%,
+      oklch(0.38 0.085 165 / 0.35) 0%,
       transparent 65%
     ),
-    radial-gradient(60% 55% at 88% 8%, oklch(0.79 0.12 88 / 0.18) 0%, transparent 70%),
-    linear-gradient(170deg, oklch(0.17 0.02 280) 0%, oklch(0.135 0.015 280) 100%);
-  --gradient-gold: linear-gradient(100deg, oklch(0.83 0.11 92), oklch(0.72 0.12 88));
+    radial-gradient(60% 55% at 88% 8%, oklch(0.80 0.132 85 / 0.18) 0%, transparent 70%),
+    linear-gradient(170deg, oklch(0.17 0.02 170) 0%, oklch(0.135 0.015 170) 100%);
+  --gradient-gold: linear-gradient(100deg, oklch(0.86 0.115 88), oklch(0.74 0.13 84));
   --shadow-poster: 0 22px 50px -20px oklch(0 0 0 / 0.7);
-  --shadow-glow: 0 0 0 1px oklch(0.79 0.12 88 / 0.28), 0 24px 70px -28px oklch(0.5 0.16 285 / 0.8);
+  --shadow-glow: 0 0 0 1px oklch(0.80 0.132 85 / 0.28), 0 24px 70px -28px oklch(0.53 0.108 165 / 0.8);
 }
 
 
 .dark {
-  --background: oklch(0.14 0.015 280);
+  --background: oklch(0.14 0.015 170);
   --foreground: oklch(0.98 0.004 80);
 }
 
@@ -231,23 +231,23 @@
 
 @utility gold-glow {
   box-shadow:
-    0 0 0 1px oklch(0.79 0.12 88 / 0.35),
-    0 0 26px -6px oklch(0.5 0.16 285 / 0.5),
-    0 20px 60px -22px oklch(0.5 0.16 285 / 0.8);
+    0 0 0 1px oklch(0.80 0.132 85 / 0.35),
+    0 0 26px -6px oklch(0.53 0.108 165 / 0.5),
+    0 20px 60px -22px oklch(0.53 0.108 165 / 0.8);
 }
 
-/* Warm marquee lighting wash behind poster reels — purple ambience, gold rim */
+/* Warm marquee lighting wash behind poster reels — emerald ambience, gold rim */
 @utility marquee-lights {
   background-image:
-    radial-gradient(60% 120% at 12% 50%, oklch(0.45 0.16 285 / 0.22) 0%, transparent 70%),
-    radial-gradient(55% 120% at 88% 50%, oklch(0.79 0.12 88 / 0.16) 0%, transparent 72%);
+    radial-gradient(60% 120% at 12% 50%, oklch(0.38 0.085 165 / 0.22) 0%, transparent 70%),
+    radial-gradient(55% 120% at 88% 50%, oklch(0.80 0.132 85 / 0.16) 0%, transparent 72%);
 }
 
 @utility gold-rule {
   background-image: linear-gradient(
     to right,
-    oklch(0.5 0.16 285 / 0.85),
-    oklch(0.79 0.12 88 / 0.55),
+    oklch(0.53 0.108 165 / 0.85),
+    oklch(0.80 0.132 85 / 0.55),
     transparent
   );
 }

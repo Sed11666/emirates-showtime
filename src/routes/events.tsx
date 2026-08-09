@@ -31,10 +31,10 @@ function EventsComingSoon() {
   return (
     <main className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-4">
       {/* Blurry liquid glass backdrop */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-[oklch(0.16_0.02_280)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-[oklch(0.16_0.02_170)]" />
       <div
         className="pointer-events-none absolute -left-1/4 -top-1/4 -z-10 h-[70vw] w-[70vw] rounded-full opacity-40 blur-[120px]"
-        style={{ background: "radial-gradient(circle, oklch(0.45 0.16 285 / 0.5) 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, oklch(0.38 0.085 165 / 0.5) 0%, transparent 70%)" }}
       />
       <div
         className="pointer-events-none absolute -bottom-1/4 -right-1/4 -z-10 h-[60vw] w-[60vw] rounded-full opacity-30 blur-[100px]"
@@ -42,7 +42,7 @@ function EventsComingSoon() {
       />
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[50vw] w-[50vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-25 blur-[140px]"
-        style={{ background: "radial-gradient(circle, oklch(0.5 0.16 285 / 0.35) 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, oklch(0.53 0.108 165 / 0.35) 0%, transparent 70%)" }}
       />
 
       {/* Liquid glass card */}
