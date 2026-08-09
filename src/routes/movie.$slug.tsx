@@ -1,3 +1,12 @@
+/**
+ * Route "/movie/$slug" — BookMyShow-style movie detail / showtime picker.
+ *
+ * $slug comes from filmSlug(title). Because the same movie exists as separate
+ * rows per chain, we gather every CinemaFilm sharing titleKey(), then build
+ * VenueBlocks (lib/showtimes) sorted nearest-first using useUserLocation.
+ * Filters: date (next 7 Dubai days), language, format, time-of-day.
+ * Each time chip deep-links to that exact screening on the chain's own site.
+ */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
