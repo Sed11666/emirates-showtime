@@ -28,9 +28,9 @@ import {
   filmDistanceKm,
   matchesVenues,
   nearestVenues,
-  type Coords,
   type NearbyVenue,
 } from "@/lib/venues";
+import { useUserLocation } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
 import { toDayKey } from "@/lib/days";
 
