@@ -280,89 +280,19 @@ function CinemasPage() {
           </p>
         )}
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ film, times, distance }) => {
-            return (
-              <article
-                key={film.id}
-                className="flex flex-col overflow-hidden rounded-xl border border-border/70 bg-card"
-              >
-                {film.poster_url ? (
-                  <img
-                    src={film.poster_url}
-                    alt={`${film.title} poster`}
-                    loading="lazy"
-                    className="h-56 w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-56 w-full items-center justify-center bg-muted">
-                    <Clapperboard className="size-10 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="flex flex-1 flex-col gap-2 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge variant="secondary">{CINEMA_LABELS[film.cinema] ?? film.cinema}</Badge>
-                    <div className="flex items-center gap-2">
-                      {distance !== null && (
-                        <Badge variant="outline" className="text-primary">
-                          {distance < 1
-                            ? `${Math.round(distance * 1000)} m`
-                            : `${distance.toFixed(1)} km`}
-                        </Badge>
-                      )}
-                      {film.rating && <Badge variant="outline">{film.rating}</Badge>}
-                    </div>
-                  </div>
-                  <h2 className="font-display text-lg font-semibold leading-tight">{film.title}</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {[film.genre, film.language].filter(Boolean).join(" · ")}
-                  </p>
-                  {film.synopsis && (
-                    <p className="line-clamp-3 text-sm text-muted-foreground">{film.synopsis}</p>
-                  )}
-                  <div className="mt-auto space-y-2 pt-2 text-xs text-muted-foreground">
-                    {film.duration_mins && (
-                      <p className="flex items-center gap-1.5">
-                        <Clock className="size-3.5" /> {film.duration_mins} mins
-                      </p>
-                    )}
-                    {(film.city || film.venues.length > 0) && (
-                      <p className="flex items-start gap-1.5">
-                        <MapPin className="mt-0.5 size-3.5 shrink-0" />
-                        <span className="line-clamp-2">
-                          {[film.city, film.venues.slice(0, 3).join(", ")].filter(Boolean).join(" — ")}
-                        </span>
-                      </p>
-                    )}
-                    {times.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {times.map((time, index) => (
-                          <span
-                            key={`${time}-${index}`}
-                            className="rounded bg-muted px-2 py-1 text-[11px]"
-                          >
-                            {time}
-                          </span>
-                        ))}
-
-                      </div>
-                    )}
-                    {(film.booking_url || film.source_url) && (
-                      <a
-                        href={film.booking_url ?? film.source_url ?? "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block text-primary underline-offset-4 hover:underline"
-                      >
-                        Book on {CINEMA_LABELS[film.cinema] ?? film.cinema}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {filtered.map(({ film, distance }) => (
+            <div key={film.id} className="relative">
+              <MoviePosterCard item={filmToPoster(film)} fullWidth />
+              {distance !== null ? (
+                <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full border border-gold/40 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-gold backdrop-blur">
+                  {distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`}
+                </span>
+              ) : null}
+            </div>
+          ))}
         </div>
+
       </main>
 
     </div>
