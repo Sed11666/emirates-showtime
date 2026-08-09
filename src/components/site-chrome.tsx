@@ -27,8 +27,8 @@ import { UAE_CITIES } from "@/lib/listings";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
-  { to: "/events", label: "Events", icon: Sparkles },
   { to: "/cinemas", label: "Cinemas", icon: Clapperboard },
+  { to: "/events", label: "Events", icon: Sparkles },
 ] as const;
 
 
@@ -158,16 +158,15 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link to="/events" className="hover:text-foreground">
-                Events
-              </Link>
-            </li>
-            <li>
               <Link to="/cinemas" search={{}} className="hover:text-foreground">
                 Cinemas
               </Link>
             </li>
-
+            <li>
+              <Link to="/events" className="hover:text-foreground">
+                Events
+              </Link>
+            </li>
           </ul>
         </div>
         <div className="text-sm">
