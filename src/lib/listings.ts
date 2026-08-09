@@ -1,3 +1,10 @@
+/**
+ * listings.ts — Manually curated entries (`listings` table).
+ *
+ * These are admin-authored movies/events added from /admin. Writes are locked
+ * down by RLS to users holding the 'admin' role (see hooks/useIsAdmin).
+ * Scraped content lives elsewhere: lib/cinemas.ts and lib/live-events.ts.
+ */
 import { supabase } from "@/integrations/supabase/client";
 
 export type ListingKind = "movie" | "event";
