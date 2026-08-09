@@ -1,3 +1,7 @@
+/**
+ * Route "/listing/$id" — Detail page for a manually curated `listings` row
+ * (admin-authored movie or event). Scraped cinema films use /movie/$slug.
+ */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Clock, Globe, MapPin, Tag } from "lucide-react";
