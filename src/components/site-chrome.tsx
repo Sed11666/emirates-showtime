@@ -1,3 +1,12 @@
+/**
+ * site-chrome.tsx — Global header + footer rendered by __root.tsx.
+ *
+ * Header layout is a 3-column grid: [logo + LocationSelector] [centred nav:
+ * Home, Cinemas, Events] [search icon, admin link, account menu]. The city
+ * chosen in LocationSelector is persisted and read by useUserLocation as the
+ * fallback position for nearest-cinema sorting. Admin-only links are gated by
+ * useIsAdmin.
+ */
 import { Link } from "@tanstack/react-router";
 import {
   Clapperboard,
