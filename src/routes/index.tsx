@@ -263,7 +263,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
   const active = films[index % Math.max(films.length, 1)];
 
   return (
-    <section className="film-grain relative isolate min-h-[78vh] overflow-hidden">
+    <section className="film-grain relative isolate min-h-[560px] overflow-hidden sm:min-h-[78vh]">
       <div aria-hidden className="absolute inset-0 -z-10">
         {films.map((film, i) => (
           <img
