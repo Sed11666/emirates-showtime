@@ -201,16 +201,17 @@ function CinemasPage() {
                 <Navigation className="size-4 text-primary" /> Cinemas near you
               </h2>
               <p className="text-xs text-muted-foreground">
-                {nearby
-                  ? "Suggested chains based on your current location."
-                  : "Share your location to see the closest VOX, Reel, Novo and Roxy screens."}
+                {precise
+                  ? "The 6 closest screens to your current location."
+                  : "The 6 closest screens to your selected city — share your location for exact distances."}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => requestLocation()} disabled={geoState === "loading"}>
                 <Locate className={`size-3.5 ${geoState === "loading" ? "animate-pulse" : ""}`} />
-                {nearby ? "Update location" : "Use my location"}
+                {precise ? "Update location" : "Use my location"}
               </Button>
+
               {nearby && (
                 <Button
                   size="sm"
