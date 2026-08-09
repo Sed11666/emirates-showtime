@@ -1,3 +1,8 @@
+/**
+ * day-selector.tsx — Horizontally scrollable day picker (today + next days).
+ * Options come from lib/days buildDayOptions() and are always Dubai-relative;
+ * the selected value is a day key ("yyyy-mm-dd") or "any".
+ */
 import { CalendarDays } from "lucide-react";
 import { buildDayOptions } from "@/lib/days";
 
