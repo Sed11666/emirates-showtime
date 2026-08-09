@@ -158,16 +158,15 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link to="/events" className="hover:text-foreground">
-                Events
-              </Link>
-            </li>
-            <li>
               <Link to="/cinemas" search={{}} className="hover:text-foreground">
                 Cinemas
               </Link>
             </li>
-
+            <li>
+              <Link to="/events" className="hover:text-foreground">
+                Events
+              </Link>
+            </li>
           </ul>
         </div>
         <div className="text-sm">
