@@ -231,34 +231,34 @@ function CinemasPage() {
           )}
 
           {nearby && nearby.length > 0 && (
-            <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
               {nearby.map((venue) => (
-                <li
-                  key={`${venue.cinema}-${venue.name}`}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/40 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{venue.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {CINEMA_LABELS[venue.cinema]} · {venue.city}
-                    </p>
-                  </div>
+                <li key={`${venue.cinema}-${venue.name}`}>
                   <button
                     type="button"
                     onClick={() => {
                       setCinema(venue.cinema);
                       setCity(venue.city);
                     }}
-                    className="shrink-0 rounded-full border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+                    className="group w-full rounded-2xl border border-border/60 bg-card/50 px-5 py-6 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:gold-glow"
                   >
-                    {venue.distanceKm < 1
-                      ? `${Math.round(venue.distanceKm * 1000)} m`
-                      : `${venue.distanceKm.toFixed(1)} km`}
+                    <p className="truncate font-display text-sm font-bold uppercase tracking-wide">
+                      {venue.name}
+                    </p>
+                    <p className="mt-1.5 truncate text-xs text-muted-foreground">
+                      {CINEMA_LABELS[venue.cinema]} · {venue.city}
+                    </p>
+                    <p className="mt-1 text-xs text-gold">
+                      {venue.distanceKm < 1
+                        ? `${Math.round(venue.distanceKm * 1000)} m away`
+                        : `${venue.distanceKm.toFixed(1)} km away`}
+                    </p>
                   </button>
                 </li>
               ))}
             </ul>
           )}
+
         </section>
 
 
