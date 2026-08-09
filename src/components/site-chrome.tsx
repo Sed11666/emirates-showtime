@@ -27,8 +27,8 @@ import { UAE_CITIES } from "@/lib/listings";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
-  { to: "/events", label: "Events", icon: Sparkles },
   { to: "/cinemas", label: "Cinemas", icon: Clapperboard },
+  { to: "/events", label: "Events", icon: Sparkles },
 ] as const;
 
 
