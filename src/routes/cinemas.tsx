@@ -65,13 +65,36 @@ function CinemasPage() {
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
   const [day, setDay] = useState<string>(() => toDayKey(new Date()));
-  const [nearby, setNearby] = useState<NearbyVenue[] | null>(null);
   const [nearOnly, setNearOnly] = useState(false);
-  const [coords, setCoords] = useState<Coords | null>(null);
   const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle");
 
+  // Shared visitor position: precise browser coords when granted, otherwise the
+  // centre of the header city. Ask once on mount so the panel fills itself in.
+  const { coords, precise, requestPrecise } = useUserLocation();
 
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    if (precise) return;
+    setGeoState("loading");
+    navigator.permissions
+      ?.query({ name: "geolocation" as PermissionName })
+      .then((status) => {
+        if (status.state === "denied") setGeoState("denied");
+      })
+      .catch(() => undefined);
+    requestPrecise();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  useEffect(() => {
+    if (precise) setGeoState("idle");
+  }, [precise]);
+
+  /** Six closest screens to the visitor, nearest first. */
+  const nearby = useMemo<NearbyVenue[] | null>(
+    () => (coords ? nearestVenues(coords, 6) : null),
+    [coords],
+  );
 
   const requestLocation = (filterToNearby = true) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -82,9 +105,9 @@ function CinemasPage() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const point = { lat: position.coords.latitude, lng: position.coords.longitude };
-        const venues = nearestVenues(point);
-        setCoords(point);
-        setNearby(venues);
+        window.localStorage.setItem("showsouk:coords", JSON.stringify(point));
+        requestPrecise();
+        const venues = nearestVenues(point, 6);
         setNearOnly(filterToNearby);
         setGeoState("idle");
         if (filterToNearby && venues[0]) setCity(venues[0].city);
@@ -93,6 +116,7 @@ function CinemasPage() {
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
     );
   };
+
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["cinema-films"],
