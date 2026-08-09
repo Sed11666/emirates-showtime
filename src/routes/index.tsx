@@ -304,7 +304,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
                 ))}
             </div>
 
-            <h1 className="mt-5 max-w-4xl font-display text-5xl font-extrabold uppercase leading-[0.95] tracking-tight sm:text-7xl">
+            <h1 className="mt-4 max-w-4xl font-display text-4xl font-extrabold uppercase leading-[0.95] tracking-tight sm:mt-5 sm:text-7xl">
               {active.title}
             </h1>
 
