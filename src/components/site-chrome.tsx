@@ -194,7 +194,7 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="relative mt-24 border-t border-border/60 bg-[linear-gradient(180deg,transparent,oklch(0.19_0.04_280/0.6))] py-14">
+    <footer className="relative mt-16 border-t border-border/60 bg-[linear-gradient(180deg,transparent,oklch(0.19_0.04_280/0.6))] pb-[calc(5rem+env(safe-area-inset-bottom))] pt-10 sm:mt-24 sm:py-14 md:pb-14">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:grid-cols-3">
         <div>
           <p className="font-display text-lg font-bold">
