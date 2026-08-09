@@ -17,6 +17,9 @@ export function useIsAdmin() {
     queryKey: ["is-admin", user?.id],
     enabled: !!user,
     queryFn: async () => {
+      // Allowlisted developer emails (verified) self-claim the admin role.
+      await supabase.rpc("claim_admin_role");
+
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
