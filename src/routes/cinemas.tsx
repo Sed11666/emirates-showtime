@@ -13,7 +13,7 @@ import { ChevronRight, Film, Locate, MapPin, Navigation, RefreshCw, Search } fro
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DaySelector } from "@/components/day-selector";
-import { MoviePosterCard, filmToPoster } from "@/components/movie-poster-card";
+
 import {
   CINEMAS,
   CINEMA_LABELS,
