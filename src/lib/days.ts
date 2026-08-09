@@ -1,3 +1,11 @@
+/**
+ * days.ts — Asia/Dubai date helpers.
+ *
+ * Every date in the app is expressed as a "day key" (yyyy-mm-dd in Dubai time)
+ * so that scraped showtimes, the date picker and "today" all agree regardless
+ * of the visitor's own timezone. buildDayOptions() produces the next N days
+ * for the date pickers; parseDayKey() reads keys back out of scraped payloads.
+ */
 export type DayOption = {
   value: string; // "any" or ISO date (yyyy-mm-dd)
   label: string;
