@@ -187,10 +187,12 @@ export function SiteHeader() {
           )}
         </div>
       </div>
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+        <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      </header>
       <MobileTabBar />
-    </header>
+    </>
   );
+
 }
 
 
