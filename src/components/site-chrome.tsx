@@ -1,11 +1,13 @@
 /**
  * site-chrome.tsx — Global header + footer rendered by __root.tsx.
  *
- * Header layout is a 3-column grid: [logo + LocationSelector] [centred nav:
- * Home, Cinemas, Events] [search icon, admin link, account menu]. The city
- * chosen in LocationSelector is persisted and read by useUserLocation as the
- * fallback position for nearest-cinema sorting. Admin-only links are gated by
- * useIsAdmin.
+ * Desktop (md+): 3-column grid — [logo + LocationSelector] [centred nav:
+ * Home, Cinemas, Events] [search, admin, account].
+ * Mobile: the same header collapses to logo + compact location chip + search +
+ * account, and the nav moves into a fixed bottom tab bar (MobileTabBar) so
+ * Home / Cinemas / Events are always reachable with a thumb. The city chosen in
+ * LocationSelector is persisted and read by useUserLocation as the fallback
+ * position for nearest-cinema sorting. Admin-only links are gated by useIsAdmin.
  */
 import { Link } from "@tanstack/react-router";
 import {
@@ -40,7 +42,7 @@ const NAV = [
   { to: "/events", label: "Events", icon: Sparkles },
 ] as const;
 
-
+/** City picker. Visible on every breakpoint; label hidden on the smallest phones. */
 function LocationSelector() {
   const [city, setCity] = useState("Dubai");
 
@@ -57,11 +59,15 @@ function LocationSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="hidden items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground md:inline-flex">
-          <MapPin className="size-3.5 text-primary" /> {city}
+        <button
+          aria-label={`Change city, currently ${city}`}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground md:px-3"
+        >
+          <MapPin className="size-3.5 shrink-0 text-primary" />
+          <span className="max-w-[8ch] truncate">{city}</span>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="start">
         {UAE_CITIES.map((c) => (
           <DropdownMenuItem key={c} onSelect={() => pick(c)}>
             {c}
@@ -72,19 +78,46 @@ function LocationSelector() {
   );
 }
 
+/** Fixed bottom tab bar — mobile replacement for the centred desktop nav. */
+function MobileTabBar() {
+  return (
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-xl md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="mx-auto grid max-w-md grid-cols-3">
+        {NAV.map(({ to, label, icon: Icon }) => (
+          <Link
+            key={to}
+            to={to}
+            className="flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors"
+            activeProps={{ className: "text-primary" }}
+          >
+            <Icon className="size-5" />
+            {label}
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 export function SiteHeader() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
-      <div className="mx-auto grid h-16 max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-4">
-        <div className="flex items-center gap-5">
-          <Link to="/" className="flex items-center gap-2">
-            <Ticket className="size-6 text-primary" />
-            <span className="font-display text-xl font-bold tracking-tight">
+    <>
+      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-3 sm:px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:gap-4">
+        <div className="flex min-w-0 items-center gap-2 md:gap-5">
+          <Link to="/" className="flex min-w-0 shrink items-center gap-2">
+            <Ticket className="size-6 shrink-0 text-primary" />
+            <span className="truncate font-display text-lg font-bold tracking-tight sm:text-xl">
               Show<span className="text-gold-gradient">Souk</span>
             </span>
           </Link>
@@ -106,19 +139,26 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Search"
-            className="inline-flex size-9 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
           >
             <Search className="size-4" />
           </button>
           {isAdmin ? (
-            <Button asChild variant="gold" size="sm">
+            <Button asChild variant="gold" size="sm" className="hidden sm:inline-flex">
               <Link to="/admin">
                 <PlusCircle /> Add listing
+              </Link>
+            </Button>
+          ) : null}
+          {isAdmin ? (
+            <Button asChild variant="gold" size="icon" className="sm:hidden" aria-label="Add listing">
+              <Link to="/admin">
+                <PlusCircle />
               </Link>
             </Button>
           ) : null}
@@ -132,22 +172,33 @@ export function SiteHeader() {
               <LogOut />
             </Button>
           ) : (
-            <Button asChild variant="hero" size="sm">
-              <Link to="/auth">
-                <UserRound /> Sign in
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="hero" size="sm" className="hidden sm:inline-flex">
+                <Link to="/auth">
+                  <UserRound /> Sign in
+                </Link>
+              </Button>
+              <Button asChild variant="hero" size="icon" className="sm:hidden" aria-label="Sign in">
+                <Link to="/auth">
+                  <UserRound />
+                </Link>
+              </Button>
+            </>
           )}
         </div>
       </div>
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
-    </header>
+        <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      </header>
+      <MobileTabBar />
+    </>
   );
+
 }
+
 
 export function SiteFooter() {
   return (
-    <footer className="relative mt-24 border-t border-border/60 bg-[linear-gradient(180deg,transparent,oklch(0.19_0.04_280/0.6))] py-14">
+    <footer className="relative mt-16 border-t border-border/60 bg-[linear-gradient(180deg,transparent,oklch(0.19_0.04_280/0.6))] pb-[calc(5rem+env(safe-area-inset-bottom))] pt-10 sm:mt-24 sm:py-14 md:pb-14">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:grid-cols-3">
         <div>
           <p className="font-display text-lg font-bold">

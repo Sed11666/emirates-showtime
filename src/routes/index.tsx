@@ -263,7 +263,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
   const active = films[index % Math.max(films.length, 1)];
 
   return (
-    <section className="film-grain relative isolate min-h-[78vh] overflow-hidden">
+    <section className="film-grain relative isolate min-h-[560px] overflow-hidden sm:min-h-[78vh]">
       <div aria-hidden className="absolute inset-0 -z-10">
         {films.map((film, i) => (
           <img
@@ -280,7 +280,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
         {films.length === 0 ? <div className="absolute inset-0 bg-hero-gradient" /> : null}
       </div>
 
-      <div className="relative mx-auto flex min-h-[78vh] max-w-7xl flex-col justify-end px-4 pb-14 pt-28">
+      <div className="relative mx-auto flex min-h-[560px] max-w-7xl flex-col justify-end px-4 pb-10 pt-24 sm:min-h-[78vh] sm:pb-14 sm:pt-28">
         {active ? (
           <>
             <div className="flex flex-wrap gap-2">
@@ -304,7 +304,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
                 ))}
             </div>
 
-            <h1 className="mt-5 max-w-4xl font-display text-5xl font-extrabold uppercase leading-[0.95] tracking-tight sm:text-7xl">
+            <h1 className="mt-4 max-w-4xl font-display text-4xl font-extrabold uppercase leading-[0.95] tracking-tight sm:mt-5 sm:text-7xl">
               {active.title}
             </h1>
 
