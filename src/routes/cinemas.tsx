@@ -5,10 +5,10 @@
  * and nearest-to-farthest ordering. Search + day selector filter the same
  * `cinema_films` dataset the home page uses.
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Locate, Navigation, RefreshCw, Search } from "lucide-react";
+import { ChevronRight, Film, Locate, MapPin, Navigation, RefreshCw, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,10 @@ import {
   CINEMAS,
   CINEMA_LABELS,
   fetchCinemaFilms,
+  filmSlug,
   hasDatedShowtimes,
   mergeFilmsByTitle,
+  showtimesByVenue,
   showtimesForDay,
   titleKey,
 } from "@/lib/cinemas";
