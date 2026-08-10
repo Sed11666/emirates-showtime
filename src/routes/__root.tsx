@@ -100,8 +100,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Cinema, concerts and live experiences across the United Arab Emirates.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "ShowSouk" },
+      // Absolute URL: crawlers do not resolve relative og:image paths.
+      { property: "og:image", content: "https://www.showsouk.com/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "ShowSouk — movies, showtimes and cinemas in the UAE" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "ShowSouk — Movies & Events Across the Emirates" },
+      {
+        name: "twitter:description",
+        content: "Cinema, concerts and live experiences across the United Arab Emirates.",
+      },
+      { name: "twitter:image", content: "https://www.showsouk.com/og-image.png" },
     ],
     links: [
       {
