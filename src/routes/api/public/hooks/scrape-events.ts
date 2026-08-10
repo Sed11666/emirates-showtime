@@ -208,7 +208,8 @@ async function scrapeSource(source: SourceKey, force: boolean, lovableKey: strin
       }
 
       const rows = events
-        .filter((event) => typeof event.title === "string" && event.title.trim().length > 1)
+        .filter((event) => typeof event.title === "string" && !isPlaceholderTitle(event.title))
+
         .map((event) => ({
           source,
           title: event.title!.trim(),
