@@ -638,7 +638,19 @@ async function runScrape(request: Request) {
     }
   }
 
-  return Response.json({ ok: true, ranAt: new Date().toISOString(), results });
+  // Fail loudly: a rejected/guarded run must never look like a success.
+  const failed = results.filter((r) => r.error);
+  return Response.json(
+    {
+      ok: failed.length === 0,
+      ranAt: new Date().toISOString(),
+      ...(failed.length > 0
+        ? { errors: failed.map((r) => ({ cinema: r.cinema, error: r.error })) }
+        : {}),
+      results,
+    },
+    { status: failed.length === 0 ? 200 : 500 },
+  );
 }
 
 export const Route = createFileRoute("/api/public/hooks/scrape-cinemas")({
