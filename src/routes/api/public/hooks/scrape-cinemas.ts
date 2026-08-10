@@ -413,6 +413,16 @@ async function scrapeCinema(
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const runStartedAt = new Date().toISOString();
 
+  // Safety baseline: how many films this chain had before the run. Guards below
+  // use it so a single bad extraction can never empty the live catalogue.
+  const { count: activeBefore } = await supabaseAdmin
+    .from("cinema_films")
+    .select("id", { count: "exact", head: true })
+    .eq("cinema", cinema)
+    .eq("is_active", true);
+  const beforeCount = activeBefore ?? 0;
+
+
   let lastError: unknown = null;
   for (const url of SOURCES[cinema]) {
     try {
