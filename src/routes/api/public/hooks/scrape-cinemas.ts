@@ -491,12 +491,22 @@ async function scrapeCinema(
         }));
 
       if (rows.length === 0) {
-        throw new Error("No films extracted from page");
+        throw new Error(
+          `no usable films extracted from ${url} (all ${films.length} extracted item(s) were empty or placeholder text)`,
+        );
       }
 
       // Dedupe on the unique key before upserting.
       const unique = new Map<string, (typeof rows)[number]>();
       for (const row of rows) unique.set(`${row.title_key}|${row.city}`, row);
+
+      // Minimum plausible yield: a chain that had 16 films yesterday and returns
+      // 2 today is a broken scrape, not a quiet day. Nothing is written.
+      if (beforeCount >= 4 && unique.size < beforeCount * 0.5) {
+        throw new Error(
+          `minimum yield guard: ${cinema} extraction returned ${unique.size} film(s) but ${beforeCount} were active before the run (needs at least ${Math.ceil(beforeCount * 0.5)})`,
+        );
+      }
 
       // Films whose listing page carries no times keep the schedule we already
       // have, so a rate-limited detail pass never blanks the board.
@@ -515,8 +525,39 @@ async function scrapeCinema(
         if (upsertError) throw new Error(upsertError.message);
       }
 
+      // Anything not seen in this run is no longer showing — but never let one
+      // run retire more than 30% of a chain's catalogue.
+      const { data: candidates } = await supabaseAdmin
+        .from("cinema_films")
+        .select("id")
+        .eq("cinema", cinema)
+        .eq("is_active", true)
+        .lt("last_seen_at", runStartedAt);
+      const staleCount = candidates?.length ?? 0;
 
-      // Anything not seen in this run is no longer showing.
+      if (staleCount > 0 && beforeCount > 0 && staleCount > beforeCount * 0.3) {
+        const message = `deactivation cap: would deactivate ${staleCount} of ${beforeCount} active ${cinema} films (limit 30%) — deactivation skipped, all rows left active`;
+        console.error(`[scrape-cinemas] ${message}`);
+        await supabaseAdmin.from("cinema_scrape_runs").insert({
+          cinema,
+          source_url: url,
+          content_hash: contentHash,
+          changed: true,
+          films_upserted: unique.size,
+          films_deactivated: 0,
+          status: "error",
+          error: message,
+        });
+        return {
+          cinema,
+          changed: true,
+          upserted: unique.size,
+          deactivated: 0,
+          source: url,
+          error: message,
+        };
+      }
+
       const { data: removed } = await supabaseAdmin
         .from("cinema_films")
         .update({ is_active: false })
@@ -542,6 +583,7 @@ async function scrapeCinema(
         deactivated: removed?.length ?? 0,
         source: url,
       };
+
     } catch (error) {
       lastError = error;
     }
