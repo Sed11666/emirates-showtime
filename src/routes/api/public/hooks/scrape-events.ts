@@ -166,6 +166,16 @@ async function scrapeSource(source: SourceKey, force: boolean, lovableKey: strin
   const config = SOURCES[source];
   const runStartedAt = new Date().toISOString();
 
+  // Safety baseline: active events before the run, used by the yield and
+  // deactivation guards so one bad extraction can never empty a source.
+  const { count: activeBefore } = await supabaseAdmin
+    .from("live_events")
+    .select("id", { count: "exact", head: true })
+    .eq("source", source)
+    .eq("is_active", true);
+  const beforeCount = activeBefore ?? 0;
+
+
   let lastError: unknown = null;
   for (const url of config.urls) {
     try {
