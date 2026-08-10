@@ -238,7 +238,28 @@ async function movieUrls(): Promise<string[]> {
 }
 
 async function runScrape(request: Request) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // Lovable Cloud never exposes the Supabase service-role key, so writes go
+  // through the `ingest_cinema_films` SECURITY DEFINER function instead: the
+  // public key plus a dedicated ingest token that can only upsert showtimes.
+  // That is also a smaller blast radius than a service-role key, which can
+  // read and write every table including auth data.
+  const SUPABASE_URL =
+    import.meta.env?.["VITE_SUPABASE_URL"] ?? process.env["SUPABASE_URL"];
+  const SUPABASE_KEY =
+    import.meta.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"] ??
+    process.env["SUPABASE_PUBLISHABLE_KEY"];
+  const INGEST_TOKEN = process.env["SCRAPER_INGEST_TOKEN"];
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return Response.json({ ok: false, error: "Supabase config missing" }, { status: 500 });
+  }
+  if (!INGEST_TOKEN) {
+    return Response.json(
+      { ok: false, error: "SCRAPER_INGEST_TOKEN is not configured" },
+      { status: 500 },
+    );
+  }
+  const { createClient } = await import("@supabase/supabase-js");
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
   const url = new URL(request.url);
 
   const requested = url.searchParams.get("chains");
@@ -337,7 +358,7 @@ async function runScrape(request: Request) {
   // started its chip loses the href, so a fresh scrape alone would silently
   // strip links as the day progresses.
   const keys = batch.map((r) => `${r["cinema"]}|${r["title_key"]}|${r["city"]}`);
-  const { data: existing } = await supabaseAdmin
+  const { data: existing } = await db
     .from("cinema_films")
     .select("cinema, title_key, city, showtimes")
     .in("cinema", [...new Set(batch.map((r) => String(r["cinema"])))]);
@@ -364,44 +385,19 @@ async function runScrape(request: Request) {
     }
   }
 
-  const { error: upsertError } = await supabaseAdmin
-    .from("cinema_films")
-    .upsert(batch, { onConflict: "cinema,title_key,city" });
-  if (upsertError) {
-    return Response.json({ ok: false, error: upsertError.message, visited }, { status: 500 });
-  }
-
-  const deactivated: Record<string, number> = {};
-  const skipped: string[] = [];
-  if (complete) {
-    for (const chain of touchedChains) {
-      const { count: before } = await supabaseAdmin
-        .from("cinema_films")
-        .select("id", { count: "exact", head: true })
-        .eq("cinema", chain)
-        .eq("is_active", true);
-      const { data: stale } = await supabaseAdmin
-        .from("cinema_films")
-        .select("id")
-        .eq("cinema", chain)
-        .eq("is_active", true)
-        .lt("last_seen_at", runStartedAt);
-      const staleCount = stale?.length ?? 0;
-      const beforeCount = before ?? 0;
-      if (staleCount === 0) continue;
-      if (beforeCount > 0 && staleCount > beforeCount * 0.3) {
-        skipped.push(`${chain}: would deactivate ${staleCount} of ${beforeCount} (limit 30%)`);
-        continue;
-      }
-      const { data: removed } = await supabaseAdmin
-        .from("cinema_films")
-        .update({ is_active: false })
-        .eq("cinema", chain)
-        .eq("is_active", true)
-        .lt("last_seen_at", runStartedAt)
-        .select("id");
-      deactivated[chain] = removed?.length ?? 0;
-    }
+  // Upsert and retirement both happen inside the SECURITY DEFINER function.
+  // Retirement there is time-based (nothing untouched for 48h), not
+  // "not seen in this run" — runs are budgeted and usually partial, so an
+  // unvisited film must never be mistaken for one that stopped showing.
+  const { data: ingest, error: ingestError } = await db.rpc("ingest_cinema_films", {
+    p_token: INGEST_TOKEN,
+    p_rows: batch,
+  });
+  if (ingestError) {
+    return Response.json(
+      { ok: false, error: `ingest failed: ${ingestError.message}`, visited },
+      { status: 500 },
+    );
   }
 
   const screenings = batch.reduce((n, r) => n + (r["showtimes"] as unknown[]).length, 0);
@@ -421,11 +417,10 @@ async function runScrape(request: Request) {
     complete,
     nextOffset: complete ? 0 : (offset + visited) % ordered.length,
     chains: [...touchedChains],
-    upserted: batch.length,
+    rowsSent: batch.length,
     screenings,
     withBookingLinks: withLinks,
-    deactivated,
-    ...(skipped.length > 0 ? { deactivationSkipped: skipped } : {}),
+    ingest,
   });
 }
 
