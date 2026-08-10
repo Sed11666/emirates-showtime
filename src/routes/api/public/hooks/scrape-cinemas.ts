@@ -424,7 +424,9 @@ async function scrapeCinema(
           cinema,
           title: film.title!.trim(),
           title_key: titleKey(film.title!),
-          city: film.city?.trim() || null,
+          // Empty string, never null: Postgres treats NULLs as distinct, which
+          // made the (cinema, title_key, city) upsert insert a new row per run.
+          city: film.city?.trim() || "",
           venues: Array.isArray(film.venues) ? film.venues.filter(Boolean).slice(0, 40) : [],
           genre: film.genre?.trim() || null,
           language: film.language?.trim() || null,
@@ -456,7 +458,7 @@ async function scrapeCinema(
 
       // Dedupe on the unique key before upserting.
       const unique = new Map<string, (typeof rows)[number]>();
-      for (const row of rows) unique.set(`${row.title_key}|${row.city ?? ""}`, row);
+      for (const row of rows) unique.set(`${row.title_key}|${row.city}`, row);
 
       // Films whose listing page carries no times keep the schedule we already
       // have, so a rate-limited detail pass never blanks the board.
