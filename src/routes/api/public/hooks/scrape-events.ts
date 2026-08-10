@@ -337,11 +337,22 @@ async function runScrape(request: Request) {
   const keys = (Object.keys(SOURCES) as SourceKey[]).filter((key) => !requested || key === requested);
   if (keys.length === 0) return Response.json({ error: "Unknown source" }, { status: 400 });
 
-  const results = await Promise.all(
-    keys.map((key) => scrapeSource(key, force, lovableKey, firecrawlKey)),
-  );
+  const results: Array<Record<string, unknown> & { source: SourceKey; error?: string }> =
+    await Promise.all(keys.map((key) => scrapeSource(key, force, lovableKey, firecrawlKey)));
 
-  return Response.json({ ok: true, ranAt: new Date().toISOString(), results });
+  // Fail loudly: a rejected/guarded run must never look like a success.
+  const failed = results.filter((r) => r.error);
+  return Response.json(
+    {
+      ok: failed.length === 0,
+      ranAt: new Date().toISOString(),
+      ...(failed.length > 0
+        ? { errors: failed.map((r) => ({ source: r.source, error: r.error })) }
+        : {}),
+      results,
+    },
+    { status: failed.length === 0 ? 200 : 500 },
+  );
 }
 
 export const Route = createFileRoute("/api/public/hooks/scrape-events")({
