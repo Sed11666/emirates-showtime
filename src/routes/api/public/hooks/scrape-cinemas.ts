@@ -122,40 +122,106 @@ function dubaiToday() {
   }).format(new Date());
 }
 
+/** yyyy-mm-dd in Dubai time, `days` days from now. */
+function dubaiDateOffset(days: number) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() + days * 86_400_000));
+}
+
+/**
+ * The extractor occasionally hallucinates dates from past years. Only accept
+ * a real yyyy-mm-dd inside [today, today + 14 days] in Dubai time; anything
+ * else falls back to today.
+ */
+function sanitizeDate(raw: string | undefined, fallback: string): string {
+  const value = raw?.trim() ?? "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return fallback;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return fallback;
+  const min = dubaiToday();
+  const max = dubaiDateOffset(14);
+  if (value < min || value > max) return fallback;
+  return value;
+}
+
+/** "7:45pm", "07:45 PM", "19.45" and "19:45" all become 24-hour "HH:MM". */
+function normalizeTime(raw: string | undefined): string | null {
+  const value = raw?.trim().toLowerCase();
+  if (!value) return null;
+  const match = value.match(/^(\d{1,2})\s*[:.h]\s*(\d{2})\s*(a\.?m\.?|p\.?m\.?)?$/);
+  if (!match) return null;
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const suffix = match[3]?.[0];
+  if (Number.isNaN(hours) || Number.isNaN(minutes) || minutes > 59) return null;
+  if (suffix === "p" && hours < 12) hours += 12;
+  if (suffix === "a" && hours === 12) hours = 0;
+  if (hours > 23) return null;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
 function normalizeShowtimes(
   value: unknown,
   defaults?: { date?: string; venue?: string; base?: string },
 ): Array<Record<string, string>> {
   if (!Array.isArray(value)) return [];
-  const fallbackDate = defaults?.date || dubaiToday();
+  const today = dubaiToday();
+  const fallbackDate = sanitizeDate(defaults?.date, today);
   const out: Array<Record<string, string>> = [];
-  for (const entry of value.slice(0, 80)) {
+  const seen = new Set<string>();
+
+  const push = (item: Record<string, string>) => {
+    // Never keep screenings that already happened.
+    if (item["date"] && item["date"] < today) return;
+    const key = `${item["venue"] ?? ""}|${item["date"] ?? ""}|${item["time"]}`.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(item);
+  };
+
+  for (const entry of value.slice(0, 400)) {
     if (typeof entry === "string" && entry.trim()) {
-      const item: Record<string, string> = { time: entry.trim(), date: fallbackDate };
+      const time = normalizeTime(entry);
+      if (!time) continue;
+      const item: Record<string, string> = { time, date: fallbackDate };
       if (defaults?.venue) item["venue"] = defaults.venue;
-      out.push(item);
+      push(item);
     } else if (entry && typeof entry === "object") {
       const row = entry as RawShowtime;
-      const time = row.time?.trim();
+      const time = normalizeTime(row.time);
       if (!time) continue;
       const item: Record<string, string> = { time };
-      item["date"] = row.date?.trim() || fallbackDate;
+      item["date"] = sanitizeDate(row.date, fallbackDate);
       const venue = row.venue?.trim() || defaults?.venue;
       if (venue) item["venue"] = venue;
       if (row.format?.trim()) item["format"] = row.format.trim();
       const link = absoluteUrl(row.booking_url, defaults?.base);
       if (link) item["booking_url"] = link;
-      out.push(item);
+      push(item);
     }
   }
   return out;
 }
 
+/** Language/label suffixes that decorate the same film across chains. */
+const TITLE_SUFFIX =
+  /\s*[([]\s*(arabic|english|hindi|malayalam|tamil|telugu|kannada|urdu|filipino|tagalog|russian|french|german|spanish|chinese|korean|japanese|dubbed|subtitled|sub(?:titles)?|live[\s-]?action|re[\s-]?release|imax|4dx|3d|2d|roxy ladies|ladies(?: night)?|kids|gold|premium)\b[^)\]]*[)\]]\s*$/i;
 
 function titleKey(title: string) {
-  return title
+  let value = title.trim();
+  // Strip any trailing language/label suffix, repeatedly.
+  for (let i = 0; i < 3 && TITLE_SUFFIX.test(value); i += 1) {
+    value = value.replace(TITLE_SUFFIX, "").trim();
+  }
+  return value
     .toLowerCase()
+    .replace(/&/g, " and ")
     .replace(/\(.*?\)/g, " ")
+    .replace(/\[.*?\]/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
