@@ -33,7 +33,7 @@ export type Database = {
         Row: {
           booking_url: string | null
           cinema: string
-          city: string | null
+          city: string
           created_at: string
           duration_mins: number | null
           first_seen_at: string
@@ -56,7 +56,7 @@ export type Database = {
         Insert: {
           booking_url?: string | null
           cinema: string
-          city?: string | null
+          city?: string
           created_at?: string
           duration_mins?: number | null
           first_seen_at?: string
@@ -79,7 +79,7 @@ export type Database = {
         Update: {
           booking_url?: string | null
           cinema?: string
-          city?: string | null
+          city?: string
           created_at?: string
           duration_mins?: number | null
           first_seen_at?: string
