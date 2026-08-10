@@ -229,15 +229,58 @@ async function scrapeSource(source: SourceKey, force: boolean, lovableKey: strin
           last_seen_at: runStartedAt,
         }));
 
-      if (rows.length === 0) throw new Error("No events extracted from page");
+      if (rows.length === 0) {
+        throw new Error(
+          `no usable events extracted from ${url} (all ${events.length} extracted item(s) were empty or placeholder text)`,
+        );
+      }
 
       const unique = new Map<string, (typeof rows)[number]>();
       for (const row of rows) unique.set(row.title_key, row);
+
+      // Minimum plausible yield — a big drop means a broken scrape, not a quiet day.
+      if (beforeCount >= 4 && unique.size < beforeCount * 0.5) {
+        throw new Error(
+          `minimum yield guard: ${source} extraction returned ${unique.size} event(s) but ${beforeCount} were active before the run (needs at least ${Math.ceil(beforeCount * 0.5)})`,
+        );
+      }
 
       const { error: upsertError } = await supabaseAdmin
         .from("live_events")
         .upsert([...unique.values()], { onConflict: "source,title_key" });
       if (upsertError) throw new Error(upsertError.message);
+
+      // Never let one run retire more than 30% of a source's catalogue.
+      const { data: candidates } = await supabaseAdmin
+        .from("live_events")
+        .select("id")
+        .eq("source", source)
+        .eq("is_active", true)
+        .lt("last_seen_at", runStartedAt);
+      const staleCount = candidates?.length ?? 0;
+
+      if (staleCount > 0 && beforeCount > 0 && staleCount > beforeCount * 0.3) {
+        const message = `deactivation cap: would deactivate ${staleCount} of ${beforeCount} active ${source} events (limit 30%) — deactivation skipped, all rows left active`;
+        console.error(`[scrape-events] ${message}`);
+        await supabaseAdmin.from("event_scrape_runs").insert({
+          source,
+          source_url: url,
+          content_hash: contentHash,
+          changed: true,
+          events_upserted: unique.size,
+          events_deactivated: 0,
+          status: "error",
+          error: message,
+        });
+        return {
+          source,
+          changed: true,
+          upserted: unique.size,
+          deactivated: 0,
+          sourceUrl: url,
+          error: message,
+        };
+      }
 
       const { data: removed } = await supabaseAdmin
         .from("live_events")
@@ -246,6 +289,7 @@ async function scrapeSource(source: SourceKey, force: boolean, lovableKey: strin
         .eq("is_active", true)
         .lt("last_seen_at", runStartedAt)
         .select("id");
+
 
       await supabaseAdmin.from("event_scrape_runs").insert({
         source,
