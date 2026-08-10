@@ -309,7 +309,7 @@ const SHOWTIME_SCHEMA = {
 } as const;
 
 const SHOWTIME_PROMPT =
-  "This is a cinema film page listing today's screenings. Extract every single screening as an object with the cinema/venue name (e.g. 'Mall of the Emirates', 'Dragon Mart'), the exact start time exactly as printed (e.g. '7:45pm' or '10:15 PM'), the screen format/experience if shown (Standard, MAX, IMAX, GOLD, THEATRE, 4DX, 2D, 7STAR), and booking_url set to the absolute href of the anchor/button wrapping that exact time (the seat-selection or booking link for that single screening). Include every venue and every time. Do not invent or round times, and ignore trailers, other movie suggestions and promotions.";
+  "This is a cinema film page listing today's screenings. Extract every single screening as an object with the cinema/venue name exactly as printed on the page, the start time copied character-for-character as printed on the page (keep whatever clock format the page uses), the screen format/experience if shown (Standard, MAX, IMAX, GOLD, THEATRE, 4DX, 2D, 7STAR), and booking_url set to the absolute href of the anchor/button wrapping that exact time (the seat-selection or booking link for that single screening). Include every venue and every time. Only return values that literally appear on the page: do not invent, round or substitute times or venue names, and do not output placeholder text. If no screenings are listed, return an empty array. Ignore trailers, other movie suggestions and promotions.";
 
 /** Second pass: film detail pages carry the real per-venue showtimes. */
 async function scrapeShowtimesForFilms(
