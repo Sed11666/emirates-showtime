@@ -74,7 +74,34 @@ const EXTRACT_SCHEMA = {
 } as const;
 
 const EXTRACT_PROMPT =
-  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.) and the booking link. For showtimes, return one object per screening with the exact clock time (e.g. '19:45' or '7:45 PM'), the calendar date in yyyy-mm-dd form when the page shows or implies one (use the currently selected date if the page shows a date tab), the venue/cinema name for that screening, the screen format, and booking_url set to the absolute href of the link/button behind that exact time (the seat-selection or booking URL for that single screening). Never invent times. Ignore adverts, offers and non-film content.";
+  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.) and the booking link. For showtimes, return one object per screening with the start time copied exactly as printed on the page, the calendar date in yyyy-mm-dd form when the page shows or implies one (use the currently selected date if the page shows a date tab), the venue/cinema name for that screening, the screen format, and booking_url set to the absolute href of the link/button behind that exact time (the seat-selection or booking URL for that single screening). Only return values that literally appear on the page: never invent, guess or round titles, times or dates, and never output placeholder text. If the page lists no films, return an empty array. Ignore adverts, offers and non-film content.";
+
+/** Titles the extractor invents when it echoes prompt/schema examples back. */
+const GENERIC_TITLES = new Set([
+  "title",
+  "name",
+  "example",
+  "sample",
+  "lorem ipsum",
+  "n/a",
+  "na",
+  "tbd",
+  "untitled",
+  "movie",
+  "film",
+  "event",
+]);
+
+function isPlaceholderTitle(raw: string | undefined): boolean {
+  const value = raw?.trim() ?? "";
+  if (value.length < 2) return true;
+  const lower = value.toLowerCase();
+  if (GENERIC_TITLES.has(lower)) return true;
+  if (/^\d+([.,]\d+)?$/.test(lower)) return true;
+  if (/^(film|movie|event)\s*(title)?\s*\d*$/i.test(lower)) return true;
+  return false;
+}
+
 
 type RawShowtime = {
   venue?: string;
@@ -282,7 +309,7 @@ const SHOWTIME_SCHEMA = {
 } as const;
 
 const SHOWTIME_PROMPT =
-  "This is a cinema film page listing today's screenings. Extract every single screening as an object with the cinema/venue name (e.g. 'Mall of the Emirates', 'Dragon Mart'), the exact start time exactly as printed (e.g. '7:45pm' or '10:15 PM'), the screen format/experience if shown (Standard, MAX, IMAX, GOLD, THEATRE, 4DX, 2D, 7STAR), and booking_url set to the absolute href of the anchor/button wrapping that exact time (the seat-selection or booking link for that single screening). Include every venue and every time. Do not invent or round times, and ignore trailers, other movie suggestions and promotions.";
+  "This is a cinema film page listing today's screenings. Extract every single screening as an object with the cinema/venue name exactly as printed on the page, the start time copied character-for-character as printed on the page (keep whatever clock format the page uses), the screen format/experience if shown (Standard, MAX, IMAX, GOLD, THEATRE, 4DX, 2D, 7STAR), and booking_url set to the absolute href of the anchor/button wrapping that exact time (the seat-selection or booking link for that single screening). Include every venue and every time. Only return values that literally appear on the page: do not invent, round or substitute times or venue names, and do not output placeholder text. If no screenings are listed, return an empty array. Ignore trailers, other movie suggestions and promotions.";
 
 /** Second pass: film detail pages carry the real per-venue showtimes. */
 async function scrapeShowtimesForFilms(
@@ -386,6 +413,16 @@ async function scrapeCinema(
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const runStartedAt = new Date().toISOString();
 
+  // Safety baseline: how many films this chain had before the run. Guards below
+  // use it so a single bad extraction can never empty the live catalogue.
+  const { count: activeBefore } = await supabaseAdmin
+    .from("cinema_films")
+    .select("id", { count: "exact", head: true })
+    .eq("cinema", cinema)
+    .eq("is_active", true);
+  const beforeCount = activeBefore ?? 0;
+
+
   let lastError: unknown = null;
   for (const url of SOURCES[cinema]) {
     try {
@@ -419,7 +456,8 @@ async function scrapeCinema(
       }
 
       const rows = films
-        .filter((film) => typeof film.title === "string" && film.title.trim().length > 1)
+        .filter((film) => typeof film.title === "string" && !isPlaceholderTitle(film.title))
+
         .map((film) => ({
           cinema,
           title: film.title!.trim(),
@@ -453,12 +491,22 @@ async function scrapeCinema(
         }));
 
       if (rows.length === 0) {
-        throw new Error("No films extracted from page");
+        throw new Error(
+          `no usable films extracted from ${url} (all ${films.length} extracted item(s) were empty or placeholder text)`,
+        );
       }
 
       // Dedupe on the unique key before upserting.
       const unique = new Map<string, (typeof rows)[number]>();
       for (const row of rows) unique.set(`${row.title_key}|${row.city}`, row);
+
+      // Minimum plausible yield: a chain that had 16 films yesterday and returns
+      // 2 today is a broken scrape, not a quiet day. Nothing is written.
+      if (beforeCount >= 4 && unique.size < beforeCount * 0.5) {
+        throw new Error(
+          `minimum yield guard: ${cinema} extraction returned ${unique.size} film(s) but ${beforeCount} were active before the run (needs at least ${Math.ceil(beforeCount * 0.5)})`,
+        );
+      }
 
       // Films whose listing page carries no times keep the schedule we already
       // have, so a rate-limited detail pass never blanks the board.
@@ -477,8 +525,39 @@ async function scrapeCinema(
         if (upsertError) throw new Error(upsertError.message);
       }
 
+      // Anything not seen in this run is no longer showing — but never let one
+      // run retire more than 30% of a chain's catalogue.
+      const { data: candidates } = await supabaseAdmin
+        .from("cinema_films")
+        .select("id")
+        .eq("cinema", cinema)
+        .eq("is_active", true)
+        .lt("last_seen_at", runStartedAt);
+      const staleCount = candidates?.length ?? 0;
 
-      // Anything not seen in this run is no longer showing.
+      if (staleCount > 0 && beforeCount > 0 && staleCount > beforeCount * 0.3) {
+        const message = `deactivation cap: would deactivate ${staleCount} of ${beforeCount} active ${cinema} films (limit 30%) — deactivation skipped, all rows left active`;
+        console.error(`[scrape-cinemas] ${message}`);
+        await supabaseAdmin.from("cinema_scrape_runs").insert({
+          cinema,
+          source_url: url,
+          content_hash: contentHash,
+          changed: true,
+          films_upserted: unique.size,
+          films_deactivated: 0,
+          status: "error",
+          error: message,
+        });
+        return {
+          cinema,
+          changed: true,
+          upserted: unique.size,
+          deactivated: 0,
+          source: url,
+          error: message,
+        };
+      }
+
       const { data: removed } = await supabaseAdmin
         .from("cinema_films")
         .update({ is_active: false })
@@ -504,6 +583,7 @@ async function scrapeCinema(
         deactivated: removed?.length ?? 0,
         source: url,
       };
+
     } catch (error) {
       lastError = error;
     }
@@ -558,7 +638,19 @@ async function runScrape(request: Request) {
     }
   }
 
-  return Response.json({ ok: true, ranAt: new Date().toISOString(), results });
+  // Fail loudly: a rejected/guarded run must never look like a success.
+  const failed = results.filter((r) => r.error);
+  return Response.json(
+    {
+      ok: failed.length === 0,
+      ranAt: new Date().toISOString(),
+      ...(failed.length > 0
+        ? { errors: failed.map((r) => ({ cinema: r.cinema, error: r.error })) }
+        : {}),
+      results,
+    },
+    { status: failed.length === 0 ? 200 : 500 },
+  );
 }
 
 export const Route = createFileRoute("/api/public/hooks/scrape-cinemas")({
