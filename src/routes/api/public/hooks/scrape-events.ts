@@ -49,7 +49,34 @@ const EXTRACT_SCHEMA = {
 } as const;
 
 const EXTRACT_PROMPT =
-  "Extract every upcoming live event, concert, comedy show, sporting event or family show listed on this arena page. For each event capture the exact event title, the category/genre (Concert, Comedy, Sport, Family, Theatre, Conference), the date exactly as printed on the page (date_text), the first calendar date in yyyy-mm-dd form (starts_on) and the final date in yyyy-mm-dd form when the event runs over multiple days (ends_on), the event artwork/poster image URL, a one-line description, any printed ticket price information, and the direct ticket/booking link. Never invent dates or prices. Ignore navigation links, venue hire pages, news articles and promotions that are not events.";
+  "Extract every upcoming live event, concert, comedy show, sporting event or family show listed on this arena page. For each event capture the exact event title, the category/genre (Concert, Comedy, Sport, Family, Theatre, Conference), the date exactly as printed on the page (date_text), the first calendar date in yyyy-mm-dd form (starts_on) and the final date in yyyy-mm-dd form when the event runs over multiple days (ends_on), the event artwork/poster image URL, a one-line description, any printed ticket price information, and the direct ticket/booking link. Only return values that literally appear on the page: never invent titles, dates or prices, and never output placeholder text. If the page lists no events, return an empty array. Ignore navigation links, venue hire pages, news articles and promotions that are not events.";
+
+/** Titles the extractor invents when it echoes prompt/schema examples back. */
+const GENERIC_TITLES = new Set([
+  "title",
+  "name",
+  "example",
+  "sample",
+  "lorem ipsum",
+  "n/a",
+  "na",
+  "tbd",
+  "untitled",
+  "movie",
+  "film",
+  "event",
+]);
+
+function isPlaceholderTitle(raw: string | undefined): boolean {
+  const value = raw?.trim() ?? "";
+  if (value.length < 2) return true;
+  const lower = value.toLowerCase();
+  if (GENERIC_TITLES.has(lower)) return true;
+  if (/^\d+([.,]\d+)?$/.test(lower)) return true;
+  if (/^(film|movie|event)\s*(title)?\s*\d*$/i.test(lower)) return true;
+  return false;
+}
+
 
 type RawEvent = {
   title?: string;
