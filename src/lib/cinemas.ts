@@ -187,10 +187,21 @@ export function filmFormats(film: CinemaFilm): string[] {
   return FORMAT_ORDER.filter((f) => found.has(f));
 }
 
+/** Language/label suffixes that decorate the same film across chains. */
+const TITLE_SUFFIX =
+  /\s*[([]\s*(arabic|english|hindi|malayalam|tamil|telugu|kannada|urdu|filipino|tagalog|russian|french|german|spanish|chinese|korean|japanese|dubbed|subtitled|sub(?:titles)?|live[\s-]?action|re[\s-]?release|imax|4dx|3d|2d|roxy ladies|ladies(?: night)?|kids|gold|premium)\b[^)\]]*[)\]]\s*$/i;
+
+/** Must stay in sync with titleKey() in the cinema scraper. */
 export function titleKey(title: string) {
-  return title
+  let value = title.trim();
+  for (let i = 0; i < 3 && TITLE_SUFFIX.test(value); i += 1) {
+    value = value.replace(TITLE_SUFFIX, "").trim();
+  }
+  return value
     .toLowerCase()
+    .replace(/&/g, " and ")
     .replace(/\(.*?\)/g, " ")
+    .replace(/\[.*?\]/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
