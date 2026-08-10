@@ -74,7 +74,34 @@ const EXTRACT_SCHEMA = {
 } as const;
 
 const EXTRACT_PROMPT =
-  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.) and the booking link. For showtimes, return one object per screening with the exact clock time (e.g. '19:45' or '7:45 PM'), the calendar date in yyyy-mm-dd form when the page shows or implies one (use the currently selected date if the page shows a date tab), the venue/cinema name for that screening, the screen format, and booking_url set to the absolute href of the link/button behind that exact time (the seat-selection or booking URL for that single screening). Never invent times. Ignore adverts, offers and non-film content.";
+  "Extract every film currently showing in UAE cinemas listed on this page. For each film capture the exact title, genre, spoken language, age rating/certification, runtime in minutes, poster image URL, a one-line synopsis, the emirate/city (Dubai, Abu Dhabi, Sharjah, Ajman, Ras Al Khaimah, Fujairah, Umm Al Quwain or Al Ain) if shown, cinema venue names, screen formats (IMAX, 4DX, MAX, THEATRE by Rhodes, Standard etc.) and the booking link. For showtimes, return one object per screening with the start time copied exactly as printed on the page, the calendar date in yyyy-mm-dd form when the page shows or implies one (use the currently selected date if the page shows a date tab), the venue/cinema name for that screening, the screen format, and booking_url set to the absolute href of the link/button behind that exact time (the seat-selection or booking URL for that single screening). Only return values that literally appear on the page: never invent, guess or round titles, times or dates, and never output placeholder text. If the page lists no films, return an empty array. Ignore adverts, offers and non-film content.";
+
+/** Titles the extractor invents when it echoes prompt/schema examples back. */
+const GENERIC_TITLES = new Set([
+  "title",
+  "name",
+  "example",
+  "sample",
+  "lorem ipsum",
+  "n/a",
+  "na",
+  "tbd",
+  "untitled",
+  "movie",
+  "film",
+  "event",
+]);
+
+function isPlaceholderTitle(raw: string | undefined): boolean {
+  const value = raw?.trim() ?? "";
+  if (value.length < 2) return true;
+  const lower = value.toLowerCase();
+  if (GENERIC_TITLES.has(lower)) return true;
+  if (/^\d+([.,]\d+)?$/.test(lower)) return true;
+  if (/^(film|movie|event)\s*(title)?\s*\d*$/i.test(lower)) return true;
+  return false;
+}
+
 
 type RawShowtime = {
   venue?: string;
