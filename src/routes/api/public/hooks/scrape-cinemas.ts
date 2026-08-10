@@ -456,7 +456,8 @@ async function scrapeCinema(
       }
 
       const rows = films
-        .filter((film) => typeof film.title === "string" && film.title.trim().length > 1)
+        .filter((film) => typeof film.title === "string" && !isPlaceholderTitle(film.title))
+
         .map((film) => ({
           cinema,
           title: film.title!.trim(),
