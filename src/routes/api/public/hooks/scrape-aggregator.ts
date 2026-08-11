@@ -196,13 +196,78 @@ const CHAIN_RX = /badge-company[^>]*>([^<]+)</;
 const CHIP_RX =
   /<(?:a|span)([^>]*class="(time-chip(?:\s[^"]*)?)"[^>]*)>\s*<span class="time-chip-time">([^<]*)<\/span>(?:\s*<span class="time-chip-exp">([^<]*)<\/span>)?/g;
 
+export type MovieMeta = {
+  poster: string | null;
+  genre: string | null;
+  language: string | null;
+  rating: string | null;
+  durationMins: number | null;
+  synopsis: string | null;
+};
+
+const LD_RX = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g;
+const META_DESC_RX = /<meta name="description" content="([^"]*)"/i;
+
+/**
+ * Film metadata comes from the page's schema.org JSON-LD rather than its
+ * markup: it is structured, and far less likely to break on a redesign.
+ */
+export function parseMovieMeta(html: string): MovieMeta {
+  let ld: Record<string, unknown> | null = null;
+  for (const block of html.matchAll(LD_RX)) {
+    try {
+      const parsed = JSON.parse(block[1]!) as Record<string, unknown>;
+      if (parsed && parsed["@type"] === "Movie") {
+        ld = parsed;
+        break;
+      }
+    } catch {
+      // The page also carries a BreadcrumbList block; ignore anything unparseable.
+    }
+  }
+
+  const genre = typeof ld?.["genre"] === "string" ? (ld["genre"] as string).trim() : null;
+
+  // Language is absent from the JSON-LD, but the meta description reliably ends
+  // "<Language> <Genre>." — e.g. "…in all UAE cinemas. Malayalam Crime, Thriller."
+  // so removing the genre leaves the language.
+  let language: string | null = null;
+  const desc = META_DESC_RX.exec(html)?.[1];
+  if (desc) {
+    const tail = /in all UAE cinemas\.\s*(.+?)\.?\s*$/i.exec(decodeEntities(desc))?.[1];
+    if (tail) {
+      const stripped = (genre ? tail.replace(genre, "") : tail).replace(/[.,\s]+$/, "").trim();
+      if (stripped && stripped.length <= 40) language = stripped;
+    }
+  }
+
+  const dur = /^PT(?:(\d+)H)?(?:(\d+)M)?$/.exec(String(ld?.["duration"] ?? ""));
+  const durationMins = dur ? Number(dur[1] ?? 0) * 60 + Number(dur[2] ?? 0) : 0;
+
+  const image = ld?.["image"];
+  const synopsis = ld?.["description"];
+  const rating = ld?.["contentRating"];
+
+  return {
+    poster: typeof image === "string" && image.startsWith("http") ? image : null,
+    genre: genre || null,
+    language,
+    rating: typeof rating === "string" && rating.trim() ? rating.trim() : null,
+    durationMins: durationMins > 0 ? durationMins : null,
+    synopsis:
+      typeof synopsis === "string" && synopsis.trim() ? decodeEntities(synopsis).trim() : null,
+  };
+}
+
 /** Pure: movie-page HTML -> flat screening rows. No network; unit-testable. */
 export function parseMoviePage(html: string): {
   title: string | null;
+  meta: MovieMeta;
   screenings: Screening[];
 } {
   const titleMatch = /<h1[^>]*>([^<]+)<\/h1>/.exec(html);
   const title = titleMatch ? decodeEntities(titleMatch[1]!).trim() : null;
+  const meta = parseMovieMeta(html);
   const screenings: Screening[] = [];
 
   for (const block of html.matchAll(BLOCK_RX)) {
@@ -227,7 +292,7 @@ export function parseMoviePage(html: string): {
       });
     }
   }
-  return { title, screenings };
+  return { title, meta, screenings };
 }
 
 async function fetchText(url: string, timeoutMs = 20_000): Promise<string> {
@@ -320,7 +385,7 @@ async function runScrape(request: Request) {
       continue;
     }
 
-    const { title, screenings } = parseMoviePage(html);
+    const { title, meta, screenings } = parseMoviePage(html);
     if (title && !isPlaceholderTitle(title)) {
       const key0 = titleKey(title);
       for (const s of screenings) {
@@ -343,6 +408,14 @@ async function runScrape(request: Request) {
             // pointing that at cinemauae.com would hand our clicks to them.
             source_url: CHAIN_HOME[s.chainKey] ?? "",
             booking_url: null as string | null,
+            // From the film's JSON-LD. Same values for every chain showing it,
+            // which is correct — these describe the film, not the screening.
+            poster_url: meta.poster,
+            genre: meta.genre,
+            language: meta.language,
+            rating: meta.rating,
+            duration_mins: meta.durationMins,
+            synopsis: meta.synopsis,
             is_active: true,
             last_seen_at: runStartedAt,
           };
