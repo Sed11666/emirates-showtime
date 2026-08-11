@@ -198,6 +198,12 @@ const CHIP_RX =
 
 export type MovieMeta = {
   poster: string | null;
+  /**
+   * Their poster filenames are IMDb ids (…/posters_original/tt22084616.jpg).
+   * Worth keeping as a first-class field: it is a stable cross-source join key
+   * that lets us resolve our own artwork instead of hotlinking theirs forever.
+   */
+  imdbId: string | null;
   genre: string | null;
   language: string | null;
   rating: string | null;
@@ -248,8 +254,11 @@ export function parseMovieMeta(html: string): MovieMeta {
   const synopsis = ld?.["description"];
   const rating = ld?.["contentRating"];
 
+  const poster = typeof image === "string" && image.startsWith("http") ? image : null;
+
   return {
-    poster: typeof image === "string" && image.startsWith("http") ? image : null,
+    poster,
+    imdbId: poster ? (/(tt\d{6,})/.exec(poster)?.[1] ?? null) : null,
     genre: genre || null,
     language,
     rating: typeof rating === "string" && rating.trim() ? rating.trim() : null,
@@ -411,6 +420,7 @@ async function runScrape(request: Request) {
             // From the film's JSON-LD. Same values for every chain showing it,
             // which is correct — these describe the film, not the screening.
             poster_url: meta.poster,
+            imdb_id: meta.imdbId,
             genre: meta.genre,
             language: meta.language,
             rating: meta.rating,
