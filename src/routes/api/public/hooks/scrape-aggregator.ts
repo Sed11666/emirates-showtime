@@ -49,6 +49,25 @@ const CHAIN_KEYS: Record<string, string> = {
   GALAXY: "galaxy",
 };
 
+/**
+ * Chain-level fallback link. The UI resolves a booking target as
+ * `film.booking_url ?? film.source_url` (see lib/showtimes.ts), so BOTH of
+ * those must point at the chain — never at the aggregator we sourced from, or
+ * every showtime without its own per-screening link sends our users to a
+ * competitor's page.
+ */
+const CHAIN_HOME: Record<string, string> = {
+  vox: "https://uae.voxcinemas.com/",
+  reel: "https://reelcinemas.com/en-ae/",
+  novo: "https://uae.novocinemas.com/",
+  roxy: "https://www.theroxycinemas.com/",
+  star: "https://www.starcinemas.ae/",
+  cineroyal: "https://cineroyal.ae/",
+  cinemacity: "https://booking.cinemacity.ae/",
+  cinepolis: "https://cinepolisgulf.com/",
+  galaxy: "https://galaxycinemas.ae/",
+};
+
 const CITY_NAMES: Record<string, string> = {
   dubai: "Dubai",
   "abu-dhabi": "Abu Dhabi",
@@ -319,7 +338,11 @@ async function runScrape(request: Request) {
             venues: [] as string[],
             formats: [] as string[],
             showtimes: [] as Array<Record<string, string>>,
-            source_url: page,
+            // Deliberately the chain's own site, not `page`. The UI falls back
+            // to source_url when a screening has no link of its own, and
+            // pointing that at cinemauae.com would hand our clicks to them.
+            source_url: CHAIN_HOME[s.chainKey] ?? "",
+            booking_url: null as string | null,
             is_active: true,
             last_seen_at: runStartedAt,
           };
@@ -383,6 +406,15 @@ async function runScrape(request: Request) {
       const link = prior.get(`${st["venue"] ?? ""}|${st["time"] ?? ""}`.toLowerCase());
       if (link) st["booking_url"] = link;
     }
+  }
+
+  // Film-level fallback: prefer a real per-screening link from this film, else
+  // the chain's home page. Never left null, or the UI drops through to
+  // source_url and, before this, to the aggregator.
+  for (const row of batch) {
+    const times = row["showtimes"] as Array<Record<string, string>>;
+    const firstLink = times.find((s) => s["booking_url"])?.["booking_url"];
+    row["booking_url"] = firstLink ?? CHAIN_HOME[String(row["cinema"])] ?? null;
   }
 
   // Upsert and retirement both happen inside the SECURITY DEFINER function.
