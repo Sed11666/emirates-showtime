@@ -304,6 +304,54 @@ export function parseMoviePage(html: string): {
   return { title, meta, screenings };
 }
 
+type CacheEntry = { etag: string | null; last_modified: string | null; content_hash: string | null };
+
+type FetchResult =
+  | { status: "unchanged" }
+  | { status: "ok"; html: string; etag: string | null; lastModified: string | null };
+
+/**
+ * Conditional GET. We re-read the same ~127 pages continuously, and almost
+ * none of them change between passes, so replaying the stored validators lets
+ * their server answer 304 with no body: nothing to download, nothing to parse,
+ * and a fraction of the load on a small independent site.
+ */
+async function fetchConditional(
+  url: string,
+  cached: CacheEntry | undefined,
+  timeoutMs = 20_000,
+): Promise<FetchResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const headers: Record<string, string> = {
+      "user-agent": UA,
+      accept: "text/html,application/xhtml+xml",
+    };
+    if (cached?.etag) headers["if-none-match"] = cached.etag;
+    if (cached?.last_modified) headers["if-modified-since"] = cached.last_modified;
+
+    const res = await fetch(url, { headers, signal: controller.signal });
+    if (res.status === 304) return { status: "unchanged" };
+    if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+    return {
+      status: "ok",
+      html: await res.text(),
+      etag: res.headers.get("etag"),
+      lastModified: res.headers.get("last-modified"),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 async function fetchText(url: string, timeoutMs = 20_000): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -377,16 +425,36 @@ async function runScrape(request: Request) {
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0) % Math.max(1, pages.length);
   const ordered = [...pages.slice(offset), ...pages.slice(0, offset)];
 
+  // Validators and last-known content hashes for the pages we are about to
+  // walk, so unchanged pages cost a 304 and nothing else.
+  const cache = new Map<string, CacheEntry & { film_keys: string[] }>();
+  {
+    const window = ordered.slice(0, 120);
+    const { data: cached } = await db.rpc("page_cache_get", {
+      p_token: INGEST_TOKEN,
+      p_urls: window,
+    });
+    for (const row of (cached ?? []) as Array<CacheEntry & { url: string; film_keys: string[] }>) {
+      cache.set(row.url, row);
+    }
+  }
+
   const rows = new Map<string, Record<string, unknown>>();
   const touchedChains = new Set<string>();
+  const cacheWrites: Array<Record<string, unknown>> = [];
+  const keepAlive: string[] = [];
   let visited = 0;
   let failed = 0;
+  let notModified = 0;
+  let unchangedContent = 0;
 
   for (const page of ordered) {
     if (Date.now() - startedAt > BUDGET_MS) break;
-    let html: string;
+    const cachedEntry = cache.get(page);
+
+    let fetched: FetchResult;
     try {
-      html = await fetchText(page);
+      fetched = await fetchConditional(page, cachedEntry);
       visited += 1;
     } catch {
       failed += 1;
@@ -394,7 +462,38 @@ async function runScrape(request: Request) {
       continue;
     }
 
-    const { title, meta, screenings } = parseMoviePage(html);
+    // 304: nothing downloaded, nothing to parse. Keep the films this page is
+    // known to produce alive so retirement does not mistake quiet for gone.
+    if (fetched.status === "unchanged") {
+      notModified += 1;
+      keepAlive.push(...(cachedEntry?.film_keys ?? []));
+      cacheWrites.push({ url: page, unchanged: true });
+      await sleep(PAGE_DELAY_MS);
+      continue;
+    }
+
+    const html = fetched.html;
+    const parsed = parseMoviePage(html);
+    const { title, meta, screenings } = parsed;
+
+    // Some servers omit validators. Hash the parsed result — not the raw HTML,
+    // which carries per-request noise — and skip the write when it matches.
+    const contentHash = await sha256(JSON.stringify({ title, meta, screenings }));
+    if (cachedEntry?.content_hash && cachedEntry.content_hash === contentHash) {
+      unchangedContent += 1;
+      keepAlive.push(...(cachedEntry.film_keys ?? []));
+      cacheWrites.push({
+        url: page,
+        etag: fetched.etag,
+        last_modified: fetched.lastModified,
+        content_hash: contentHash,
+        unchanged: true,
+      });
+      await sleep(PAGE_DELAY_MS);
+      continue;
+    }
+
+    const pageKeys: string[] = [];
     if (title && !isPlaceholderTitle(title)) {
       const key0 = titleKey(title);
       for (const s of screenings) {
@@ -402,6 +501,7 @@ async function runScrape(request: Request) {
         touchedChains.add(s.chainKey);
         const city = CITY_NAMES[s.citySlug] ?? "";
         const key = `${s.chainKey}|${key0}|${city}`;
+        if (!pageKeys.includes(key)) pageKeys.push(key);
         let row = rows.get(key);
         if (!row) {
           row = {
@@ -448,15 +548,50 @@ async function runScrape(request: Request) {
         }
       }
     }
+
+    cacheWrites.push({
+      url: page,
+      etag: fetched.etag,
+      last_modified: fetched.lastModified,
+      content_hash: contentHash,
+      film_keys: pageKeys,
+      unchanged: false,
+    });
     await sleep(PAGE_DELAY_MS);
   }
 
   const complete = visited + failed >= ordered.length;
   const batch = [...rows.values()];
+
+  // Persist validators, and refresh last_seen_at for films whose pages were
+  // unchanged — skipping their upsert must not look like they stopped showing.
+  const flushSideEffects = async () => {
+    if (cacheWrites.length > 0) {
+      await db.rpc("page_cache_put", { p_token: INGEST_TOKEN, p_rows: cacheWrites });
+    }
+    if (keepAlive.length > 0) {
+      await db.rpc("touch_films", { p_token: INGEST_TOKEN, p_keys: [...new Set(keepAlive)] });
+    }
+  };
+
   if (batch.length === 0) {
+    await flushSideEffects();
+    const nothingChanged = notModified + unchangedContent > 0;
+    // An all-unchanged pass is the steady state, not a failure.
     return Response.json(
-      { ok: false, error: `no rows built from ${visited} page(s)`, visited, failed },
-      { status: 500 },
+      nothingChanged
+        ? {
+            ok: true,
+            ranAt: new Date().toISOString(),
+            visited,
+            notModified,
+            unchangedContent,
+            filmsKeptAlive: new Set(keepAlive).size,
+            upserted: 0,
+            note: "no changes on any page visited",
+          }
+        : { ok: false, error: `no rows built from ${visited} page(s)`, visited, failed },
+      { status: nothingChanged ? 200 : 500 },
     );
   }
 
@@ -515,6 +650,10 @@ async function runScrape(request: Request) {
     );
   }
 
+  // Only record validators after a successful ingest: caching a hash for data
+  // we failed to store would make the next run skip it as "already done".
+  await flushSideEffects();
+
   const screenings = batch.reduce((n, r) => n + (r["showtimes"] as unknown[]).length, 0);
   const withLinks = batch.reduce(
     (n, r) =>
@@ -529,6 +668,9 @@ async function runScrape(request: Request) {
     pagesTotal: ordered.length,
     visited,
     failed,
+    notModified,
+    unchangedContent,
+    filmsKeptAlive: new Set(keepAlive).size,
     complete,
     nextOffset: complete ? 0 : (offset + visited) % ordered.length,
     chains: [...touchedChains],
