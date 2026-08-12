@@ -604,22 +604,26 @@ async function runScrape(request: Request) {
 
   if (batch.length === 0) {
     await flushSideEffects();
-    const nothingChanged = notModified + unchangedContent > 0;
-    // An all-unchanged pass is the steady state, not a failure.
+    // Zero rows is the normal outcome for most of the sitemap: only ~46 of its
+    // 132 pages are currently-showing films, the rest are coming-soon titles
+    // with no screenings at all. An all-unchanged pass is likewise the steady
+    // state. A run only failed if it could not read anything.
+    const readSomething = visited > failed;
     return Response.json(
-      nothingChanged
-        ? {
-            ok: true,
-            ranAt: new Date().toISOString(),
-            visited,
-            notModified,
-            unchangedContent,
-            filmsKeptAlive: new Set(keepAlive).size,
-            upserted: 0,
-            note: "no changes on any page visited",
-          }
-        : { ok: false, error: `no rows built from ${visited} page(s)`, visited, failed },
-      { status: nothingChanged ? 200 : 500 },
+      {
+        ok: readSomething,
+        ranAt: new Date().toISOString(),
+        visited,
+        failed,
+        notModified,
+        unchangedContent,
+        filmsKeptAlive: new Set(keepAlive).size,
+        upserted: 0,
+        note: readSomething
+          ? "nothing to write: pages unchanged or carrying no screenings"
+          : `could not read any of ${visited} page(s)`,
+      },
+      { status: readSomething ? 200 : 500 },
     );
   }
 
