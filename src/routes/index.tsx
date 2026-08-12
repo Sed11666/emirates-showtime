@@ -5,29 +5,28 @@
  *  1. Hero slider — top 4 popular scraped films, auto-advancing.
  *  2. Now Showing — de-duplicated film grid (mergeFilmsByTitle) with format
  *     badges (2D/3D/IMAX/4DX) so a title appears once, not once per chain.
- *  3. Today's Showtimes — single-column board grouped by movie, each row a
- *     venue with its time chips (showtimesByVenue, Dubai "today").
- *  4. Cinema chains + newsletter footer.
+ *  3. Cinema chains + newsletter footer.
  *
  * All data is live scraped data from `cinema_films`; nothing is mocked.
- * Clicking a card opens /movie/$slug where cinemas are sorted nearest-first.
+ *
+ * Discovery only: there are no showtimes or booking actions on this page. A
+ * per-film showtime board used to sit between Now Showing and the chains; it
+ * was removed deliberately. Cards route to /cinemas, which owns times and
+ * booking, so keep this page to artwork and titles.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, ChevronRight, Clock, Film, MapPin, Star } from "lucide-react";
+import { Bell, ChevronRight, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
 import { Reveal } from "@/components/reveal";
-import { toDayKey } from "@/lib/days";
 import {
   fetchCinemaFilms,
   filmFormats,
   filmSlug,
   mergeFilmsByTitle,
-  showtimeList,
-  showtimesByVenue,
   CINEMAS,
   CINEMA_LABELS,
   type MergedFilm,
@@ -64,8 +63,6 @@ function popularityScore(film: MergedFilm) {
 }
 
 function Home() {
-  const today = toDayKey(new Date());
-
   const { data: films } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
 
   const merged = useMemo(
@@ -84,19 +81,6 @@ function Home() {
   const rest = useMemo<PosterItem[]>(
     () => merged.filter((f) => !featuredIds.has(f.id)).map(filmToPoster),
     [merged],
-  );
-
-  const showtimeBoard = useMemo(
-    () =>
-      merged
-        .filter((f) => showtimeList(f.showtimes).length > 0)
-        .slice(0, 6)
-        .map((film) => ({
-          film,
-          venues: showtimesByVenue(film.showtimes, today, film.venues[0]),
-        }))
-        .filter((row) => row.venues.length > 0),
-    [merged, today],
   );
 
   return (
@@ -119,78 +103,6 @@ function Home() {
           </div>
         ) : (
           <p className="text-muted-foreground">Showtimes are updating…</p>
-        )}
-      </SectionShell>
-
-      {/* ── Today's showtimes ───────────────────────────────── */}
-      <SectionShell
-        eyebrow="Today's schedule"
-        title="Today's Showtimes"
-        subtitle="Quick look at what's playing tonight"
-      >
-        {showtimeBoard.length === 0 ? (
-          <p className="text-muted-foreground">
-            Showtimes are being refreshed — check back in a few minutes.
-          </p>
-        ) : (
-          <div className="space-y-5">
-
-            {showtimeBoard.map(({ film, venues }) => (
-              <div
-                key={film.id}
-                className="overflow-hidden rounded-2xl border border-border/60 bg-card/40"
-              >
-                <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <Film className="size-4 shrink-0 text-gold" />
-                    <p className="truncate font-display text-base font-bold uppercase tracking-wide">
-                      {film.title}
-                    </p>
-                    {film.rating ? (
-                      <span className="shrink-0 rounded-md border border-gold/50 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
-                        {film.rating}
-                      </span>
-                    ) : null}
-                  </div>
-                  <Link
-                    to="/movie/$slug"
-                    params={{ slug: filmSlug(film.title) }}
-                    className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
-                  >
-                    All times <ChevronRight className="size-3.5" />
-                  </Link>
-
-                </div>
-
-                <div className="divide-y divide-border/50">
-                  {venues.map((venue) => (
-                    <div
-                      key={venue.venue}
-                      className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-                    >
-                      <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-                        <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{venue.venue}</span>
-                      </p>
-                      <div className="flex flex-wrap gap-2 sm:justify-end">
-                        {venue.times.map((time) => (
-                          <Link
-                            key={time}
-                            to="/movie/$slug"
-                            params={{ slug: filmSlug(film.title) }}
-                            className="rounded-md border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-medium transition-colors hover:border-gold/60 hover:text-gold"
-                          >
-
-                            {time}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
         )}
       </SectionShell>
 
