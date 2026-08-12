@@ -451,10 +451,15 @@ async function runScrape(request: Request) {
   for (const page of ordered) {
     if (Date.now() - startedAt > BUDGET_MS) break;
     const cachedEntry = cache.get(page);
+    // A cache entry with no film_keys cannot keep its films alive when we skip
+    // the upsert, so honouring it would let the 48h retirement quietly delete a
+    // healthy catalogue. Treat it as a miss: re-parsing repopulates the keys and
+    // the entry self-heals on this pass.
+    const usable = (cachedEntry?.film_keys?.length ?? 0) > 0 ? cachedEntry : undefined;
 
     let fetched: FetchResult;
     try {
-      fetched = await fetchConditional(page, cachedEntry);
+      fetched = await fetchConditional(page, usable);
       visited += 1;
     } catch {
       failed += 1;
@@ -466,7 +471,7 @@ async function runScrape(request: Request) {
     // known to produce alive so retirement does not mistake quiet for gone.
     if (fetched.status === "unchanged") {
       notModified += 1;
-      keepAlive.push(...(cachedEntry?.film_keys ?? []));
+      keepAlive.push(...(usable?.film_keys ?? []));
       cacheWrites.push({ url: page, unchanged: true });
       await sleep(PAGE_DELAY_MS);
       continue;
@@ -479,9 +484,9 @@ async function runScrape(request: Request) {
     // Some servers omit validators. Hash the parsed result — not the raw HTML,
     // which carries per-request noise — and skip the write when it matches.
     const contentHash = await sha256(JSON.stringify({ title, meta, screenings }));
-    if (cachedEntry?.content_hash && cachedEntry.content_hash === contentHash) {
+    if (usable?.content_hash && usable.content_hash === contentHash) {
       unchangedContent += 1;
-      keepAlive.push(...(cachedEntry.film_keys ?? []));
+      keepAlive.push(...(usable.film_keys ?? []));
       cacheWrites.push({
         url: page,
         etag: fetched.etag,
