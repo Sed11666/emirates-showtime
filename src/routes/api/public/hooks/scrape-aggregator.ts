@@ -85,13 +85,17 @@ const PAGE_DELAY_MS = 900;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function dubaiToday() {
+function dubaiDayOf(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Dubai",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(date);
+}
+
+function dubaiToday() {
+  return dubaiDayOf(new Date());
 }
 
 /** Must stay in sync with scrape-cinemas.ts and lib/cinemas.ts. */
@@ -304,7 +308,12 @@ export function parseMoviePage(html: string): {
   return { title, meta, screenings };
 }
 
-type CacheEntry = { etag: string | null; last_modified: string | null; content_hash: string | null };
+type CacheEntry = {
+  etag: string | null;
+  last_modified: string | null;
+  content_hash: string | null;
+  fetched_at: string | null;
+};
 
 type FetchResult =
   | { status: "unchanged" }
@@ -451,11 +460,20 @@ async function runScrape(request: Request) {
   for (const page of ordered) {
     if (Date.now() - startedAt > BUDGET_MS) break;
     const cachedEntry = cache.get(page);
-    // A cache entry with no film_keys cannot keep its films alive when we skip
-    // the upsert, so honouring it would let the 48h retirement quietly delete a
-    // healthy catalogue. Treat it as a miss: re-parsing repopulates the keys and
-    // the entry self-heals on this pass.
-    const usable = (cachedEntry?.film_keys?.length ?? 0) > 0 ? cachedEntry : undefined;
+    // An entry is only trustworthy if it can do both jobs a skip requires.
+    //
+    // film_keys: without them we cannot refresh last_seen_at on a skip, and the
+    // 48h retirement would quietly delete a healthy catalogue.
+    //
+    // Same day: we stamp screenings with the day we scraped them, so an entry
+    // from yesterday must not be allowed to answer 304 — the page can be
+    // genuinely unchanged while its stored dates are stale, which is how the
+    // board ended up serving yesterday's schedule.
+    const cachedDay = cachedEntry?.fetched_at
+      ? dubaiDayOf(new Date(cachedEntry.fetched_at))
+      : null;
+    const usable =
+      (cachedEntry?.film_keys?.length ?? 0) > 0 && cachedDay === today ? cachedEntry : undefined;
 
     let fetched: FetchResult;
     try {
