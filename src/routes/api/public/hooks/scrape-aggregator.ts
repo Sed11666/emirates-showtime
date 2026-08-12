@@ -483,7 +483,12 @@ async function runScrape(request: Request) {
 
     // Some servers omit validators. Hash the parsed result — not the raw HTML,
     // which carries per-request noise — and skip the write when it matches.
-    const contentHash = await sha256(JSON.stringify({ title, meta, screenings }));
+    //
+    // `today` is part of the hash on purpose. We stamp each screening with the
+    // day we scraped it, so an unchanged page must still be rewritten once the
+    // date rolls over; without this the stored dates froze at whatever day the
+    // page last changed and the whole board silently served stale dates.
+    const contentHash = await sha256(JSON.stringify({ day: today, title, meta, screenings }));
     if (usable?.content_hash && usable.content_hash === contentHash) {
       unchangedContent += 1;
       keepAlive.push(...(usable.film_keys ?? []));
