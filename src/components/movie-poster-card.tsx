@@ -8,7 +8,7 @@
 import { Clock, Star, Ticket } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { MergedFilm } from "@/lib/cinemas";
-import { filmFormats, filmSlug } from "@/lib/cinemas";
+import { filmFormats } from "@/lib/cinemas";
 
 
 export type PosterItem = {
@@ -38,8 +38,11 @@ export function filmToPoster(film: MergedFilm): PosterItem {
 
 /**
  * Poster-first movie card: artwork fills the frame, details slide up out of a
- * dark gradient on hover with a red booking CTA that opens the cinema page
- * with nearby screens listed first.
+ * dark gradient on hover.
+ *
+ * The whole card routes to /cinemas. The homepage is deliberately discovery
+ * only — booking happens in the Cinemas section — so this card must not offer
+ * a booking action or link straight to a chain.
  */
 export function MoviePosterCard({
   item,
@@ -59,9 +62,8 @@ export function MoviePosterCard({
       : "w-[10.5rem] sm:w-[12rem]";
   return (
     <Link
-      to="/movie/$slug"
-      params={{ slug: filmSlug(item.title) }}
-
+      to="/cinemas"
+      aria-label={`${item.title} — see showtimes in the Cinemas section`}
       className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:gold-glow ${width} ${className}`}
     >
 
@@ -113,8 +115,10 @@ export function MoviePosterCard({
                   </span>
                 ) : null}
               </div>
+              {/* Not a booking CTA: it must describe where the card actually
+                  goes, which is the Cinemas section, not a checkout. */}
               <span className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-all group-hover:brightness-110">
-                <Ticket className="size-3.5" /> Book tickets
+                <Ticket className="size-3.5" /> See showtimes
               </span>
             </div>
           </div>
