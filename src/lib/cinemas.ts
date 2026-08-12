@@ -17,7 +17,7 @@
  * lib/showtimes.ts, lib/search.ts.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { parseDayKey } from "@/lib/days";
+import { isScreeningOver, parseDayKey } from "@/lib/days";
 
 export type CinemaKey = "vox" | "reel" | "novo" | "roxy";
 
@@ -93,7 +93,11 @@ export function showtimeList(value: unknown): string[] {
  * no date information keep their full schedule.
  */
 export function showtimesForDay(value: unknown, dayKey: string): string[] {
-  const parsed = parseShowtimes(value);
+  // Screenings that already started are dropped first, so a film whose last
+  // show has begun stops counting as "playing today" for the day filter.
+  const parsed = parseShowtimes(value).filter(
+    (e) => !isScreeningOver(e.text, e.date ?? null, dayKey),
+  );
   if (dayKey === "any") return parsed.map((e) => e.text).slice(0, 12);
   // Undated entries always count; dated ones must match the selected day.
   const matching = parsed.filter((e) => !e.date || e.date === dayKey);
@@ -138,6 +142,7 @@ export function showtimesByVenue(
       }
       if (!time) continue;
       if (filterDay && dayKey !== "any" && date && date !== dayKey) continue;
+      if (isScreeningOver(time, date, dayKey)) continue;
 
       const list = groups.get(venue) ?? [];
       if (!list.includes(time)) list.push(time);

@@ -9,7 +9,7 @@
  *
  * Booking link fallback order: per-screening URL -> venue film URL -> film source URL.
  */
-import { parseDayKey } from "@/lib/days";
+import { isScreeningOver, parseDayKey, timeToMinutes } from "@/lib/days";
 import type { CinemaFilm } from "@/lib/cinemas";
 import { distanceKm, VENUES, type Coords } from "@/lib/venues";
 
@@ -30,19 +30,9 @@ export type VenueBlock = {
   screenings: Screening[];
 };
 
-/** "7:45pm", "07:45 PM" and "19:45" all become minutes past midnight. */
-export function timeToMinutes(raw: string): number {
-  const match = raw.trim().match(/^(\d{1,2})[:.](\d{2})\s*([ap]\.?m\.?)?$/i);
-  if (!match) return Number.MAX_SAFE_INTEGER;
-  let hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  const suffix = match[3]?.toLowerCase();
-  if (suffix?.startsWith("p") && hours < 12) hours += 12;
-  if (suffix?.startsWith("a") && hours === 12) hours = 0;
-  // Past-midnight screenings belong at the end of the evening.
-  if (hours < 5) hours += 24;
-  return hours * 60 + minutes;
-}
+// Moved to lib/days.ts so the read layer and the "already started" filter share
+// one definition of what a clock time means. Re-exported for existing callers.
+export { timeToMinutes } from "@/lib/days";
 
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -105,6 +95,9 @@ export function venueBlocks(films: CinemaFilm[], dayKey: string, coords: Coords 
         }
         if (!time) continue;
         if (filterDay && dayKey !== "any" && date && date !== dayKey) continue;
+        // Drop screenings that already started: nobody can book a seat for a
+        // film 40 minutes in, and listing them makes the board look wrong.
+        if (isScreeningOver(time, date, dayKey)) continue;
 
         const key = `${film.cinema}|${normalize(venue)}`;
         const block =
