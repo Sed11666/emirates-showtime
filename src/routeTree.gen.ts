@@ -18,6 +18,8 @@ import { Route as MoviesRouteImport } from './routes/movies'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as MovieSlugRouteImport } from './routes/movie.$slug'
+import { Route as ApiPublicHooksResolvePostersRouteImport } from './routes/api/public/hooks/resolve-posters'
+import { Route as ApiPublicHooksScrapeAggregatorRouteImport } from './routes/api/public/hooks/scrape-aggregator'
 import { Route as ApiPublicHooksScrapeCinemasRouteImport } from './routes/api/public/hooks/scrape-cinemas'
 import { Route as ApiPublicHooksScrapeEventsRouteImport } from './routes/api/public/hooks/scrape-events'
 
@@ -66,6 +68,18 @@ const MovieSlugRoute = MovieSlugRouteImport.update({
   path: '/movie/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksResolvePostersRoute =
+  ApiPublicHooksResolvePostersRouteImport.update({
+    id: '/api/public/hooks/resolve-posters',
+    path: '/api/public/hooks/resolve-posters',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksScrapeAggregatorRoute =
+  ApiPublicHooksScrapeAggregatorRouteImport.update({
+    id: '/api/public/hooks/scrape-aggregator',
+    path: '/api/public/hooks/scrape-aggregator',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksScrapeCinemasRoute =
   ApiPublicHooksScrapeCinemasRouteImport.update({
     id: '/api/public/hooks/scrape-cinemas',
@@ -89,6 +103,8 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
+  '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
+  '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
 }
@@ -102,6 +118,8 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
+  '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
+  '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
 }
@@ -116,6 +134,8 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
+  '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
+  '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
 }
@@ -131,6 +151,8 @@ export interface FileRouteTypes {
     | '/search'
     | '/listing/$id'
     | '/movie/$slug'
+    | '/api/public/hooks/resolve-posters'
+    | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
   fileRoutesByTo: FileRoutesByTo
@@ -144,6 +166,8 @@ export interface FileRouteTypes {
     | '/search'
     | '/listing/$id'
     | '/movie/$slug'
+    | '/api/public/hooks/resolve-posters'
+    | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
   id:
@@ -157,6 +181,8 @@ export interface FileRouteTypes {
     | '/search'
     | '/listing/$id'
     | '/movie/$slug'
+    | '/api/public/hooks/resolve-posters'
+    | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
   fileRoutesById: FileRoutesById
@@ -171,6 +197,8 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   ListingIdRoute: typeof ListingIdRoute
   MovieSlugRoute: typeof MovieSlugRoute
+  ApiPublicHooksResolvePostersRoute: typeof ApiPublicHooksResolvePostersRoute
+  ApiPublicHooksScrapeAggregatorRoute: typeof ApiPublicHooksScrapeAggregatorRoute
   ApiPublicHooksScrapeCinemasRoute: typeof ApiPublicHooksScrapeCinemasRoute
   ApiPublicHooksScrapeEventsRoute: typeof ApiPublicHooksScrapeEventsRoute
 }
@@ -240,6 +268,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MovieSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/resolve-posters': {
+      id: '/api/public/hooks/resolve-posters'
+      path: '/api/public/hooks/resolve-posters'
+      fullPath: '/api/public/hooks/resolve-posters'
+      preLoaderRoute: typeof ApiPublicHooksResolvePostersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/scrape-aggregator': {
+      id: '/api/public/hooks/scrape-aggregator'
+      path: '/api/public/hooks/scrape-aggregator'
+      fullPath: '/api/public/hooks/scrape-aggregator'
+      preLoaderRoute: typeof ApiPublicHooksScrapeAggregatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/scrape-cinemas': {
       id: '/api/public/hooks/scrape-cinemas'
       path: '/api/public/hooks/scrape-cinemas'
@@ -267,9 +309,21 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   ListingIdRoute: ListingIdRoute,
   MovieSlugRoute: MovieSlugRoute,
+  ApiPublicHooksResolvePostersRoute: ApiPublicHooksResolvePostersRoute,
+  ApiPublicHooksScrapeAggregatorRoute: ApiPublicHooksScrapeAggregatorRoute,
   ApiPublicHooksScrapeCinemasRoute: ApiPublicHooksScrapeCinemasRoute,
   ApiPublicHooksScrapeEventsRoute: ApiPublicHooksScrapeEventsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
