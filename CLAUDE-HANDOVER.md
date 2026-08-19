@@ -267,8 +267,10 @@ cinemas scraper, and `src/lib/cinemas.ts`.
 ```
 
 Per-screening (exact show) booking links work for **VOX, Star, Cinemacity**.
-**Novo and Cine Royal** only reach the film's page — that's cinemauae's ceiling,
-not a parser bug. Reel's booking sits behind a sign-in wall.
+**Novo and Cine Royal** only reach the film's page. For **Cine Royal that is
+permanent** — their booking carries the screening in session state, not in a
+URL, so no per-show link exists to find (see §11.1). Novo is still open.
+Reel's booking sits behind a sign-in wall.
 
 Latest commits:
 ```
@@ -285,13 +287,41 @@ f5fac72 Homepage movie cards route to Cinemas, not to booking
 
 ## 11. Outstanding work
 
-1. **Cine Royal deep links** — investigation was in progress and paused. Found:
-   their booking URL is `https://cineroyal.ae/home/chooseSeats/{prettyUrlId}`,
-   built by `loadSteatingLayout(obj.prettyUrlId)`. Sessions come from
-   `POST https://cineroyal.ae/home/getShowTimesByFilmAndShowDate` with JSON body
-   `{prettyUrl, showdate, cinemaRefId, filmName, screenType}`. It's an AngularJS
-   app; CORS blocks browsers but **not** server-side calls. Next step: call that
-   endpoint from the server and map sessions to `prettyUrlId`.
+1. **Cine Royal deep links — CLOSED 2026-08-19: not possible. Do not reopen.**
+   The earlier note here assumed `prettyUrlId` was a per-screening id. It is not
+   — it is the *film* slug, byte-identical for every showtime of that film, and
+   `showId` comes back as `0`. Verified against their live API.
+
+   Their booking flow carries the chosen screening in **server-side session
+   state, never in a URL**. `proceedToSeatSelection(show)` POSTs the whole show
+   object to `addUserDataToSession`, and only then calls
+   `loadSteatingLayout(obj.prettyUrlId)`, which is just
+   `document.location.href = "/home/chooseSeats/" + filmSlug`.
+
+   Three independent confirmations, all reproducible:
+   - `POST /home/getShowTimesByFilmAndShowDate` (body
+     `{prettyUrl, showdate: "DD-MMM-YYYY", cinemaRefId, filmName, screenType}`)
+     works fine server-side and returns every screening — but each carries the
+     same `prettyUrlId` and `showId: 0`. There is no per-show identifier.
+   - `GET /home/chooseSeats/{slug}` with no session **302s to `/home`**, so it
+     is not a linkable destination even at film level.
+   - The app reads **no URL parameters at all** — no `$location.search()`, no
+     `$routeParams`, no `URLSearchParams`. Nothing can be passed in by link.
+
+   There is no URL we can construct that lands a user on a specific screening,
+   because Cine Royal's own site does not have one. The current film-level
+   `/home/chooseScreen/{slug}` link is already the best target that exists.
+   This is a ceiling in their product, not a gap in our parser.
+
+   Still genuinely available from that endpoint, if we ever want it: real screen
+   metadata per screening — `screenType` (STANDARD / ROYAL KIDS / ROYAL CLASS),
+   `screen` (e.g. CINEMA 4), `availableSeats`, and `showTime` as a true UTC
+   instant. We currently store `format: "Regular"` for every Cine Royal
+   screening because that is all cinemauae gives us. Useful, but it is showtime
+   enrichment, not deep linking.
+
+   Venue → `cinemaRefId`: Khalidiyah Mall 2, Dalma Mall 101, Al Dhannah Mall
+   200, Deerfields Mall 300, WTC Mall Abu Dhabi 10000001.
 2. **Novo deep links** — harder. Next.js, ships no session ids server-side.
    Booking is a JS click handler. Would need their `backend.novocinemas.com` API.
 3. **TMDB posters** — posters currently hotlink `cinema.aptrixx.com`. Filenames
