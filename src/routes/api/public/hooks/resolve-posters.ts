@@ -32,9 +32,29 @@ const REQUEST_DELAY_MS = 120; // TMDB allows ~50 req/s; nowhere near it.
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * TMDB issues two credentials that look nothing alike and are easy to confuse:
+ * a v3 "API Key" (32 hex chars, sent as `?api_key=`) and a v4 "API Read Access
+ * Token" (a JWT, sent as `Authorization: Bearer`). Both authenticate /3/find.
+ * Copying the wrong one out of the TMDB dashboard is the single likeliest way
+ * to configure this route and get nothing but silent 401s, so accept either
+ * rather than making whoever sets it up care which they grabbed.
+ */
+function tmdbAuth(credential: string): { query: string; headers: Record<string, string> } {
+  const headers: Record<string, string> = { accept: "application/json" };
+  // A v4 token is a JWT: "ey..." plus three dot-separated segments. A v3 key is
+  // 32 hex chars and contains no dots, so this cannot confuse the two.
+  const trimmed = credential.trim();
+  if (trimmed.startsWith("ey") && trimmed.split(".").length === 3) {
+    return { query: "", headers: { ...headers, authorization: `Bearer ${trimmed}` } };
+  }
+  return { query: `&api_key=${encodeURIComponent(trimmed)}`, headers };
+}
+
 async function tmdbPoster(imdbId: string, apiKey: string): Promise<string | null> {
-  const url = `${TMDB_FIND}/${encodeURIComponent(imdbId)}?external_source=imdb_id&api_key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url, { headers: { accept: "application/json" } });
+  const { query, headers } = tmdbAuth(apiKey);
+  const url = `${TMDB_FIND}/${encodeURIComponent(imdbId)}?external_source=imdb_id${query}`;
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`TMDB ${res.status}`);
   const data = (await res.json()) as {
     movie_results?: Array<{ poster_path?: string | null }>;
