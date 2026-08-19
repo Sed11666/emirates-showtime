@@ -40,17 +40,17 @@ export const Route = createFileRoute("/cinemas")({
   head: () => ({
 
     meta: [
-      { title: "UAE Cinema Showtimes — VOX, Reel, Novo & Roxy | ShowSouk" },
+      { title: "UAE Cinema Showtimes — VOX, Star, Novo & More | ShowSouk" },
       {
         name: "description",
         content:
-          "Filtered now-showing listings from VOX, Reel, Novo and Roxy cinemas across the UAE, refreshed automatically every three hours.",
+          "Filtered now-showing listings from seven UAE cinema chains — VOX, Star, Novo, Cinema City, Cine Royal, Reel and Roxy — refreshed automatically every 30 minutes.",
       },
-      { property: "og:title", content: "UAE Cinema Showtimes — VOX, Reel, Novo & Roxy" },
+      { property: "og:title", content: "UAE Cinema Showtimes — VOX, Star, Novo & More" },
       {
         property: "og:description",
         content:
-          "Browse films now showing at VOX, Reel, Novo and Roxy cinemas in Dubai, Abu Dhabi and across the Emirates.",
+          "Browse films now showing at VOX, Star, Novo, Cinema City, Cine Royal, Reel and Roxy in Dubai, Abu Dhabi and across the Emirates.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/cinemas" },
@@ -185,8 +185,9 @@ function CinemasPage() {
           <p className="text-sm uppercase tracking-[0.2em] text-primary">Now showing</p>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">UAE Cinema Showtimes</h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Live listings pulled from VOX, Reel, Novo and Roxy. The scraper runs automatically every
-            three hours and only updates what has changed.
+            Live listings pulled from seven UAE cinema chains — VOX, Star, Novo, Cinema City, Cine
+            Royal, Reel and Roxy. The scraper runs automatically every 30 minutes and only updates
+            what has changed.
           </p>
           <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
             {lastUpdated && <span>Last refreshed {new Date(lastUpdated).toLocaleString("en-AE")}</span>}
