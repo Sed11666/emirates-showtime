@@ -37,6 +37,16 @@ import { UAE_CITIES } from "@/lib/listings";
 import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/cinemas")({
+  /**
+   * `?movie=<filmSlug>` scopes the page to one title, which is how a movie card
+   * anywhere on the site opens its details and times here. Every other filter
+   * is deliberately local state — this one is in the URL because it has to be
+   * linkable and survive a refresh or a share.
+   */
+  validateSearch: (search: Record<string, unknown>): { movie?: string } => {
+    const movie = typeof search["movie"] === "string" ? search["movie"].trim() : "";
+    return movie ? { movie } : {};
+  },
   head: () => ({
 
     meta: [
@@ -62,6 +72,7 @@ export const Route = createFileRoute("/cinemas")({
 });
 
 function CinemasPage() {
+  const { movie: movieSlug } = Route.useSearch();
   const [search, setSearch] = useState("");
   const [cinema, setCinema] = useState<string>("all");
   const [city, setCity] = useState<string>("all");
@@ -135,6 +146,10 @@ function CinemasPage() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const matching = films.filter((film) => {
+      // filmSlug runs through titleKey, so this matches the same title across
+      // chains even when they spell it differently (El Gawahergy (Arabic) vs
+      // El Gawahergy) — the visitor gets every screen showing it, not one chain.
+      if (movieSlug && filmSlug(film.title) !== movieSlug) return false;
       if (cinema !== "all" && film.cinema !== cinema) return false;
       if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
       if (language !== "all" && film.language !== language) return false;
@@ -167,7 +182,15 @@ function CinemasPage() {
     return mergeFilmsByTitle(matching)
       .map((film) => ({ film, distance: distanceByTitle.get(titleKey(film.title)) ?? null }))
       .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
-  }, [films, search, cinema, city, language, day, nearOnly, nearby, coords]);
+  }, [films, movieSlug, search, cinema, city, language, day, nearOnly, nearby, coords]);
+
+  /** Title of the scoped film, for the banner. Falls back to un-slugging. */
+  const scopedTitle = useMemo(() => {
+    if (!movieSlug) return null;
+    const match = films.find((f) => filmSlug(f.title) === movieSlug);
+    if (match) return match.title;
+    return movieSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }, [films, movieSlug]);
 
 
 
@@ -301,11 +324,30 @@ function CinemasPage() {
           )}
         </div>
 
+        {/* Scoped to one film: say so plainly and give a one-click way out,
+            otherwise a short list looks like broken filters. */}
+        {scopedTitle && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              Showing screens for{" "}
+              <span className="font-semibold text-foreground">{scopedTitle}</span>
+            </p>
+            <Link
+              to="/cinemas"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-gold/60 hover:text-gold"
+            >
+              Show all films
+            </Link>
+          </div>
+        )}
+
         {isLoading && <p className="text-muted-foreground">Loading showtimes…</p>}
         {error && <p className="text-destructive">Could not load showtimes. Please try again.</p>}
         {!isLoading && !error && filtered.length === 0 && (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-            No films match these filters yet. The next scheduled scrape will fill this in.
+            {scopedTitle
+              ? `No screenings for ${scopedTitle} on the selected day. Try another day, or show all films.`
+              : "No films match these filters yet. The next scheduled scrape will fill this in."}
           </p>
         )}
 

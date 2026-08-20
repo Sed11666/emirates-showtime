@@ -236,7 +236,9 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
             </div>
 
             <Button asChild variant="gold" size="lg" className="mt-7 w-fit">
-              <Link to="/movie/$slug" params={{ slug: filmSlug(active.title) }}>
+              {/* Same destination as the poster cards below: the hero is a
+                  movie banner, so it must not lead somewhere different. */}
+              <Link to="/cinemas" search={{ movie: filmSlug(active.title) }}>
                 Get Showtimes <ChevronRight className="size-4" />
               </Link>
             </Button>
