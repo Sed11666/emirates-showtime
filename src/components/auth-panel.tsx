@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useAuthProviders } from "@/hooks/useAuthProviders";
 
 type Mode = "signin" | "signup";
@@ -140,12 +139,20 @@ export function AuthPanel({
   }
 
   async function onGoogle() {
-    // Returns to wherever the visitor started, so the gate can resume the
-    // booking they were part-way through.
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.href,
+    // Straight to Supabase, not through @lovable.dev/cloud-auth-js. That
+    // library redirects to /~oauth/initiate, an endpoint Lovable's own hosting
+    // serves — the same ~ convention as the tracker we removed in the move to
+    // Vercel — so it 404s here. Supabase issues the Google redirect itself.
+    //
+    // redirectTo must be in the Supabase auth Redirect URLs allowlist, or the
+    // callback silently lands on the project's Site URL instead.
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      // Back to wherever they started, so the gate can resume the booking they
+      // were part-way through.
+      options: { redirectTo: window.location.href },
     });
-    if (result.error) toast.error("Google sign-in failed. Please try again.");
+    if (error) toast.error("Google sign-in failed. Please try again.");
   }
 
   const verb = mode === "signin" ? "Sign in" : "Create account";
