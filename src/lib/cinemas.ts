@@ -122,8 +122,18 @@ export function showtimesByVenue(
   value: unknown,
   dayKey: string,
   fallbackVenue?: string,
+  /**
+   * Trimming is opt-in and belongs to the caller. This used to cap at 4 venues
+   * and 8 times unconditionally, which was invisible at the call site: a film
+   * playing 36 screens rendered 4, and changing the chain filter only changed
+   * which 4 survived. A browse list may still want to trim; a page showing one
+   * film must not.
+   */
+  options?: { maxVenues?: number; maxTimesPerVenue?: number },
 ): VenueShowtimes[] {
   if (!Array.isArray(value)) return [];
+  const maxVenues = options?.maxVenues ?? Infinity;
+  const maxTimes = options?.maxTimesPerVenue ?? Infinity;
 
   const build = (filterDay: boolean): VenueShowtimes[] => {
     const groups = new Map<string, string[]>();
@@ -148,12 +158,15 @@ export function showtimesByVenue(
       if (!list.includes(time)) list.push(time);
       groups.set(venue, list);
     }
-    return [...groups.entries()].map(([venue, times]) => ({ venue, times: times.slice(0, 8) }));
+    return [...groups.entries()].map(([venue, times]) => ({
+      venue,
+      times: Number.isFinite(maxTimes) ? times.slice(0, maxTimes) : times,
+    }));
   };
 
   const filtered = build(true);
   const result = filtered.length > 0 ? filtered : build(false);
-  return result.slice(0, 4);
+  return Number.isFinite(maxVenues) ? result.slice(0, maxVenues) : result;
 }
 
 

@@ -105,6 +105,24 @@ export function matchesVenues(filmVenues: string[], venues: NearbyVenue[]) {
   });
 }
 
+/**
+ * Distance to a single named screen, matched across every chain.
+ *
+ * Showtime rows carry a venue name but no chain, so this matches on name alone.
+ * Where a name is ambiguous across chains the nearest match wins, which is the
+ * right answer for ordering a list nearest-first.
+ */
+export function venueDistanceKm(venueName: string, coords: Coords): number | null {
+  const name = normalize(venueName);
+  if (!name) return null;
+  const matched = VENUES.filter((v) => {
+    const target = normalize(v.name);
+    return name.includes(target) || target.includes(name);
+  });
+  if (matched.length === 0) return null;
+  return Math.min(...matched.map((v) => distanceKm(coords, v)));
+}
+
 const FORMAT_ORDER = ["IMAX", "4DX", "MAX", "3D", "2D"];
 export const KNOWN_FORMATS = FORMAT_ORDER;
 

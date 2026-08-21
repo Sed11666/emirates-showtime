@@ -30,6 +30,7 @@ import {
   filmDistanceKm,
   matchesVenues,
   nearestVenues,
+  venueDistanceKm,
   type NearbyVenue,
 } from "@/lib/venues";
 import { useUserLocation } from "@/hooks/useUserLocation";
@@ -354,11 +355,19 @@ function CinemasPage() {
         {/* Same showtimes-board treatment as the home page. */}
         <div className="space-y-5">
           {filtered.map(({ film, distance }) => {
+            // Scoped to one film: list every screen. Browsing all films: trim,
+            // or the page becomes thousands of rows.
             const venues = showtimesByVenue(
               film.showtimes,
               day === "any" ? toDayKey(new Date()) : day,
               film.venues[0],
-            );
+              movieSlug ? undefined : { maxVenues: 4, maxTimesPerVenue: 8 },
+            )
+              .map((v) => ({ ...v, km: coords ? venueDistanceKm(v.venue, coords) : null }))
+              // Nearest screen first, exactly as the rest of the site orders
+              // venues. Screens we have no coordinates for sink to the bottom
+              // rather than being dropped.
+              .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
             return (
               <div
                 key={film.id}
@@ -402,6 +411,13 @@ function CinemasPage() {
                         <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
                           <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
                           <span className="truncate">{venue.venue}</span>
+                          {venue.km !== null ? (
+                            <span className="shrink-0 text-xs text-muted-foreground/70">
+                              {venue.km < 1
+                                ? `${Math.round(venue.km * 1000)} m`
+                                : `${venue.km.toFixed(1)} km`}
+                            </span>
+                          ) : null}
                         </p>
                         <div className="flex flex-wrap gap-2 sm:justify-end">
                           {venue.times.map((time) => (
