@@ -402,25 +402,35 @@ function CinemasPage() {
                 </div>
 
                 {venues.length > 0 ? (
-                  <div className="divide-y divide-border/50">
+                  /* Each screen is its own panel rather than a hairline-divided
+                     row: with 36 venues on one film, dividers alone gave no
+                     sense of where one cinema ended and the next began. */
+                  <div className="space-y-3 p-4 sm:space-y-4 sm:p-5">
                     {venues.map((venue) => (
-                      {/* Stacked, not two columns: a venue with 25 screenings
-                          used to squeeze the name column to zero width, so the
-                          cinema showed as a bare map pin with no name. */}
-                      <div key={venue.venue} className="px-5 py-4">
-                        <p className="mb-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
-                          <MapPin className="size-3.5 shrink-0 text-primary" />
-                          <span>{venue.venue}</span>
+                      /* Stacked, not two columns: a venue with 25 screenings
+                         used to squeeze the name column to zero width, so the
+                         cinema showed as a bare map pin with no name. */
+                      <div
+                        key={venue.venue}
+                        className="rounded-xl border border-border/50 bg-background/40 p-4 transition-colors hover:border-border"
+                      >
+                        <div className="mb-3.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <p className="flex items-center gap-1.5 text-[0.9375rem] font-semibold text-foreground">
+                            <MapPin className="size-4 shrink-0 self-center text-primary" />
+                            {venue.venue}
+                          </p>
                           {venue.km !== null ? (
-                            <span className="shrink-0 text-xs font-normal text-muted-foreground">
-                              ·{" "}
+                            <span className="text-xs text-muted-foreground">
                               {venue.km < 1
-                                ? `${Math.round(venue.km * 1000)} m`
-                                : `${venue.km.toFixed(1)} km`}
+                                ? `${Math.round(venue.km * 1000)} m away`
+                                : `${venue.km.toFixed(1)} km away`}
                             </span>
                           ) : null}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {venue.times.length} {venue.times.length === 1 ? "show" : "shows"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2.5">
                           {venue.times.map((screening) => (
                             <Link
                               key={`${screening.time}|${screening.format ?? ""}`}
