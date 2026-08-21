@@ -132,6 +132,34 @@ function normalizeTime(raw: string | undefined): string | null {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+/**
+ * Screen types arrive however each chain happens to type them, so GOLD and
+ * Gold were two values for one product — fine while we only ever shout them in
+ * a pill, wrong the moment anything groups or filters by format.
+ *
+ * Canonical form is Title Case, with brands and acronyms left intact: MAX and
+ * IMAX are VOX product names, not words, and "Imax" would be wrong.
+ */
+const FORMAT_ACRONYMS = new Set([
+  "IMAX", "MAX", "4DX", "MX4D", "2D", "3D", "4D", "2L", "7STAR",
+  "VIP", "XXL", "ONYX", "LED", "ATMOS", "4K",
+]);
+
+function canonicalFormat(raw: string | undefined): string {
+  const value = raw?.replace(/\s+/g, " ").trim();
+  if (!value) return "";
+  return value
+    // Keep separators so "2D/7STAR" and "Couch - 2 Seater" survive intact.
+    .split(/([\s/-])/)
+    .map((part) => {
+      if (!part || /^[\s/-]$/.test(part)) return part;
+      const upper = part.toUpperCase();
+      if (FORMAT_ACRONYMS.has(upper)) return upper;
+      return upper.charAt(0) + part.slice(1).toLowerCase();
+    })
+    .join("");
+}
+
 function decodeEntities(s: string) {
   return s
     .replace(/&#x3D;/gi, "=")
@@ -300,7 +328,7 @@ export function parseMoviePage(html: string): {
         citySlug,
         venue,
         time,
-        format: decodeEntities(chip[4] ?? "").trim(),
+        format: canonicalFormat(decodeEntities(chip[4] ?? "")),
         bookingUrl: unwrapBooking(chip[1]),
       });
     }

@@ -520,8 +520,11 @@ function CinemasPage() {
                                 {/* Screen type matters as much as the time: a
                                     19:00 Gold seat is a different product from
                                     a 19:00 Standard one. */}
+                                {/* Not force-uppercased: formats are stored in
+                                    canonical casing, and shouting them would
+                                    turn "Samsung ONYX" into "SAMSUNG ONYX". */}
                                 <span
-                                  className={`text-[10px] font-medium uppercase leading-none tracking-wide ${
+                                  className={`text-[10px] font-medium leading-none tracking-wide ${
                                     exact ? "text-primary" : "text-muted-foreground/70"
                                   }`}
                                 >
