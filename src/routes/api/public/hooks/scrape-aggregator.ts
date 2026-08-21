@@ -145,10 +145,20 @@ const FORMAT_ACRONYMS = new Set([
   "VIP", "XXL", "ONYX", "LED", "ATMOS", "4K",
 ]);
 
+/**
+ * Different chains' words for the same ordinary screen. Matched against the
+ * whole canonicalised value, never a substring, so "Suites 2D", "Dolby 2D" and
+ * "2D/7STAR" keep their meaning — only a bare "2D" is an ordinary screen.
+ */
+const FORMAT_SYNONYMS: Record<string, string> = {
+  Regular: "Standard",
+  "2D": "Standard",
+};
+
 function canonicalFormat(raw: string | undefined): string {
   const value = raw?.replace(/\s+/g, " ").trim();
   if (!value) return "";
-  return value
+  const cased = value
     // Keep separators so "2D/7STAR" and "Couch - 2 Seater" survive intact.
     .split(/([\s/-])/)
     .map((part) => {
@@ -158,6 +168,7 @@ function canonicalFormat(raw: string | undefined): string {
       return upper.charAt(0) + part.slice(1).toLowerCase();
     })
     .join("");
+  return FORMAT_SYNONYMS[cased] ?? cased;
 }
 
 function decodeEntities(s: string) {
