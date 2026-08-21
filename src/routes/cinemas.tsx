@@ -191,11 +191,16 @@ function CinemasPage() {
    */
   const hasIndirectBooking = useMemo(
     () =>
-      filtered.some(
-        ({ film }) =>
-          Array.isArray(film.showtimes) &&
-          (film.showtimes as Array<Record<string, unknown>>).some((s) => !s["booking_url"]),
-      ),
+      filtered.some(({ film }) => {
+        if (!Array.isArray(film.showtimes)) return false;
+        const uses = new Map<string, number>();
+        for (const row of film.showtimes as Array<Record<string, unknown>>) {
+          const url = typeof row["booking_url"] === "string" ? row["booking_url"] : "";
+          if (!url) return true; // no link at all
+          uses.set(url, (uses.get(url) ?? 0) + 1);
+        }
+        return [...uses.values()].some((n) => n > 1); // one link, many screenings
+      }),
     [filtered],
   );
 
@@ -390,11 +395,17 @@ function CinemasPage() {
             // as a fallback would send someone to the wrong showing — worse
             // than dropping them on the chain's own site. Only use it when it
             // is genuinely a film-level page (Cine Royal's /chooseScreen/slug).
-            const sessionUrls = new Set(
-              venues.flatMap((v) => v.times.map((t) => t.bookingUrl).filter(Boolean)),
-            );
+            // How many screenings share each URL. A link used once is specific
+            // to that screening; one shared across several is a film page
+            // wearing a screening's clothes, which is how Cine Royal behaves.
+            const urlUses = new Map<string, number>();
+            for (const v of venues) {
+              for (const t of v.times) {
+                if (t.bookingUrl) urlUses.set(t.bookingUrl, (urlUses.get(t.bookingUrl) ?? 0) + 1);
+              }
+            }
             const filmFallback =
-              film.booking_url && !sessionUrls.has(film.booking_url)
+              film.booking_url && !urlUses.has(film.booking_url)
                 ? film.booking_url
                 : film.source_url;
             return (
@@ -475,7 +486,8 @@ function CinemasPage() {
                             // identical to a chip that lands on a seat map sets
                             // the visitor up to feel misled, so say so: dashed
                             // border, muted label, and a tooltip.
-                            const exact = Boolean(screening.bookingUrl);
+                            const exact =
+                              !!screening.bookingUrl && urlUses.get(screening.bookingUrl) === 1;
                             return (
                               <a
                                 key={`${screening.time}|${screening.format ?? ""}`}
