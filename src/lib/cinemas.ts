@@ -110,8 +110,11 @@ export function hasDatedShowtimes(value: unknown): boolean {
   return parseShowtimes(value).some((e) => e.date);
 }
 
-/** One screening chip: the clock time plus the screen type it plays on. */
-export type VenueScreening = { time: string; format: string | null };
+/**
+ * One screening chip: clock time, the screen type it plays on, and the deep
+ * link to that exact screening on the chain's own site where we have one.
+ */
+export type VenueScreening = { time: string; format: string | null; bookingUrl: string | null };
 export type VenueShowtimes = { venue: string; times: VenueScreening[] };
 
 /**
@@ -144,6 +147,7 @@ export function showtimesByVenue(
       let venue = fallbackVenue || "All screens";
       let date: string | null = null;
       let format: string | null = null;
+      let bookingUrl: string | null = null;
 
       if (typeof entry === "string") {
         time = entry.trim();
@@ -154,6 +158,8 @@ export function showtimesByVenue(
         if (typeof row["venue"] === "string" && row["venue"].trim()) venue = row["venue"].trim();
         if (typeof row["format"] === "string" && row["format"].trim())
           format = row["format"].trim();
+        if (typeof row["booking_url"] === "string" && row["booking_url"].startsWith("http"))
+          bookingUrl = row["booking_url"];
       }
       if (!time) continue;
       if (filterDay && dayKey !== "any" && date && date !== dayKey) continue;
@@ -163,8 +169,12 @@ export function showtimesByVenue(
       // The same clock time can legitimately run twice at one venue on
       // different screens (19:00 Standard and 19:00 Gold), so the identity of a
       // chip is time + format, not time alone.
-      if (!list.some((s) => s.time === time && s.format === format)) {
-        list.push({ time, format });
+      const seen = list.find((s) => s.time === time && s.format === format);
+      if (!seen) {
+        list.push({ time, format, bookingUrl });
+      } else if (!seen.bookingUrl && bookingUrl) {
+        // Same screening scraped twice, once without a link: keep the link.
+        seen.bookingUrl = bookingUrl;
       }
       groups.set(venue, list);
     }

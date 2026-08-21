@@ -382,13 +382,17 @@ function CinemasPage() {
                       </span>
                     ) : null}
                   </div>
-                  <Link
-                    to="/movie/$slug"
-                    params={{ slug: filmSlug(film.title) }}
-                    className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
-                  >
-                    All times <ChevronRight className="size-3.5" />
-                  </Link>
+                  {/* Stays inside Cinemas: scoping this page to the film shows
+                      every screen, which is what the old movie page was for. */}
+                  {!movieSlug ? (
+                    <Link
+                      to="/cinemas"
+                      search={{ movie: filmSlug(film.title) }}
+                      className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
+                    >
+                      All times <ChevronRight className="size-3.5" />
+                    </Link>
+                  ) : null}
                 </div>
 
                 {venues.length > 0 ? (
@@ -421,24 +425,36 @@ function CinemasPage() {
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2.5">
-                          {venue.times.map((screening) => (
-                            <Link
-                              key={`${screening.time}|${screening.format ?? ""}`}
-                              to="/movie/$slug"
-                              params={{ slug: filmSlug(film.title) }}
-                              className="flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg border border-border/70 bg-background/60 px-3 py-2 transition-colors hover:border-primary/70 hover:bg-primary/5"
-                            >
-                              <span className="text-sm font-semibold leading-none text-foreground">
-                                {screening.time}
-                              </span>
-                              {/* Screen type matters as much as the time: a
-                                  19:00 Gold seat is a different product from a
-                                  19:00 Standard one. */}
-                              <span className="text-[10px] font-medium uppercase leading-none tracking-wide text-primary">
-                                {screening.format ?? "Standard"}
-                              </span>
-                            </Link>
-                          ))}
+                          {venue.times.map((screening) => {
+                            // Straight out to the chain — no interstitial page.
+                            // Per-screening deep link where the chain exposes
+                            // one, else the film's page on that chain, else the
+                            // chain itself. Never construct a booking URL.
+                            const href =
+                              screening.bookingUrl ?? film.booking_url ?? film.source_url;
+                            return (
+                              <a
+                                key={`${screening.time}|${screening.format ?? ""}`}
+                                href={href ?? undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Book ${film.title} at ${venue.venue}, ${screening.time}${
+                                  screening.format ? `, ${screening.format}` : ""
+                                }`}
+                                className="flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg border border-border/70 bg-background/60 px-3 py-2 transition-colors hover:border-primary/70 hover:bg-primary/5"
+                              >
+                                <span className="text-sm font-semibold leading-none text-foreground">
+                                  {screening.time}
+                                </span>
+                                {/* Screen type matters as much as the time: a
+                                    19:00 Gold seat is a different product from
+                                    a 19:00 Standard one. */}
+                                <span className="text-[10px] font-medium uppercase leading-none tracking-wide text-primary">
+                                  {screening.format ?? "Standard"}
+                                </span>
+                              </a>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
