@@ -404,30 +404,39 @@ function CinemasPage() {
                 {venues.length > 0 ? (
                   <div className="divide-y divide-border/50">
                     {venues.map((venue) => (
-                      <div
-                        key={venue.venue}
-                        className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-                      >
-                        <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{venue.venue}</span>
+                      {/* Stacked, not two columns: a venue with 25 screenings
+                          used to squeeze the name column to zero width, so the
+                          cinema showed as a bare map pin with no name. */}
+                      <div key={venue.venue} className="px-5 py-4">
+                        <p className="mb-3 flex items-center gap-1.5 text-sm font-medium text-foreground">
+                          <MapPin className="size-3.5 shrink-0 text-primary" />
+                          <span>{venue.venue}</span>
                           {venue.km !== null ? (
-                            <span className="shrink-0 text-xs text-muted-foreground/70">
+                            <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                              ·{" "}
                               {venue.km < 1
                                 ? `${Math.round(venue.km * 1000)} m`
                                 : `${venue.km.toFixed(1)} km`}
                             </span>
                           ) : null}
                         </p>
-                        <div className="flex flex-wrap gap-2 sm:justify-end">
-                          {venue.times.map((time) => (
+                        <div className="flex flex-wrap gap-2">
+                          {venue.times.map((screening) => (
                             <Link
-                              key={time}
+                              key={`${screening.time}|${screening.format ?? ""}`}
                               to="/movie/$slug"
                               params={{ slug: filmSlug(film.title) }}
-                              className="rounded-md border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-medium transition-colors hover:border-gold/60 hover:text-gold"
+                              className="flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg border border-border/70 bg-background/60 px-3 py-2 transition-colors hover:border-primary/70 hover:bg-primary/5"
                             >
-                              {time}
+                              <span className="text-sm font-semibold leading-none text-foreground">
+                                {screening.time}
+                              </span>
+                              {/* Screen type matters as much as the time: a
+                                  19:00 Gold seat is a different product from a
+                                  19:00 Standard one. */}
+                              <span className="text-[10px] font-medium uppercase leading-none tracking-wide text-primary">
+                                {screening.format ?? "Standard"}
+                              </span>
                             </Link>
                           ))}
                         </div>

@@ -17,7 +17,7 @@
  * lib/showtimes.ts, lib/search.ts.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { isScreeningOver, parseDayKey } from "@/lib/days";
+import { isScreeningOver, parseDayKey, timeToMinutes } from "@/lib/days";
 
 export type CinemaKey = "vox" | "reel" | "novo" | "roxy";
 
@@ -110,7 +110,9 @@ export function hasDatedShowtimes(value: unknown): boolean {
   return parseShowtimes(value).some((e) => e.date);
 }
 
-export type VenueShowtimes = { venue: string; times: string[] };
+/** One screening chip: the clock time plus the screen type it plays on. */
+export type VenueScreening = { time: string; format: string | null };
+export type VenueShowtimes = { venue: string; times: VenueScreening[] };
 
 /**
  * Showtimes grouped by venue for the "Today's showtimes" board: each venue
@@ -136,11 +138,12 @@ export function showtimesByVenue(
   const maxTimes = options?.maxTimesPerVenue ?? Infinity;
 
   const build = (filterDay: boolean): VenueShowtimes[] => {
-    const groups = new Map<string, string[]>();
+    const groups = new Map<string, VenueScreening[]>();
     for (const entry of value) {
       let time = "";
       let venue = fallbackVenue || "All screens";
       let date: string | null = null;
+      let format: string | null = null;
 
       if (typeof entry === "string") {
         time = entry.trim();
@@ -149,19 +152,27 @@ export function showtimesByVenue(
         time = typeof row["time"] === "string" ? row["time"].trim() : "";
         date = parseDayKey(row["date"]);
         if (typeof row["venue"] === "string" && row["venue"].trim()) venue = row["venue"].trim();
+        if (typeof row["format"] === "string" && row["format"].trim())
+          format = row["format"].trim();
       }
       if (!time) continue;
       if (filterDay && dayKey !== "any" && date && date !== dayKey) continue;
       if (isScreeningOver(time, date, dayKey)) continue;
 
       const list = groups.get(venue) ?? [];
-      if (!list.includes(time)) list.push(time);
+      // The same clock time can legitimately run twice at one venue on
+      // different screens (19:00 Standard and 19:00 Gold), so the identity of a
+      // chip is time + format, not time alone.
+      if (!list.some((s) => s.time === time && s.format === format)) {
+        list.push({ time, format });
+      }
       groups.set(venue, list);
     }
-    return [...groups.entries()].map(([venue, times]) => ({
-      venue,
-      times: Number.isFinite(maxTimes) ? times.slice(0, maxTimes) : times,
-    }));
+    return [...groups.entries()].map(([venue, times]) => {
+      // Chronological, with past-midnight shows at the end of the evening.
+      const ordered = [...times].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      return { venue, times: Number.isFinite(maxTimes) ? ordered.slice(0, maxTimes) : ordered };
+    });
   };
 
   const filtered = build(true);
