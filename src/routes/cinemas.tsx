@@ -383,6 +383,20 @@ function CinemasPage() {
               // venues. Screens we have no coordinates for sink to the bottom
               // rather than being dropped.
               .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+
+            // A screening with no link of its own must not borrow another
+            // screening's. For chains that publish per-screening URLs, the
+            // film-level booking_url is just one of those sessions, so using it
+            // as a fallback would send someone to the wrong showing — worse
+            // than dropping them on the chain's own site. Only use it when it
+            // is genuinely a film-level page (Cine Royal's /chooseScreen/slug).
+            const sessionUrls = new Set(
+              venues.flatMap((v) => v.times.map((t) => t.bookingUrl).filter(Boolean)),
+            );
+            const filmFallback =
+              film.booking_url && !sessionUrls.has(film.booking_url)
+                ? film.booking_url
+                : film.source_url;
             return (
               <div
                 key={film.id}
@@ -455,8 +469,7 @@ function CinemasPage() {
                             // Per-screening deep link where the chain exposes
                             // one, else the film's page on that chain, else the
                             // chain itself. Never construct a booking URL.
-                            const href =
-                              screening.bookingUrl ?? film.booking_url ?? film.source_url;
+                            const href = screening.bookingUrl ?? filmFallback;
                             // Reel publishes no per-screening URL, so its chips
                             // can only reach the chain's own site. Looking
                             // identical to a chip that lands on a seat map sets
