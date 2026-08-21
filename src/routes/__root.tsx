@@ -95,6 +95,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Discover and book movies, concerts and live events across Dubai, Abu Dhabi, Sharjah and the UAE.",
       },
       { name: "author", content: "ShowSouk" },
+      {
+        name: "google-site-verification",
+        content: "6hQIBt7r257-7mj3ywXEzqrehTWtkmUTpAv1lhI4gq0",
+      },
       { property: "og:title", content: "ShowSouk — Movies & Events Across the Emirates" },
       {
         property: "og:description",
