@@ -658,13 +658,22 @@ async function runScrape(request: Request) {
     }
   }
 
-  // Film-level fallback: prefer a real per-screening link from this film, else
-  // the chain's home page. Never left null, or the UI drops through to
-  // source_url and, before this, to the aggregator.
+  // Film-level fallback, used by screenings that have no link of their own.
+  //
+  // It must describe the film, not one showing. Taking the first screening's
+  // link looked reasonable and was wrong: for chains that publish session URLs
+  // it meant a 20:45 Standard chip could open the 18:45 Platinum seat map, and
+  // someone following that books the wrong showing.
+  //
+  // One distinct URL across every screening is a film page (Cine Royal's
+  // /chooseScreen/slug) and is the right fallback. Several distinct URLs means
+  // they are session-specific and none of them describes the film, so fall back
+  // to the chain instead.
   for (const row of batch) {
     const times = row["showtimes"] as Array<Record<string, string>>;
-    const firstLink = times.find((s) => s["booking_url"])?.["booking_url"];
-    row["booking_url"] = firstLink ?? CHAIN_HOME[String(row["cinema"])] ?? null;
+    const links = new Set(times.map((s) => s["booking_url"]).filter(Boolean));
+    const shared = links.size === 1 ? [...links][0]! : null;
+    row["booking_url"] = shared ?? CHAIN_HOME[String(row["cinema"])] ?? null;
   }
 
   // Upsert and retirement both happen inside the SECURITY DEFINER function.
