@@ -40,6 +40,7 @@ export type Database = {
           formats: string[]
           genre: string | null
           id: string
+          imdb_id: string | null
           is_active: boolean
           language: string | null
           last_seen_at: string
@@ -63,6 +64,7 @@ export type Database = {
           formats?: string[]
           genre?: string | null
           id?: string
+          imdb_id?: string | null
           is_active?: boolean
           language?: string | null
           last_seen_at?: string
@@ -86,6 +88,7 @@ export type Database = {
           formats?: string[]
           genre?: string | null
           id?: string
+          imdb_id?: string | null
           is_active?: boolean
           language?: string | null
           last_seen_at?: string
@@ -308,6 +311,81 @@ export type Database = {
         }
         Relationships: []
       }
+      scraper_auth: {
+        Row: {
+          id: number
+          note: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          note?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          note?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scraper_cursor: {
+        Row: {
+          id: number
+          pos: number
+          step: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          pos?: number
+          step?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          pos?: number
+          step?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scraper_page_cache: {
+        Row: {
+          content_hash: string | null
+          etag: string | null
+          fetched_at: string
+          film_keys: string[]
+          hit_count: number
+          last_modified: string | null
+          url: string
+        }
+        Insert: {
+          content_hash?: string | null
+          etag?: string | null
+          fetched_at?: string
+          film_keys?: string[]
+          hit_count?: number
+          last_modified?: string | null
+          url: string
+        }
+        Update: {
+          content_hash?: string | null
+          etag?: string | null
+          fetched_at?: string
+          film_keys?: string[]
+          hit_count?: number
+          last_modified?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -342,6 +420,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      ingest_cinema_films: {
+        Args: { p_rows: Json; p_token: string }
+        Returns: Json
+      }
+      page_cache_get: {
+        Args: { p_token: string; p_urls: string[] }
+        Returns: {
+          content_hash: string
+          etag: string
+          fetched_at: string
+          film_keys: string[]
+          last_modified: string
+          url: string
+        }[]
+      }
+      page_cache_put: { Args: { p_rows: Json; p_token: string }; Returns: Json }
+      retire_stale_films: { Args: { p_chains: string[] }; Returns: number }
+      set_posters: { Args: { p_map: Json; p_token: string }; Returns: Json }
+      touch_films: { Args: { p_keys: Json; p_token: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"
