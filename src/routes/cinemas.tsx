@@ -8,7 +8,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Film, Locate, MapPin, Navigation, RefreshCw, Search } from "lucide-react";
+import { ChevronRight, Film, Locate, MapPin, Navigation, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -132,7 +132,7 @@ function CinemasPage() {
   };
 
 
-  const { data, isLoading, error, refetch, isFetching } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["cinema-films"],
     queryFn: fetchCinemaFilms,
   });
@@ -196,29 +196,19 @@ function CinemasPage() {
 
 
 
-  const lastUpdated = films.reduce<string | null>(
-    (latest, film) => (!latest || film.last_seen_at > latest ? film.last_seen_at : latest),
-    null,
-  );
-
   return (
     <div className="flex min-h-screen flex-col">
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
 
+        {/* Says what the visitor gets, not how we get it. How often our scraper
+            runs and when it last succeeded are our concerns, not theirs. */}
         <header className="mb-8">
           <p className="text-sm uppercase tracking-[0.2em] text-primary">Now showing</p>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">UAE Cinema Showtimes</h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Live listings pulled from seven UAE cinema chains — VOX, Star, Novo, Cinema City, Cine
-            Royal, Reel and Roxy. The scraper runs automatically every 30 minutes and only updates
-            what has changed.
+            Today&rsquo;s screenings at every major cinema across the Emirates. Pick a time to book
+            with the cinema directly.
           </p>
-          <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-            {lastUpdated && <span>Last refreshed {new Date(lastUpdated).toLocaleString("en-AE")}</span>}
-            <Button size="sm" variant="ghost" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} /> Reload
-            </Button>
-          </div>
         </header>
 
         <section className="mb-6 rounded-xl border border-border/70 bg-card/50 p-4">
