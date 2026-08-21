@@ -19,13 +19,29 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isScreeningOver, parseDayKey, timeToMinutes } from "@/lib/days";
 
-export type CinemaKey = "vox" | "reel" | "novo" | "roxy";
+export type CinemaKey =
+  | "vox"
+  | "reel"
+  | "novo"
+  | "roxy"
+  | "star"
+  | "cineroyal"
+  | "cinemacity";
 
+/**
+ * Drives the chain filter and every human-readable chain name. A chain the
+ * scraper can produce but that is missing here is invisible in the filter even
+ * though its films are listed, so keep this in step with CHAIN_KEYS in
+ * scrape-aggregator.ts.
+ */
 export const CINEMAS: { key: CinemaKey; label: string }[] = [
   { key: "vox", label: "VOX Cinemas" },
-  { key: "reel", label: "Reel Cinemas" },
+  { key: "star", label: "Star Cinemas" },
   { key: "novo", label: "Novo Cinemas" },
   { key: "roxy", label: "Roxy Cinemas" },
+  { key: "cinemacity", label: "Cinema City" },
+  { key: "cineroyal", label: "Cine Royal" },
+  { key: "reel", label: "Reel Cinemas" },
 ];
 
 export const CINEMA_LABELS: Record<string, string> = Object.fromEntries(
