@@ -185,6 +185,20 @@ function CinemasPage() {
       .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
   }, [films, movieSlug, search, cinema, city, language, day, nearOnly, nearby, coords]);
 
+  /**
+   * Whether anything on screen lacks a per-screening link, so the legend
+   * explaining the dashed chips only appears when there is something to explain.
+   */
+  const hasIndirectBooking = useMemo(
+    () =>
+      filtered.some(
+        ({ film }) =>
+          Array.isArray(film.showtimes) &&
+          (film.showtimes as Array<Record<string, unknown>>).some((s) => !s["booking_url"]),
+      ),
+    [filtered],
+  );
+
   /** Title of the scoped film, for the banner. Falls back to un-slugging. */
   const scopedTitle = useMemo(() => {
     if (!movieSlug) return null;
@@ -332,6 +346,17 @@ function CinemasPage() {
           </div>
         )}
 
+        {!isLoading && !error && hasIndirectBooking && filtered.length > 0 && (
+          <p className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className="inline-block h-4 w-8 shrink-0 rounded border border-dashed border-border/60"
+            />
+            Dashed times open the cinema&rsquo;s booking site — that chain
+            doesn&rsquo;t publish a link to a single screening.
+          </p>
+        )}
+
         {isLoading && <p className="text-muted-foreground">Loading showtimes…</p>}
         {error && <p className="text-destructive">Could not load showtimes. Please try again.</p>}
         {!isLoading && !error && filtered.length === 0 && (
@@ -432,24 +457,49 @@ function CinemasPage() {
                             // chain itself. Never construct a booking URL.
                             const href =
                               screening.bookingUrl ?? film.booking_url ?? film.source_url;
+                            // Reel publishes no per-screening URL, so its chips
+                            // can only reach the chain's own site. Looking
+                            // identical to a chip that lands on a seat map sets
+                            // the visitor up to feel misled, so say so: dashed
+                            // border, muted label, and a tooltip.
+                            const exact = Boolean(screening.bookingUrl);
                             return (
                               <a
                                 key={`${screening.time}|${screening.format ?? ""}`}
                                 href={href ?? undefined}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                aria-label={`Book ${film.title} at ${venue.venue}, ${screening.time}${
+                                title={
+                                  exact
+                                    ? undefined
+                                    : "This cinema doesn't publish a direct link to a single screening — opens their booking site"
+                                }
+                                aria-label={`${
+                                  exact ? "Book" : "Open the cinema's booking site for"
+                                } ${film.title} at ${venue.venue}, ${screening.time}${
                                   screening.format ? `, ${screening.format}` : ""
                                 }`}
-                                className="flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg border border-border/70 bg-background/60 px-3 py-2 transition-colors hover:border-primary/70 hover:bg-primary/5"
+                                className={`flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-colors ${
+                                  exact
+                                    ? "border border-border/70 bg-background/60 hover:border-primary/70 hover:bg-primary/5"
+                                    : "border border-dashed border-border/60 bg-transparent hover:border-border hover:bg-muted/30"
+                                }`}
                               >
-                                <span className="text-sm font-semibold leading-none text-foreground">
+                                <span
+                                  className={`text-sm font-semibold leading-none ${
+                                    exact ? "text-foreground" : "text-muted-foreground"
+                                  }`}
+                                >
                                   {screening.time}
                                 </span>
                                 {/* Screen type matters as much as the time: a
                                     19:00 Gold seat is a different product from
                                     a 19:00 Standard one. */}
-                                <span className="text-[10px] font-medium uppercase leading-none tracking-wide text-primary">
+                                <span
+                                  className={`text-[10px] font-medium uppercase leading-none tracking-wide ${
+                                    exact ? "text-primary" : "text-muted-foreground/70"
+                                  }`}
+                                >
                                   {screening.format ?? "Standard"}
                                 </span>
                               </a>
