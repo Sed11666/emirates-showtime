@@ -34,6 +34,7 @@ import {
   type NearbyVenue,
 } from "@/lib/venues";
 import { useUserLocation } from "@/hooks/useUserLocation";
+import { useBookingGate } from "@/components/booking-gate";
 import { UAE_CITIES } from "@/lib/listings";
 import { toDayKey } from "@/lib/days";
 
@@ -73,6 +74,7 @@ export const Route = createFileRoute("/cinemas")({
 });
 
 function CinemasPage() {
+  const { guardBooking } = useBookingGate();
   const { movie: movieSlug } = Route.useSearch();
   const [search, setSearch] = useState("");
   const [cinema, setCinema] = useState<string>("all");
@@ -494,6 +496,18 @@ function CinemasPage() {
                                 href={href ?? undefined}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={(e) => {
+                                  if (!href) return;
+                                  // Signed out: hold the click, ask them to sign
+                                  // in, then offer this exact booking again.
+                                  const intercepted = guardBooking({
+                                    href,
+                                    film: film.title,
+                                    venue: venue.venue,
+                                    time: screening.time,
+                                  });
+                                  if (intercepted) e.preventDefault();
+                                }}
                                 title={
                                   exact
                                     ? undefined

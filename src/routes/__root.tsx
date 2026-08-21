@@ -7,6 +7,7 @@
  * defined by each leaf route's head(), not here.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BookingGateProvider } from "@/components/booking-gate";
 import {
   Outlet,
   Link,
@@ -153,14 +154,18 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen flex-col">
-        <SiteHeader />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <div className="flex-1">
-          <Outlet />
+      {/* Inside the query provider: the gate checks which auth methods the
+          backend actually offers before rendering its dialog. */}
+      <BookingGateProvider>
+        <div className="flex min-h-screen flex-col">
+          <SiteHeader />
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <SiteFooter />
         </div>
-        <SiteFooter />
-      </div>
+      </BookingGateProvider>
       <Toaster position="top-center" />
     </QueryClientProvider>
   );
