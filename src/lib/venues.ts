@@ -1,4 +1,4 @@
-﻿/**
+/**
  * venues.ts â€” Static geo directory of UAE cinema locations.
  *
  * The scrapers only give us venue names, so this hand-maintained list supplies
@@ -30,7 +30,7 @@ export type Venue = {
 export const VENUES: Venue[] = [
   // VOX
   { cinema: "vox", name: "Mall of The Emirates Cinema", city: "Dubai", lat: 25.1181, lng: 55.2004 },
-  { cinema: "vox", name: "Deira City Center Cinema", city: "Dubai", lat: 25.2523, lng: 55.3316 },
+  { cinema: "vox", name: "Deira City Center Cinema", city: "Dubai", lat: 25.2522, lng: 55.3323 },
   { cinema: "vox", name: "Mirdif City Center Cinema", city: "Dubai", lat: 25.2166, lng: 55.4088 },
   { cinema: "vox", name: "Burjuman Mall Cinema", city: "Dubai", lat: 25.2544, lng: 55.3025 },
   { cinema: "vox", name: "Palm Jumeirah Mall Cinema", city: "Dubai", lat: 25.1132, lng: 55.1391 },
@@ -42,7 +42,7 @@ export const VENUES: Venue[] = [
   { cinema: "vox", name: "Kempinski Private Cinema Mall of Emirates", city: "Dubai", lat: 25.1181, lng: 55.2004 },
   { cinema: "vox", name: "City Center Sharjah Cinema", city: "Sharjah", lat: 25.3268, lng: 55.3925 },
   { cinema: "vox", name: "City Center Al Zahia Cinema", city: "Sharjah", lat: 25.3174, lng: 55.455 },
-  { cinema: "vox", name: "City Center Ajman Cinema", city: "Ajman", lat: 25.4032, lng: 55.4794 },
+  { cinema: "vox", name: "City Center Ajman Cinema", city: "Ajman", lat: 25.3997, lng: 55.4791 },
   { cinema: "vox", name: "City Center Fujairah Cinema", city: "Fujairah", lat: 25.1215, lng: 56.3319 },
   { cinema: "vox", name: "Galleria Al Maryah Cinema", city: "Abu Dhabi", lat: 24.5008, lng: 54.3897 },
   { cinema: "vox", name: "Yas Mall Cinema", city: "Abu Dhabi", lat: 24.4884, lng: 54.6072 },
@@ -73,36 +73,36 @@ export const VENUES: Venue[] = [
   { cinema: "roxy", name: "Circle Mall Cinema", city: "Dubai", lat: 25.0657, lng: 55.2159 },
 
   // Star
-  { cinema: "star", name: "Al Ghurair Centre Cinema", city: "Dubai", lat: 25.2707, lng: 55.3181 },
-  { cinema: "star", name: "Junction Mall Cinema", city: "Dubai", lat: 25.295, lng: 55.372 },
+  { cinema: "star", name: "Al Ghurair Centre Cinema", city: "Dubai", lat: 25.2682, lng: 55.3174 },
+  { cinema: "star", name: "Junction Mall Cinema", city: "Dubai", lat: 25.295, lng: 55.372 }, // UNVERIFIED — estimate; no geocoder has this mall
   { cinema: "star", name: "Grand Mall Cinema", city: "Ajman", lat: 25.3927, lng: 55.4392 },
   { cinema: "star", name: "Mall of UAQ Cinema", city: "Umm Al Quwain", lat: 25.5209, lng: 55.544 },
-  { cinema: "star", name: "Gulf Cinema", city: "Ras Al Khaimah", lat: 25.79, lng: 55.944 },
+  { cinema: "star", name: "Gulf Cinema", city: "Ras Al Khaimah", lat: 25.7946, lng: 55.9732 },
   { cinema: "star", name: "Century Mall Cinema", city: "Fujairah", lat: 25.1573, lng: 56.3499 },
-  { cinema: "star", name: "Dana Cinema", city: "Fujairah", lat: 25.13, lng: 56.335 },
+  { cinema: "star", name: "Dana Cinema", city: "Fujairah", lat: 25.13, lng: 56.335 }, // UNVERIFIED — estimate; no geocoder has this mall
   { cinema: "star", name: "Wahda Mall Cinema", city: "Abu Dhabi", lat: 24.4703, lng: 54.3742 },
-  { cinema: "star", name: "Central Mall Cinema", city: "Abu Dhabi", lat: 24.488, lng: 54.361 },
+  { cinema: "star", name: "Central Mall Cinema", city: "Abu Dhabi", lat: 24.488, lng: 54.361 }, // UNVERIFIED — estimate; no geocoder has this mall
   { cinema: "star", name: "National Cinema", city: "Abu Dhabi", lat: 24.4524, lng: 54.6407 },
   { cinema: "star", name: "Grand Safeer Cinema", city: "Abu Dhabi", lat: 24.343, lng: 54.5305 },
   { cinema: "star", name: "Al Raha Mall Cinema", city: "Abu Dhabi", lat: 24.439, lng: 54.5741 },
   { cinema: "star", name: "Bawadi Mall Cinema", city: "Al Ain", lat: 24.1601, lng: 55.8078 },
   { cinema: "star", name: "Al Ain Mall Cinema", city: "Al Ain", lat: 24.2328, lng: 55.7741 },
-  { cinema: "star", name: "Al Foah Mall Cinema", city: "Al Ain", lat: 24.279, lng: 55.809 },
-  { cinema: "star", name: "Barari Outlet Mall Cinema", city: "Al Ain", lat: 24.262, lng: 55.705 },
+  { cinema: "star", name: "Al Foah Mall Cinema", city: "Al Ain", lat: 24.279, lng: 55.809 }, // UNVERIFIED — estimate; no geocoder has this mall
+  { cinema: "star", name: "Barari Outlet Mall Cinema", city: "Al Ain", lat: 24.262, lng: 55.705 }, // UNVERIFIED — estimate; no geocoder has this mall
 
   // Cine Royal â€” Abu Dhabi emirate only
   { cinema: "cineroyal", name: "Deerfields Mall Cinema", city: "Abu Dhabi", lat: 24.5245, lng: 54.6734 },
   { cinema: "cineroyal", name: "Dalma Mall Cinema", city: "Abu Dhabi", lat: 24.3336, lng: 54.5239 },
   { cinema: "cineroyal", name: "World Trade Center Cinema", city: "Abu Dhabi", lat: 24.4899, lng: 54.3577 },
   { cinema: "cineroyal", name: "Khalidiyah Mall Cinema", city: "Abu Dhabi", lat: 24.4699, lng: 54.3518 },
-  { cinema: "cineroyal", name: "Al Dhannah Mall Cinema", city: "Abu Dhabi", lat: 24.118, lng: 52.73 },
+  { cinema: "cineroyal", name: "Al Dhannah Mall Cinema", city: "Abu Dhabi", lat: 24.0755, lng: 52.672 },
 
   // Cinema City
   { cinema: "cinemacity", name: "Al Qana Cinema", city: "Abu Dhabi", lat: 24.3948, lng: 54.7143 },
   { cinema: "cinemacity", name: "Arabian Center Cinema", city: "Dubai", lat: 25.232, lng: 55.431 },
   { cinema: "cinemacity", name: "Fountain Views Cinema", city: "Dubai", lat: 25.195, lng: 55.276 },
-  { cinema: "cinemacity", name: "Zero 6 Mall Cinema", city: "Sharjah", lat: 25.283, lng: 55.464 },
-  { cinema: "cinemacity", name: "Rahmania Mall Cinema", city: "Sharjah", lat: 25.296, lng: 55.455 },
+  { cinema: "cinemacity", name: "Zero 6 Mall Cinema", city: "Sharjah", lat: 25.283, lng: 55.464 }, // UNVERIFIED — estimate; no geocoder has this mall
+  { cinema: "cinemacity", name: "Rahmania Mall Cinema", city: "Sharjah", lat: 25.296, lng: 55.455 }, // UNVERIFIED — estimate; no geocoder has this mall
   // Both Reel (Dubai Marina) and Cinema City (Abu Dhabi) call a screen
   // "Marina Mall Cinema". Matching is name-only, so a distance for either
   // resolves to whichever is closer to the visitor. Left as-is: it affects a
