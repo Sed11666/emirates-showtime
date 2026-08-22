@@ -110,9 +110,33 @@
 }
 
 
+/*
+ * Appearance.
+ *
+ * :root above IS the dark theme — the full palette, authored once. That is
+ * deliberate: it makes dark the default for search engines, for anyone with
+ * JavaScript off, and for the server-rendered HTML before the theme script in
+ * __root.tsx runs, so the first paint is never wrong.
+ *
+ * .dark therefore redeclares nothing. It exists so Tailwind's dark: variant
+ * (@custom-variant at the top of this file, keyed on .dark) matches once the
+ * theme script puts the class on <html>. Previously the class was never applied
+ * at all, so every dark: utility in the codebase was silently inert.
+ *
+ * .light is where the light palette goes and is currently EMPTY, which is why
+ * useTheme.tsx ships LIGHT_PALETTE_READY = false and the menu shows Light as
+ * disabled. Authoring it means every token in :root plus a decision about the
+ * effects that assume a near-black ground — film-grain, gold-glow,
+ * marquee-lights, shadow-glow, bg-hero-gradient and text-gold-gradient. Gold on
+ * white goes muddy and the glows read as smudges, so this is a design pass, not
+ * a find-and-replace. Flip the flag in the same commit that fills this in.
+ */
 .dark {
-  --background: oklch(0.14 0.015 170);
-  --foreground: oklch(0.98 0.004 80);
+  /* Intentionally empty — :root already carries the dark palette. */
+}
+
+.light {
+  /* TODO: light palette. Until then LIGHT_PALETTE_READY stays false. */
 }
 
 

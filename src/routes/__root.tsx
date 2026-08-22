@@ -21,6 +21,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
+import { THEME_INIT_SCRIPT } from "@/hooks/useTheme";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -141,9 +142,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the inline script below mutates <html>'s class
+    // and colorScheme before React hydrates, so server and client markup differ
+    // here by design. Without it React logs a mismatch on every page load.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/*
+          Appearance must be applied before first paint. A hook cannot run early
+          enough, so this blocking script reads the stored preference and sets
+          the class itself; anything later means every visitor sees a flash of
+          the wrong theme. Keep it in <head> and keep it synchronous.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
         {children}

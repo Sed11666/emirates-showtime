@@ -13,7 +13,6 @@ import { Link } from "@tanstack/react-router";
 import {
   Clapperboard,
   Home,
-  LogOut,
   MapPin,
   PlusCircle,
   Search,
@@ -24,6 +23,7 @@ import {
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AccountMenu } from "@/components/account-menu";
 import { SearchOverlay } from "@/components/search-overlay";
 import {
   DropdownMenu,
@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { supabase } from "@/integrations/supabase/client";
 import { UAE_CITIES } from "@/lib/listings";
 
 const NAV = [
@@ -163,14 +162,7 @@ export function SiteHeader() {
             </Button>
           ) : null}
           {user ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Sign out"
-              onClick={() => supabase.auth.signOut()}
-            >
-              <LogOut />
-            </Button>
+            <AccountMenu />
           ) : (
             <>
               <Button asChild variant="hero" size="sm" className="hidden sm:inline-flex">
