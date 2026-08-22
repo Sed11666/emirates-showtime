@@ -91,7 +91,9 @@ function CinemasPage() {
 
   // Shared visitor position: precise browser coords when granted, otherwise the
   // centre of the header city. Ask once on mount so the panel fills itself in.
-  const { coords, precise, requestPrecise } = useUserLocation();
+  // Aliased: `city` here is the filter dropdown's value ("all", "Dubai", …),
+  // which is a different thing from where the visitor actually is.
+  const { coords, precise, requestPrecise, city: userCity } = useUserLocation();
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -117,24 +119,19 @@ function CinemasPage() {
     [coords],
   );
 
+  // Goes through the hook rather than calling getCurrentPosition again here.
+  // The old copy wrote its own cache entry with no timestamp and asked for a
+  // low-accuracy fix, so it both aged badly and started out imprecise.
   const requestLocation = (filterToNearby = true) => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setGeoState("denied");
-      return;
-    }
     setGeoState("loading");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const point = { lat: position.coords.latitude, lng: position.coords.longitude };
-        window.localStorage.setItem("showsouk:coords", JSON.stringify(point));
-        requestPrecise();
+    requestPrecise(
+      (point) => {
         const venues = nearestVenues(point, 6);
         setNearOnly(filterToNearby);
         setGeoState("idle");
         if (filterToNearby && venues[0]) setCity(venues[0].city);
       },
       () => setGeoState("denied"),
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
     );
   };
 
@@ -477,11 +474,15 @@ function CinemasPage() {
                             <MapPin className="size-4 shrink-0 self-center text-primary" />
                             {venue.venue}
                           </p>
+                          {/* Without a real fix this is measured from the city
+                              centre and can be tens of kilometres out, so say
+                              which it is rather than implying precision. */}
                           {venue.km !== null ? (
                             <span className="text-xs text-muted-foreground">
                               {venue.km < 1
-                                ? `${Math.round(venue.km * 1000)} m away`
-                                : `${venue.km.toFixed(1)} km away`}
+                                ? `${Math.round(venue.km * 1000)} m`
+                                : `${venue.km.toFixed(1)} km`}
+                              {precise ? " away" : ` from ${userCity}`}
                             </span>
                           ) : null}
                           <span className="ml-auto text-xs text-muted-foreground">
