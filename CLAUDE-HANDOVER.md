@@ -93,9 +93,13 @@ the chain's own booking page (VOX / Star / Cinemacity / …)
 It advances a cursor in `public.scraper_cursor` (45 pages per fire) and POSTs to
 `https://www.showsouk.com/api/public/hooks/scrape-aggregator?offset=<pos>`.
 
-A full sitemap pass takes ~85 minutes. Only ~46 of the 132 pages in
-cinemauae's sitemap are currently-showing films; the rest are coming-soon
-titles with no screenings, so most passes legitimately write nothing.
+A full sitemap pass takes ~85 minutes. Only a minority of the pages in
+cinemauae's sitemap are currently-showing films; the rest are coming-soon titles
+with no screenings, so most passes legitimately write nothing.
+
+The sitemap grows — it was 132 pages when this was written and reported
+`pagesTotal: 157` on 2026-08-22 — so treat any page count here as indicative
+and read the current value out of the scraper's own response.
 
 ### Why we scrape an aggregator rather than the chains
 This was a deliberate, informed decision by the owner. Measured comparison:
@@ -162,7 +166,11 @@ Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 ```
 scrape-aggregator-30m   */30 * * * *   → showsouk.com (Vercel)   cinemas
 scrape-events-6h        15 */6 * * *   → lovable.app (frozen)    events
+resolve-posters-daily   17 4 * * *     → showsouk.com (Vercel)   posters
 ```
+Schedules are **UTC**, not Dubai, which is the one place in this project where
+Dubai time is not the answer. `17 4` is 08:17 Dubai, and the `:17` is
+deliberate: the aggregator fires at `:00` and `:30`, so this stays clear of it.
 Note `pg_cron` reports "succeeded" when `pg_net` *dispatches* the request — it
 never sees the HTTP result. **To check real outcomes, query `net._http_response`.**
 
@@ -321,13 +329,16 @@ the queries in §12 rather than trusting the numbers.
 7 chains: vox, star, novo, roxy, reel, cineroyal, cinemacity
 444 active film rows · 58 distinct titles · 3,439 screenings · 2,989 with a link
 8 cities · 63 distinct screen names (64 in the geo list)
-posters: 44 of 444 rows on image.tmdb.org; 152 rows carry an imdb_id
+posters: 152 of 444 rows on image.tmdb.org — every eligible row resolved
 ```
 
-**Read that poster line as a symptom.** 152 rows are eligible and only 44 are
-resolved, because `resolve-posters` has never been scheduled (§11.3): a manual
-run resolves everything eligible, then each scrape adds hotlinked rows and the
-ratio decays. It read 152 of 442 on 22 Aug and 44 of 444 a day later.
+**The poster ratio is now maintained, not decaying.** 152 rows carry an
+`imdb_id` and all 152 are resolved; the remaining 292 have no id and are
+permanently unreachable, so **152 of 444 is the ceiling, not a shortfall**.
+
+Before `resolve-posters-daily` existed this number decayed between manual runs —
+152 of 442 on 22 Aug, then 44 of 444 hours later — because every scrape adds
+hotlinked rows. If you see it falling again, check the cron before anything else.
 
 **Per-screening booking links now work for five of seven chains** — Novo and
 Roxy both publish real session URLs, which the older note here denied.
@@ -427,11 +438,9 @@ progress` — those are Lovable editor syncs, not deliberate checkpoints.
    so revoking the two Supabase roles alone achieves nothing. Do not rewrite the
    body; it exists nowhere in this repo and nobody has read it.
 
-3. **`resolve-posters` is not scheduled.** It has only ever been run by hand, so
-   films scraped since the last manual run arrive hotlinked and stay that way.
-   A daily `pg_cron` job is enough — the route skips already-resolved films, so
-   steady-state runs do almost nothing. Note the route runs its job on **GET as
-   well as POST**, so a casual health check triggers real work.
+3. **`resolve-posters` runs on GET as well as POST**, so a casual health check
+   against that URL triggers real work. It is otherwise no longer outstanding —
+   see the closed list below.
 
 4. **Google sign-in is blocked structurally, and is currently hidden.**
    `/auth/v1/authorize?provider=google` returns
@@ -514,7 +523,13 @@ progress` — those are Lovable editor syncs, not deliberate checkpoints.
   session URLs (`uae.novocinemas.com/seat-selection/cinema/9/session/342071`):
   189 screenings, 189 distinct URLs. Roxy gained them too.
 - ~~**TMDB posters**~~ — **done, with a ceiling.** Every row that has an
-  `imdb_id` is resolved; 290 rows have none and never can be. See §10.
+  `imdb_id` is resolved; the rest have none and never can be. See §10.
+- ~~**`resolve-posters` unscheduled**~~ — **scheduled 2026-08-22** as
+  `resolve-posters-daily` (jobid 12, `17 4 * * *`, active). The backlog was
+  cleared by hand at the same time: 152 of 152 eligible rows resolved, 0 left.
+  A healthy daily run should therefore report a *small* `candidates` count, not
+  a large one — a number climbing back into three figures means the job has
+  stopped firing and the decay has resumed.
 - ~~**`/cinemas` copy says "every three hours"**~~ — fixed, then the whole header
   was rewritten for visitors rather than for us (`3559c4c`).
 - ~~**Poster `alt` attributes empty**~~ — already fixed before it was noticed.
@@ -544,3 +559,26 @@ curl -sS -X POST "https://www.showsouk.com/api/public/hooks/scrape-aggregator?of
 
 A healthy response looks like:
 `{"ok":true,"visited":47,"notModified":30,"filmsKeptAlive":240,"ingest":{"upserted":45}}`
+
+```sql
+-- poster coverage. "resolved" should equal "eligible"; if it starts trailing,
+-- resolve-posters-daily has stopped firing.
+select count(*)                                                           as active_rows,
+       count(*) filter (where imdb_id is not null)                        as eligible,
+       count(*) filter (where poster_url like 'https://image.tmdb.org/%') as resolved
+from cinema_films where is_active;
+```
+
+```bash
+# resolve posters now rather than waiting for 04:17 UTC
+curl -sS -X POST "https://www.showsouk.com/api/public/hooks/resolve-posters" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+A healthy poster response looks like:
+`{"ok":true,"candidates":13,"resolved":13,"notFoundOnTmdb":0,"lookupsFailed":0,"rowsUpdated":108}`
+
+`candidates` climbing into three figures means the cron has stopped firing and
+the ratio is decaying again. `notFoundOnTmdb` rising means films whose IMDb id
+TMDB does not carry — that is a ceiling, not a fault. Note `rowsUpdated` comes
+from `set_posters`, which over-reports (§11.11); trust the SQL above instead.

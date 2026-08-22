@@ -175,7 +175,7 @@ Each of these cost a production incident.
   entire coming day between midnight and 5am. Use real epoch instants.
 - **Never use LLM extraction for values that must be exact.** It invents
   correctly-shaped URLs that do not resolve.
-- **An empty batch is not a failure.** Only ~46 of 132 sitemap pages are
+- **An empty batch is not a failure.** Only a minority of sitemap pages are
   currently-showing films.
 - **`pg_cron` reports dispatch, not outcome.** Query `net._http_response` for
   real HTTP results.
