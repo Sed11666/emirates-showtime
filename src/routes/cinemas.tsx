@@ -324,12 +324,14 @@ function CinemasPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <FilterRow
               label="Cinema"
+              allLabel="All cinemas"
               value={cinema}
               onChange={setCinema}
               options={CINEMAS.map((c) => ({ value: c.key, label: c.label }))}
             />
             <FilterRow
               label="City"
+              allLabel="All cities"
               value={city}
               onChange={setCity}
               options={UAE_CITIES.map((c) => ({ value: c, label: c }))}
@@ -337,6 +339,7 @@ function CinemasPage() {
             {languages.length > 0 && (
               <FilterRow
                 label="Language"
+                allLabel="All languages"
                 value={language}
                 onChange={setLanguage}
                 options={languages.map((l) => ({ value: l, label: l }))}
@@ -576,16 +579,19 @@ function CinemasPage() {
  */
 function FilterRow({
   label,
+  allLabel,
   value,
   onChange,
   options,
 }: {
   label: string;
+  /** Wording for the no-filter option. Passed in rather than derived: adding
+   *  an "s" to the label gave "All citys". */
+  allLabel: string;
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
 }) {
-  const allLabel = `All ${label.toLowerCase()}s`;
   return (
     <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
