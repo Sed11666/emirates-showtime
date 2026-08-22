@@ -79,19 +79,26 @@ export async function fetchCinemaFilms(): Promise<CinemaFilm[]> {
   return (data ?? []) as CinemaFilm[];
 }
 
-type ParsedShowtime = { date: string | null; text: string };
+/**
+ * `text` is for display and reads "Venue · date · time". `time` is the bare
+ * clock value — keep them apart: anything doing time arithmetic needs `time`,
+ * and passing `text` to a parser silently yields "unparseable", which reads as
+ * "not finished yet" and quietly disables whatever filter depends on it.
+ */
+type ParsedShowtime = { date: string | null; time: string; text: string };
 
 function parseShowtimes(value: unknown): ParsedShowtime[] {
   if (!Array.isArray(value)) return [];
   return value
     .map((entry): ParsedShowtime | null => {
-      if (typeof entry === "string") return { date: null, text: entry };
+      if (typeof entry === "string") return { date: null, time: entry, text: entry };
       if (entry && typeof entry === "object") {
         const row = entry as Record<string, unknown>;
         const parts = [row["venue"], row["date"], row["time"]].filter(Boolean);
         const text = parts.join(" · ");
         if (!text) return null;
-        return { date: parseDayKey(row["date"]), text };
+        const time = typeof row["time"] === "string" ? row["time"].trim() : "";
+        return { date: parseDayKey(row["date"]), time, text };
       }
       return null;
     })
@@ -112,7 +119,7 @@ export function showtimesForDay(value: unknown, dayKey: string): string[] {
   // Screenings that already started are dropped first, so a film whose last
   // show has begun stops counting as "playing today" for the day filter.
   const parsed = parseShowtimes(value).filter(
-    (e) => !isScreeningOver(e.text, e.date ?? null, dayKey),
+    (e) => !isScreeningOver(e.time, e.date ?? null, dayKey),
   );
   if (dayKey === "any") return parsed.map((e) => e.text).slice(0, 12);
   // Undated entries always count; dated ones must match the selected day.
@@ -137,7 +144,7 @@ export function hasDatedShowtimes(value: unknown): boolean {
  */
 export function hasUpcomingScreenings(value: unknown, now: Date = new Date()): boolean {
   const today = toDayKey(now);
-  return parseShowtimes(value).some((e) => !isScreeningOver(e.text, e.date ?? null, today, now));
+  return parseShowtimes(value).some((e) => !isScreeningOver(e.time, e.date ?? null, today, now));
 }
 
 /**
