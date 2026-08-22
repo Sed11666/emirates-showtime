@@ -26,6 +26,7 @@ import {
   fetchCinemaFilms,
   filmFormats,
   filmSlug,
+  hasUpcomingScreenings,
   mergeFilmsByTitle,
   CINEMAS,
   CINEMA_LABELS,
@@ -66,7 +67,14 @@ function Home() {
   const { data: films } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
 
   const merged = useMemo(
-    () => mergeFilmsByTitle(films ?? []).sort((a, b) => popularityScore(b) - popularityScore(a)),
+    () =>
+      mergeFilmsByTitle(films ?? [])
+        // Only titles you can still go and see. Without this the grid keeps
+        // showing films whose last screening started hours ago — roughly half
+        // the catalogue by late evening — and every card leads to an empty
+        // showtime list.
+        .filter((film) => hasUpcomingScreenings(film.showtimes))
+        .sort((a, b) => popularityScore(b) - popularityScore(a)),
     [films],
   );
 

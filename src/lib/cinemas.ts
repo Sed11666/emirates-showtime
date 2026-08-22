@@ -17,7 +17,7 @@
  * lib/showtimes.ts, lib/search.ts.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { isScreeningOver, parseDayKey, timeToMinutes } from "@/lib/days";
+import { isScreeningOver, parseDayKey, timeToMinutes, toDayKey } from "@/lib/days";
 
 export type CinemaKey =
   | "vox"
@@ -124,6 +124,20 @@ export function showtimesForDay(value: unknown, dayKey: string): string[] {
 
 export function hasDatedShowtimes(value: unknown): boolean {
   return parseShowtimes(value).some((e) => e.date);
+}
+
+/**
+ * True when at least one screening has not started yet.
+ *
+ * A film whose last showing began an hour ago is not "now showing" — there is
+ * nothing left to book — so it should not occupy a card or a search result.
+ * Uses the same isScreeningOver rule as the showtime chips, so a title
+ * disappears from the home page at the moment its final time drops off the
+ * Cinemas board rather than at some other threshold.
+ */
+export function hasUpcomingScreenings(value: unknown, now: Date = new Date()): boolean {
+  const today = toDayKey(now);
+  return parseShowtimes(value).some((e) => !isScreeningOver(e.text, e.date ?? null, today, now));
 }
 
 /**

@@ -10,7 +10,7 @@
  * routes/search.tsx (full /search?q= page).
  */
 import { supabase } from "@/integrations/supabase/client";
-import { CINEMA_LABELS, filmSlug } from "@/lib/cinemas";
+import { CINEMA_LABELS, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
 import { VENUES } from "@/lib/venues";
 
 export type SearchCategory = "movies" | "events" | "cinemas";
@@ -53,7 +53,9 @@ export async function searchShowSouk(rawQuery: string): Promise<SearchResults> {
   const [films, listings, events] = await Promise.all([
     supabase
       .from("cinema_films")
-      .select("id, title, cinema, genre, language, rating, poster_url, venues, city")
+      // showtimes is fetched purely so we can drop films whose last screening
+      // has already started — is_active only means the scraper still sees them.
+      .select("id, title, cinema, genre, language, rating, poster_url, venues, city, showtimes")
       .eq("is_active", true)
       .or(
         `title.ilike.${like},genre.ilike.${like},language.ilike.${like},rating.ilike.${like}`,
@@ -79,6 +81,9 @@ export async function searchShowSouk(rawQuery: string): Promise<SearchResults> {
   const movies: SearchResult[] = [];
   const seenMovie = new Set<string>();
   for (const film of films.data ?? []) {
+    // "Now showing" has to be true. A film whose final screening began an hour
+    // ago is not bookable, so surfacing it in search only wastes a tap.
+    if (!hasUpcomingScreenings(film.showtimes)) continue;
     const key = film.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     if (seenMovie.has(key)) continue;
     seenMovie.add(key);
