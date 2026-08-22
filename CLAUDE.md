@@ -18,7 +18,7 @@ history and the incident log behind several rules below.
 
 | Concern       | Choice                                                              |
 | ------------- | ------------------------------------------------------------------- |
-| Framework     | TanStack Start v1 (React 19, SSR) on Vite 7                          |
+| Framework     | TanStack Start v1 (React 19, SSR) on Vite 8                          |
 | Routing       | TanStack Router, file-based under `src/routes/`                      |
 | Data fetching | TanStack Query                                                       |
 | Styling       | Tailwind CSS v4 via `src/styles.css` (`@theme` tokens), shadcn/ui    |

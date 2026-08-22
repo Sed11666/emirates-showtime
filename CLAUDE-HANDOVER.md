@@ -15,6 +15,17 @@ venue and city, and click a showtime to go **directly to that exact screening's
 booking page on the cinema's own site**. We never sell tickets; there is no cart
 or checkout. We are a discovery and hand-off layer.
 
+**The hand-off is deliberately ungated.** A sign-in wall was added in front of
+booking (`3fe7866`) and removed three days later (`877f38b`): it sat between the
+visitor and something they could reach by typing "vox cinemas" into Google, and
+since the chain asks them to sign in again anyway it bought a first-time visitor
+two accounts and nothing else. Showtime chips go straight out. **Do not
+reintroduce it** — the reasoning is in `877f38b` and it was a considered reversal,
+not an oversight.
+
+An account is asked for exactly once, for **Notify Me**, which genuinely cannot
+work anonymously. That lives in `notify_subscribers`.
+
 Owner: Syed Ebaad (`syedebaad609@gmail.com`, GitHub `Sed11666`).
 
 ---
@@ -47,7 +58,7 @@ credits), so:
 
 ## 3. Tech stack
 
-- **TanStack Start v1** (React 19, SSR) on **Vite 7**
+- **TanStack Start v1** (React 19, SSR) on **Vite 8**
 - **TanStack Router**, file-based under `src/routes/`. `src/routeTree.gen.ts` is
   generated — never edit it.
 - **TanStack Query** for data fetching
@@ -123,10 +134,14 @@ Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 - **`scraper_page_cache`** — per-URL `etag`, `last_modified`, `content_hash`,
   `film_keys[]`, `fetched_at`.
 - **`listings`** — manually curated entries from `/admin`.
+- **`notify_subscribers`** — one row per signed-in user who asked to be told
+  when events launch (`877f38b`). RLS on, policies scoped to `auth.uid()` with
+  **no cross-row SELECT**, so the list cannot be harvested with the public key.
+  **Missing from `src/integrations/supabase/types.ts`** — see §11.12.
 - **`user_roles`** — `(user_id, role)`. Roles live here, never on a profile row.
 - `cinema_scrape_runs` / `event_scrape_runs` — audit logs.
 
-### Functions (all `SECURITY DEFINER`, all take the ingest token)
+### Functions (all `SECURITY DEFINER`; all take the ingest token **except one**)
 - `ingest_cinema_films(p_token text, p_rows jsonb)` — the only write path for
   scraped films. Strips competitor URLs at the boundary, coalesces metadata so a
   thin page can't blank good values, then calls `retire_stale_films`.
@@ -136,7 +151,12 @@ Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 - `touch_films(p_token text, p_keys jsonb)` — refreshes `last_seen_at` for films
   whose page was unchanged
 - `retire_stale_films(p_chains text[])` — deactivates films untouched for 48h,
-  **capped at 30% of a chain per pass**
+  **capped at 30% of a chain per pass**. **Takes no token, and is therefore
+  callable by anyone holding the publishable key — see §11.2.** Called internally
+  by `ingest_cinema_films`; never called directly from `src/`.
+- `set_posters(p_token text, p_map jsonb)` — swaps hotlinked artwork for
+  `image.tmdb.org` URLs, keyed on `imdb_id`. Written by the `resolve-posters`
+  route. Over-reports its updated count (§11.11).
 
 ### Cron
 ```
@@ -247,11 +267,46 @@ cinemas scraper, and `src/lib/cinemas.ts`.
 ## 9. Product rules
 
 - Homepage is **discovery only** — no showtimes, no booking. Every movie card
-  routes to `/cinemas`. A "Today's Showtimes" board was deliberately removed.
+  routes to `/cinemas`, scoped to that film. A "Today's Showtimes" board was
+  deliberately removed.
+- **Booking happens on `/cinemas`, not on `/movie/$slug`.** Chips link straight
+  out to the chain (`040ea7c`). `/movie/$slug` still exists and still works, but
+  **nothing links to it** — treat it as orphaned, not as the booking path.
+- **The click-out is never gated** (`877f38b`, reversing `3fe7866`). Sign-in is
+  asked for only where it is genuinely required — Notify Me. The
+  `AuthPromptProvider` machinery (`components/auth-prompt.tsx`, renamed from
+  `booking-gate`) is kept on purpose: it is what stops an OAuth round-trip
+  stranding someone once a provider is actually configured.
+- **A film with no screening still to come must not appear anywhere**
+  (`5379abe`). `is_active` only means the scraper still sees the film; it says
+  nothing about whether anything is left to watch today. Home, search and
+  `/cinemas` all share `hasUpcomingScreenings` in `lib/cinemas` so a title leaves
+  every surface at the same instant.
+- **Pass `isScreeningOver` a bare clock time, never a display string**
+  (`7e6307b`). `parseShowtimes` returns `text` as a composite (`Venue - date -
+  time`); feeding that in makes `timeToMinutes` return `MAX_SAFE_INTEGER`, which
+  the guard reads as "not finished yet", so the filter silently passes
+  everything. It put 54 cards on the home page when 32 films qualified.
 - Screenings disappear **30 minutes after they start**.
-- Booking links resolve: per-screening URL → film booking_url → chain home.
+- Booking links resolve: per-screening URL → film `booking_url` → chain home.
   Never construct a booking URL by hand.
-- Nearest-first ordering wherever venues are listed.
+- **A link only counts as exact when exactly one screening of that film uses
+  it** (`7170f89`). Having a URL is not the same as having a URL to *your*
+  screening. Chips that cannot reach a single screening render dashed and muted
+  and say so; the same rule drives the film-level fallback and the legend, so
+  all three agree.
+- **Never let a film-level fallback be one of that film's own screening URLs**
+  (`2aaccc5`, `4c0143b`). Doing so sent six VOX chips to one session: an 18:45
+  Platinum and a 20:45 Standard opened the same seat map, and someone following
+  that books the wrong showing. Dropping to the chain site is the lesser harm.
+- **Formats are canonicalised on write** (`f6e2ab3`, `ce8edcb`): Title Case with
+  brands preserved (MAX, IMAX, not Imax), and Regular / Standard / bare `2D`
+  merged into one `Standard`. Synonyms match the whole value, never a substring,
+  so `Suites 2D` and `Dolby 2D` keep their meaning. Do not re-apply CSS
+  uppercase to format chips — it hides the canonicalisation.
+- Nearest-first ordering wherever venues are listed. Venue matching is
+  **name-based**, so a screen missing from `lib/venues.ts` silently shows no
+  distance and sorts last.
 - Search is internal only — never an external movie database.
 - Admin gating is server-enforced via RLS; `useIsAdmin` is cosmetic only.
 
@@ -259,29 +314,64 @@ cinemas scraper, and `src/lib/cinemas.ts`.
 
 ## 10. Current state
 
+Measured against the live database on **2026-08-22**. These move daily; re-run
+the queries in §12 rather than trusting the numbers.
+
 ```
 7 chains: vox, star, novo, roxy, reel, cineroyal, cinemacity
-~300 active films · ~2,800 screenings · ~2,600 with booking links
-100% of films have posters, genre, language, rating, runtime, synopsis
-8 emirates, 60+ venues
+444 active film rows · 58 distinct titles · 3,439 screenings · 2,989 with a link
+8 cities · 63 distinct screen names (64 in the geo list)
+posters: 44 of 444 rows on image.tmdb.org; 152 rows carry an imdb_id
 ```
 
-Per-screening (exact show) booking links work for **VOX, Star, Cinemacity**.
-**Novo and Cine Royal** only reach the film's page. For **Cine Royal that is
-permanent** — their booking carries the screening in session state, not in a
-URL, so no per-show link exists to find (see §11.1). Novo is still open.
-Reel's booking sits behind a sign-in wall.
+**Read that poster line as a symptom.** 152 rows are eligible and only 44 are
+resolved, because `resolve-posters` has never been scheduled (§11.3): a manual
+run resolves everything eligible, then each scrape adds hotlinked rows and the
+ratio decays. It read 152 of 442 on 22 Aug and 44 of 444 a day later.
+
+**Per-screening booking links now work for five of seven chains** — Novo and
+Roxy both publish real session URLs, which the older note here denied.
+
+| chain | screenings | with a link | exact (unique to one screening) |
+|---|---|---|---|
+| vox | 1541 | 1398 | 1398 |
+| star | 609 | 572 | 572 |
+| roxy | 276 | 264 | 264 |
+| cinemacity | 258 | 255 | 255 |
+| novo | 227 | 221 | 221 |
+| cineroyal | 302 | 279 | **4** |
+| reel | 226 | 0 | 0 |
+
+**Cine Royal** is film-level only and permanently so (§11.1): its 285 linked
+screenings share just 31 URLs. The 4 counted "exact" are films with a single
+screening, where the film URL is unique by accident — not partial success.
+**Reel** publishes no booking URLs at all; its booking sits behind a sign-in wall.
+
+**Poster caveat:** only 152 of 442 rows carry an `imdb_id`, and `resolve-posters`
+can only act on rows that have one. Every eligible row is resolved; the other
+**290 have no id and are permanently unreachable by that route**. The old claim
+that "100% of films have posters, genre, language, rating, runtime, synopsis" is
+true about *having* a poster and misleading about *owning* it.
 
 Latest commits:
 ```
-0fb1d84 Compare screenings on real instants, not rolled minutes
-10cabbb An empty page batch is not a failure
-d9a81b6 Never trust a cache entry from a previous day
-a5abcf8 Include the scrape day in the content hash
-cf17443 Hide screenings 30 minutes after they start
-ca60ffa Remove the Today Showtimes board from the homepage
-f5fac72 Homepage movie cards route to Cinemas, not to booking
+e9b8bf9 Take venue coordinates from the source that names the venues
+33fdd40 Fix wrong cinema distances: stale location and bad coordinates
+dd25fb0 Make the Cinemas filters dropdowns
+877f38b Stop gating the click-out, ask for an account for alerts instead
+7e6307b Pass the clock time, not the display string, to isScreeningOver
+5379abe Drop films with nothing left to see from home and search
+8a1a1b2 Hide Google sign-in until it has credentials
+4c0143b Stop storing a session URL as a film-level booking link
 ```
+
+Venue coordinates are now taken from each screen's own page on cinemauae, the
+same record the venue names come from, so identity always matches and no
+geocoding guesswork is involved: **63 of 64 exact** (`e9b8bf9`). Only Reel
+Springs Souk has no page there.
+
+Interleaved with those are several commits named only `Changes` or `Work in
+progress` — those are Lovable editor syncs, not deliberate checkpoints.
 
 ---
 
@@ -322,19 +412,113 @@ f5fac72 Homepage movie cards route to Cinemas, not to booking
 
    Venue → `cinemaRefId`: Khalidiyah Mall 2, Dalma Mall 101, Al Dhannah Mall
    200, Deerfields Mall 300, WTC Mall Abu Dhabi 10000001.
-2. **Novo deep links** — harder. Next.js, ships no session ids server-side.
-   Booking is a JS click handler. Would need their `backend.novocinemas.com` API.
-3. **TMDB posters** — posters currently hotlink `cinema.aptrixx.com`. Filenames
-   are IMDb ids (`tt22084616.jpg`) and `cinema_films.imdb_id` is populated, so
-   own artwork can be resolved via TMDB with a free API key.
-4. **`/cinemas` copy** still says "the scraper runs automatically every three
-   hours" — it's every 30 minutes now.
-5. **Poster `alt` attributes are empty** — accessibility gap; the title is available.
-6. **Events pipeline still depends on the frozen Lovable deployment.** If that
-   ever goes away, events stop refreshing. Cinemas are already independent.
-7. **165 screenings still dated 11 Aug** from films whose pages no longer carry
-   showtimes — the 48h retirement should clear them.
-8. **Revoke the old GitHub token** that was pasted into the previous chat.
+2. **`retire_stale_films` is callable by anyone — still open, highest risk.**
+   Every other scraper RPC rejects a bad token with `42501`. This one takes no
+   token and returns `200` to a caller holding only the publishable key, which
+   ships in the browser bundle by design. It is the function that deactivates
+   catalogue rows — the same mechanism that has nearly emptied the catalogue
+   three times (§8.1). The 48h and 30%-per-chain guards limit a single call, but
+   repeated calls compound, and a stalled scraper makes far more rows eligible.
+
+   Fix is a `REVOKE`, **not** a rewrite: nothing in `src/` calls it directly, and
+   it runs only from inside `ingest_cinema_films`, which is SECURITY DEFINER, so
+   that internal call executes as the owner and is unaffected. Revoke from
+   `public, anon, authenticated` — Postgres grants EXECUTE to PUBLIC by default,
+   so revoking the two Supabase roles alone achieves nothing. Do not rewrite the
+   body; it exists nowhere in this repo and nobody has read it.
+
+3. **`resolve-posters` is not scheduled.** It has only ever been run by hand, so
+   films scraped since the last manual run arrive hotlinked and stay that way.
+   A daily `pg_cron` job is enough — the route skips already-resolved films, so
+   steady-state runs do almost nothing. Note the route runs its job on **GET as
+   well as POST**, so a casual health check triggers real work.
+
+4. **Google sign-in is blocked structurally, and is currently hidden.**
+   `/auth/v1/authorize?provider=google` returns
+   `400 {"msg":"Unsupported provider: missing OAuth secret"}`: the provider is
+   switched on with no client credentials attached.
+
+   **This is not a misconfiguration anyone can correct from a dashboard.** The
+   database lives in Lovable's Supabase organisation, Lovable Cloud brokers
+   Google through its own OAuth app, and it exposes no Client ID or Client
+   Secret fields — so there is nowhere to put credentials even after creating a
+   Google client (`8a1a1b2`). Do not send someone to "Supabase → Providers →
+   Google"; that screen is not reachable for this project.
+
+   `/auth/v1/settings` reports `google: true` whether or not credentials exist,
+   so the runtime capability probe **cannot** detect this. Hence the documented
+   constant `GOOGLE_LACKS_CREDENTIALS` in `hooks/useAuthProviders.tsx`, which
+   hides the button. Set it `false` the moment the project has its own
+   credentials and the button returns by itself — the sign-in path already talks
+   to Supabase directly rather than through the Lovable wrapper.
+
+   Escaping this needs the project moved to its own Supabase organisation. Email
+   and password are unaffected.
+
+   Still true and still latent: once credentials exist, `redirectTo` is
+   `window.location.href`, so the allowlist needs **wildcards**
+   (`https://www.showsouk.com/**`), not one exact URL. An unlisted `redirectTo`
+   does not error — Supabase silently substitutes the Site URL.
+
+5. **Events pipeline still depends on the frozen Lovable deployment.** If that
+   ever goes away, events stop refreshing. Cinemas are already independent, and
+   since `3f92e8d` this is the *only* remaining Lovable runtime dependency.
+
+6. **Google Search Console work is mid-flight.** `1d77b36` and `47ccdc4` start a
+   GSC connection; the surrounding `Changes` / `Work in progress` commits are
+   Lovable syncs. Check what actually landed before building on it.
+
+7. **Phone auth is built and wired but hidden.** Which sign-in methods appear is
+   read at runtime from Supabase settings, so enabling phone auth with an SMS
+   provider makes the Mobile tab appear with **no redeploy** (`3fe7866`).
+
+8. **Reel and Cine Royal will never get exact links.** Reel publishes none; Cine
+   Royal cannot (§11.1). Do not spend time here — the honesty markers from
+   `696fe64` are the answer, not a better parser.
+
+9. **Revoke the old GitHub token** that was pasted into a previous chat.
+
+10. **Migrations cannot rebuild the database.** None of `ingest_cinema_films`,
+    `page_cache_get`, `page_cache_put`, `touch_films`, `retire_stale_films` or
+    `set_posters` appear in `supabase/migrations/` — all six were created through
+    the Lovable Cloud SQL editor and exist only in the live database. Their
+    *signatures* are in `src/integrations/supabase/types.ts`, so the repo does
+    record that they exist; what it has nowhere is their **bodies**, so none of
+    them could be recreated from this repository. Verified by probing each live.
+
+11. **`set_posters` over-reports.** It returned `rowsUpdated: 286` on a run where
+    exactly 184 rows changed, and again `114` where 114 changed but only after a
+    differing count. Data outcomes are correct; the number is not. Likely counts
+    matched rather than modified rows. Unverifiable without service-role access.
+
+12. **`npm run build` does not typecheck, and `tsc` currently fails.** The build
+    script is `vite build`, which strips types without checking them, so Vercel
+    deploys green while `npx tsc --noEmit` reports **4 errors**:
+
+    - `routes/index.tsx` 80, 98, 99 — `notify_subscribers` is missing from the
+      generated `src/integrations/supabase/types.ts`, so the table resolves to
+      `never`. The table exists in the live database; the types file is stale and
+      must be **regenerated, never hand-edited**.
+    - `routes/movie.$slug.tsx:228` — `onClick={requestPrecise}` hands React's
+      `MouseEvent` to a function whose first parameter is `onSuccess`, so a
+      successful fix calls the event object as a function and throws
+      `TypeError`. Coordinates are set first, so the damage is limited, and
+      `/movie/$slug` is orphaned. Fix is `onClick={() => requestPrecise()}`.
+
+    Worth adding `tsc --noEmit` to CI: the one thing this repo's strictness is
+    supposed to buy is currently not being collected.
+
+### Closed since this list was written
+
+- ~~**Novo deep links**~~ — **done.** Novo now publishes real per-screening
+  session URLs (`uae.novocinemas.com/seat-selection/cinema/9/session/342071`):
+  189 screenings, 189 distinct URLs. Roxy gained them too.
+- ~~**TMDB posters**~~ — **done, with a ceiling.** Every row that has an
+  `imdb_id` is resolved; 290 rows have none and never can be. See §10.
+- ~~**`/cinemas` copy says "every three hours"**~~ — fixed, then the whole header
+  was rewritten for visitors rather than for us (`3559c4c`).
+- ~~**Poster `alt` attributes empty**~~ — already fixed before it was noticed.
+- ~~**165 screenings dated 11 Aug**~~ — cleared by retirement as expected.
 
 ---
 
