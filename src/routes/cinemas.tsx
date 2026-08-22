@@ -13,6 +13,13 @@ import { ChevronRight, Film, Locate, MapPin, Navigation, Search } from "lucide-r
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DaySelector } from "@/components/day-selector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   CINEMAS,
@@ -312,26 +319,30 @@ function CinemasPage() {
 
           <DaySelector value={day} onChange={setDay} />
 
-          <FilterRow
-            label="Cinema"
-            value={cinema}
-            onChange={setCinema}
-            options={CINEMAS.map((c) => ({ value: c.key, label: c.label }))}
-          />
-          <FilterRow
-            label="City"
-            value={city}
-            onChange={setCity}
-            options={UAE_CITIES.map((c) => ({ value: c, label: c }))}
-          />
-          {languages.length > 0 && (
+          {/* Side by side on anything wider than a phone: three dropdowns cost
+              one row, where the old pills cost three wrapping rows. */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <FilterRow
-              label="Language"
-              value={language}
-              onChange={setLanguage}
-              options={languages.map((l) => ({ value: l, label: l }))}
+              label="Cinema"
+              value={cinema}
+              onChange={setCinema}
+              options={CINEMAS.map((c) => ({ value: c.key, label: c.label }))}
             />
-          )}
+            <FilterRow
+              label="City"
+              value={city}
+              onChange={setCity}
+              options={UAE_CITIES.map((c) => ({ value: c, label: c }))}
+            />
+            {languages.length > 0 && (
+              <FilterRow
+                label="Language"
+                value={language}
+                onChange={setLanguage}
+                options={languages.map((l) => ({ value: l, label: l }))}
+              />
+            )}
+          </div>
         </div>
 
         {/* Scoped to one film: say so plainly and give a one-click way out,
@@ -554,6 +565,15 @@ function CinemasPage() {
   );
 }
 
+/**
+ * One filter as a dropdown. These were rows of pills, which worked when there
+ * were four chains and grew unusable at seven chains and eight emirates: three
+ * wrapping rows of buttons above the results, pushing the films off-screen on a
+ * phone. A dropdown stays one line whatever the option count.
+ *
+ * The date picker is deliberately still a row — you scan a week at a glance and
+ * pick a day, which is browsing rather than filtering.
+ */
 function FilterRow({
   label,
   value,
@@ -565,26 +585,23 @@ function FilterRow({
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
 }) {
-  const all = [{ value: "all", label: `All ${label.toLowerCase()}s` }, ...options];
+  const allLabel = `All ${label.toLowerCase()}s`;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="w-20 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      {all.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-            value === option.value
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground hover:border-primary/60 hover:text-foreground"
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <label className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-9 w-full min-w-[9rem] text-sm">
+          <SelectValue placeholder={allLabel} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{allLabel}</SelectItem>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
   );
 }
