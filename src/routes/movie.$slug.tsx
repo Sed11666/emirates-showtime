@@ -225,7 +225,10 @@ function MovieShowtimesPage() {
             {!precise ? (
               <button
                 type="button"
-                onClick={requestPrecise}
+                // Wrapped, not passed by reference: requestPrecise's first parameter
+                // is an onSuccess callback, so React would hand it the click
+                // event and a successful fix would call that event as a function.
+                onClick={() => requestPrecise()}
                 className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gold/60 hover:text-gold"
               >
                 <Locate className="size-3.5" /> Use my location

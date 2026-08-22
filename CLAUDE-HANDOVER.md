@@ -491,22 +491,22 @@ progress` — those are Lovable editor syncs, not deliberate checkpoints.
     differing count. Data outcomes are correct; the number is not. Likely counts
     matched rather than modified rows. Unverifiable without service-role access.
 
-12. **`npm run build` does not typecheck, and `tsc` currently fails.** The build
+12. **`npm run build` does not typecheck, and `tsc` still fails.** The build
     script is `vite build`, which strips types without checking them, so Vercel
-    deploys green while `npx tsc --noEmit` reports **4 errors**:
+    deploys green while `npx tsc --noEmit` reports **3 errors**, all the same
+    cause: `routes/index.tsx` 80, 98 and 99, where `notify_subscribers` is
+    missing from the generated `src/integrations/supabase/types.ts` and so
+    resolves to `never`. The table exists in the live database; the types file
+    is stale and must be **regenerated, never hand-edited**.
 
-    - `routes/index.tsx` 80, 98, 99 — `notify_subscribers` is missing from the
-      generated `src/integrations/supabase/types.ts`, so the table resolves to
-      `never`. The table exists in the live database; the types file is stale and
-      must be **regenerated, never hand-edited**.
-    - `routes/movie.$slug.tsx:228` — `onClick={requestPrecise}` hands React's
-      `MouseEvent` to a function whose first parameter is `onSuccess`, so a
-      successful fix calls the event object as a function and throws
-      `TypeError`. Coordinates are set first, so the damage is limited, and
-      `/movie/$slug` is orphaned. Fix is `onClick={() => requestPrecise()}`.
+    A fourth error was a real bug rather than stale types — `/movie/$slug` passed
+    `requestPrecise` straight to `onClick`, handing a `MouseEvent` to an
+    `onSuccess` parameter — and is fixed in `f453d80`.
 
-    Worth adding `tsc --noEmit` to CI: the one thing this repo's strictness is
-    supposed to buy is currently not being collected.
+    **Add `tsc --noEmit` to CI.** That bug sat in a typed codebase, was reported
+    by the compiler the whole time, and shipped anyway because nothing in the
+    pipeline runs the check. The strictness this repo relies on is not currently
+    being collected.
 
 ### Closed since this list was written
 
