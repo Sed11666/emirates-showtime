@@ -18,9 +18,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Bell, ChevronRight, Clock, Star } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
+import { useAuth } from "@/hooks/useAuth";
+import { useAuthPrompt } from "@/components/auth-prompt";
+import { supabase } from "@/integrations/supabase/client";
 import { Reveal } from "@/components/reveal";
 import {
   fetchCinemaFilms,
@@ -56,6 +59,88 @@ export const Route = createFileRoute("/")({
   }),
   component: Home,
 });
+
+/**
+ * Release alerts — the one thing here that genuinely cannot work anonymously,
+ * and therefore the right place to ask for an account. Signed out, pressing it
+ * opens the sign-in dialog and subscribes on the way back; signed in, it
+ * subscribes immediately. Never a wall in front of something they could
+ * otherwise do.
+ */
+function NotifyMeCta() {
+  const { user } = useAuth();
+  const { promptSignIn } = useAuthPrompt();
+  const [saving, setSaving] = useState(false);
+
+  const { data: subscribed, refetch } = useQuery({
+    queryKey: ["notify-subscribed", user?.id ?? "anon"],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("notify_subscribers")
+        .select("user_id")
+        .maybeSingle();
+      return Boolean(data);
+    },
+  });
+
+  async function subscribe() {
+    setSaving(true);
+    // Read the session fresh: right after sign-in the hook's user may not have
+    // propagated yet, and inserting a null user_id would fail the RLS check.
+    const { data } = await supabase.auth.getUser();
+    const current = data.user;
+    if (!current) {
+      setSaving(false);
+      return;
+    }
+    const { error } = await supabase
+      .from("notify_subscribers")
+      .upsert({ user_id: current.id, email: current.email ?? null }, { onConflict: "user_id" });
+    setSaving(false);
+    if (error) {
+      toast.error("Couldn't save that. Please try again.");
+      return;
+    }
+    toast.success("You're on the list.");
+    void refetch();
+  }
+
+  if (subscribed) {
+    return (
+      <div className="mt-7 max-w-sm">
+        <p className="inline-flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/5 px-4 py-3 text-sm text-foreground">
+          <Bell className="size-4 shrink-0 text-gold" />
+          You&rsquo;re on the list — we&rsquo;ll be in touch about new releases.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-7 max-w-sm space-y-3">
+      <Button
+        variant="gold"
+        className="w-full"
+        disabled={saving}
+        onClick={() =>
+          promptSignIn(
+            {
+              key: "notify",
+              title: "Get release alerts",
+              description:
+                "Create an account and we'll tell you when new films land in UAE cinemas.",
+            },
+            subscribe,
+          )
+        }
+      >
+        {saving ? "Saving…" : "Notify Me"}
+      </Button>
+      <p className="text-[11px] text-muted-foreground">Free. No spam. Unsubscribe anytime.</p>
+    </div>
+  );
+}
 
 /** Popularity heuristic: playing at more chains, venues and times ranks higher. */
 function popularityScore(film: MergedFilm) {
@@ -153,15 +238,10 @@ function Home() {
                 Get notified when your favourite movies hit UAE cinemas. Showtimes, trailers and
                 booking links — all in one place.
               </p>
-              <div className="mt-7 max-w-sm space-y-3">
-                <Input placeholder="Your email address" aria-label="Your email address" />
-                <Button asChild variant="gold" className="w-full">
-                  <Link to="/auth">Notify Me</Link>
-                </Button>
-                <p className="text-[11px] text-muted-foreground">
-                  Free. No spam. Unsubscribe anytime.
-                </p>
-              </div>
+              {/* The email box that used to sit here collected nothing — it
+                  was thrown away on navigation to /auth. An account is the
+                  subscription now, so there is one thing to press. */}
+              <NotifyMeCta />
             </div>
           </div>
         </Reveal>
