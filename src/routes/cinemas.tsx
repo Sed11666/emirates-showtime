@@ -46,14 +46,29 @@ import { toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/cinemas")({
   /**
-   * `?movie=<filmSlug>` scopes the page to one title, which is how a movie card
-   * anywhere on the site opens its details and times here. Every other filter
-   * is deliberately local state — this one is in the URL because it has to be
-   * linkable and survive a refresh or a share.
+   * Two params are linkable, and for the same reason: something elsewhere on
+   * the site needs to open this page already scoped.
+   *
+   *   ?movie=<filmSlug>  — a movie card anywhere opens its times here
+   *   ?cinema=<key>      — a chain tile on the home page opens that chain
+   *
+   * Every other filter stays local state.
+   *
+   * NOTE: this declares the shape, it does NOT sanitise. In this app
+   * `useSearch()` returns the raw query string regardless of what is returned
+   * here — verified with an unrelated `?t=` param, which came through intact.
+   * The real validation is in the component. Do not add a param here and assume
+   * a bad value cannot reach state.
    */
-  validateSearch: (search: Record<string, unknown>): { movie?: string } => {
+  validateSearch: (search: Record<string, unknown>): { movie?: string; cinema?: string } => {
     const movie = typeof search["movie"] === "string" ? search["movie"].trim() : "";
-    return movie ? { movie } : {};
+    const raw =
+      typeof search["cinema"] === "string" ? search["cinema"].trim().toLowerCase() : "";
+    const cinema = CINEMAS.some((c) => c.key === raw) ? raw : "";
+    return {
+      ...(movie ? { movie } : {}),
+      ...(cinema ? { cinema } : {}),
+    };
   },
   head: () => ({
 
@@ -80,14 +95,35 @@ export const Route = createFileRoute("/cinemas")({
 });
 
 function CinemasPage() {
-  const { movie: movieSlug } = Route.useSearch();
+  const { movie: movieSlug, cinema: rawCinemaParam } = Route.useSearch();
+
+  /**
+   * Sanitise here rather than trusting validateSearch. Verified in this app:
+   * useSearch() hands back the raw query string — an unrelated `?t=` cache
+   * buster came through untouched — so the schema below is types and intent,
+   * not a runtime filter. An unrecognised chain would otherwise match no films
+   * and render "No films match these filters", which reads as broken data
+   * rather than a bad link.
+   */
+  const cinemaParam = useMemo(() => {
+    const raw = typeof rawCinemaParam === "string" ? rawCinemaParam.trim().toLowerCase() : "";
+    return CINEMAS.some((c) => c.key === raw) ? raw : undefined;
+  }, [rawCinemaParam]);
   const [search, setSearch] = useState("");
-  const [cinema, setCinema] = useState<string>("all");
+  const [cinema, setCinema] = useState<string>(cinemaParam ?? "all");
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
   const [day, setDay] = useState<string>(() => toDayKey(new Date()));
   const [nearOnly, setNearOnly] = useState(false);
   const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle");
+
+  // Arriving from a chain tile changes the param without always remounting, so
+  // seeding the state at mount is not enough on its own. Only applied when the
+  // param is present: navigating to a movie drops ?cinema, and silently
+  // clearing the chain someone had chosen would be the more surprising outcome.
+  useEffect(() => {
+    if (cinemaParam) setCinema(cinemaParam);
+  }, [cinemaParam]);
 
   // Shared visitor position: precise browser coords when granted, otherwise the
   // centre of the header city. Ask once on mount so the panel fills itself in.
