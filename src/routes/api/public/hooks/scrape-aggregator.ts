@@ -58,7 +58,16 @@ const CHAIN_KEYS: Record<string, string> = {
  */
 const CHAIN_HOME: Record<string, string> = {
   vox: "https://uae.voxcinemas.com/",
-  reel: "https://reelcinemas.com/en-ae/",
+  // Reel's showtimes chooser rather than its marketing homepage. cinemauae
+  // publishes booklink=0 for every Reel chip — the only chain it does that for
+  // — so this fallback is what every Reel screening actually opens, and landing
+  // on "pick a cinema and a time" beats landing on a hero banner.
+  //
+  // Not the film's own page: those are /movie-details/{internalId}/{slug} and
+  // the id only exists after their React app runs or behind an API that 401s,
+  // so there is no id we can reach with a plain fetch. /showtime is in their
+  // sitemap, which is as stable a public URL as they publish.
+  reel: "https://reelcinemas.com/en-ae/showtime",
   novo: "https://uae.novocinemas.com/",
   roxy: "https://www.theroxycinemas.com/",
   star: "https://www.starcinemas.ae/",
