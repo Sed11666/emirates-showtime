@@ -24,6 +24,7 @@ import {
 import {
   CINEMAS,
   CINEMA_LABELS,
+  type CinemaKey,
   fetchCinemaFilms,
   filmSlug,
   hasDatedShowtimes,
@@ -149,10 +150,16 @@ function CinemasPage() {
     if (precise) setGeoState("idle");
   }, [precise]);
 
-  /** Six closest screens to the visitor, nearest first. */
+  /**
+   * Six closest screens to the visitor, nearest first, narrowed to the selected
+   * chain. Unscoped it would sit directly above chain-filtered results naming
+   * four other brands, which is what made the board look unfiltered even when
+   * it was not.
+   */
+  const chainFilter = cinema === "all" ? null : (cinema as CinemaKey);
   const nearby = useMemo<NearbyVenue[] | null>(
-    () => (coords ? nearestVenues(coords, 6) : null),
-    [coords],
+    () => (coords ? nearestVenues(coords, 6, chainFilter) : null),
+    [coords, chainFilter],
   );
 
   // Goes through the hook rather than calling getCurrentPosition again here.
@@ -162,7 +169,7 @@ function CinemasPage() {
     setGeoState("loading");
     requestPrecise(
       (point) => {
-        const venues = nearestVenues(point, 6);
+        const venues = nearestVenues(point, 6, chainFilter);
         setNearOnly(filterToNearby);
         setGeoState("idle");
         if (filterToNearby && venues[0]) setCity(venues[0].city);
@@ -274,12 +281,16 @@ function CinemasPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-                <Navigation className="size-4 text-primary" /> Cinemas near you
+                <Navigation className="size-4 text-primary" />
+                {chainFilter ? `${CINEMA_LABELS[chainFilter]} near you` : "Cinemas near you"}
               </h2>
               <p className="text-xs text-muted-foreground">
+                {/* Count rather than a promised six: a smaller chain may not
+                    have six screens — Reel has three. The heading already names
+                    the chain, so this line does not repeat it. */}
                 {precise
-                  ? "The 6 closest screens to your current location."
-                  : "The 6 closest screens to your selected city — share your location for exact distances."}
+                  ? `The ${nearby?.length ?? 0} closest screens to your current location.`
+                  : "The closest screens to your selected city — share your location for exact distances."}
               </p>
             </div>
             <div className="flex items-center gap-2">

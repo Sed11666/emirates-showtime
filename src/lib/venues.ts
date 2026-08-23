@@ -140,8 +140,20 @@ export function distanceKm(a: Coords, b: Coords): number {
 
 export type NearbyVenue = Venue & { distanceKm: number };
 
-export function nearestVenues(coords: Coords, limit = 6): NearbyVenue[] {
-  return VENUES.map((venue) => ({ ...venue, distanceKm: distanceKm(coords, venue) }))
+/**
+ * Closest screens first. Pass `cinema` to restrict to one chain — the Cinemas
+ * page does this whenever its chain filter is set, so the panel answers "the
+ * nearest VOX" rather than sitting above VOX-only results listing four other
+ * brands. Omit it for the unfiltered board.
+ */
+export function nearestVenues(
+  coords: Coords,
+  limit = 6,
+  cinema?: CinemaKey | null,
+): NearbyVenue[] {
+  const pool = cinema ? VENUES.filter((venue) => venue.cinema === cinema) : VENUES;
+  return pool
+    .map((venue) => ({ ...venue, distanceKm: distanceKm(coords, venue) }))
     .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, limit);
 }
