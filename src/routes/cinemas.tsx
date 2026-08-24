@@ -12,6 +12,7 @@ import { ChevronRight, Film, Locate, MapPin, Navigation, Search } from "lucide-r
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DaySelector } from "@/components/day-selector";
 import {
   Select,
   SelectContent,
@@ -42,7 +43,7 @@ import {
 } from "@/lib/venues";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
-import { toDayKey } from "@/lib/days";
+import { DAY_COUNT, toDayKey } from "@/lib/days";
 
 export const Route = createFileRoute("/cinemas")({
   /**
@@ -114,20 +115,15 @@ function CinemasPage() {
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
   /**
-   * Today, and only today — the picker that used to set this is gone.
+   * Today, tomorrow, and the day after — the three days the scraper now reads.
    *
-   * The scraper stamps every screening with the Dubai day it was scraped, so
-   * the database holds today and nothing else. The picker offered seven days
-   * against that, and showtimesForDay falls back to "the latest schedule we
-   * have" when a day has no matches, so choosing Tomorrow rendered *today's*
-   * times under tomorrow's date — including ones that had already started.
-   *
-   * A site whose whole claim is that these times are real cannot show invented
-   * ones. Bring the picker back when the data behind it exists, which means
-   * scraping the chains directly: cinemauae publishes today only and ignores
-   * date parameters entirely.
+   * This was briefly collapsed to today alone, because the picker offered seven
+   * days against a database that held one and silently rendered today's times
+   * under future dates. The source does publish three days (?d=0|1|2 on each
+   * film page, each with its own booking links); the earlier reading of it was
+   * wrong. SCRAPE_DAYS in the aggregator and DAY_COUNT here must agree.
    */
-  const day = toDayKey(new Date());
+  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
   const [nearOnly, setNearOnly] = useState(false);
   const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle");
 
@@ -373,6 +369,10 @@ function CinemasPage() {
               className="border-0 bg-transparent px-0 focus-visible:ring-0"
             />
           </div>
+
+          {/* Three days is the source's ceiling, not a design choice — see
+              SCRAPE_DAYS. Offering more would repeat the bug this replaced. */}
+          <DaySelector value={day} onChange={setDay} days={DAY_COUNT} />
 
           {/* Side by side on anything wider than a phone: three dropdowns cost
               one row, where the old pills cost three wrapping rows. */}

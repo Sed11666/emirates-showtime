@@ -25,12 +25,13 @@ export function toDayKey(date: Date): string {
 }
 
 /**
- * Currently unused. The day pickers were removed because the database only ever
- * holds the day it was scraped, so offering future days rendered today's times
- * under tomorrow's date. Kept because it is exactly what a multi-day UI needs
- * back, and because it is correct — the gap is the data, not this function.
+ * How many days the board offers. Must match SCRAPE_DAYS in the aggregator:
+ * cinemauae serves three days per film (?d=0|1|2) and nothing beyond, so a
+ * fourth tab would have no screenings behind it.
  */
-export function buildDayOptions(count = 7): DayOption[] {
+export const DAY_COUNT = 3;
+
+export function buildDayOptions(count = DAY_COUNT): DayOption[] {
   const now = new Date();
   const options: DayOption[] = [{ value: "any", label: "Any", sublabel: "day" }];
   for (let i = 0; i < count; i += 1) {

@@ -123,10 +123,16 @@ export function showtimesForDay(value: unknown, dayKey: string): string[] {
   );
   if (dayKey === "any") return parsed.map((e) => e.text).slice(0, 12);
   // Undated entries always count; dated ones must match the selected day.
-  const matching = parsed.filter((e) => !e.date || e.date === dayKey);
-  if (matching.length > 0) return matching.map((e) => e.text).slice(0, 12);
-  // Nothing for that day: fall back to the latest schedule we have.
-  return parsed.map((e) => e.text).slice(0, 12);
+  //
+  // No fallback. This used to return "the latest schedule we have" when a day
+  // had no matches, which meant picking a day we held no data for rendered
+  // today's times under that date — including ones already past. Now that the
+  // scraper reads three real days, an empty result means that film genuinely
+  // has nothing on that day, and saying so is the whole point.
+  return parsed
+    .filter((e) => !e.date || e.date === dayKey)
+    .map((e) => e.text)
+    .slice(0, 12);
 }
 
 export function hasDatedShowtimes(value: unknown): boolean {
@@ -222,8 +228,11 @@ export function showtimesByVenue(
     });
   };
 
-  const filtered = build(true);
-  const result = filtered.length > 0 ? filtered : build(false);
+  // Always day-filtered. This used to fall back to an unfiltered build when a
+  // day had no chips, which put another day's times under the selected date —
+  // the same fault showtimesForDay had. With three real days scraped, a film
+  // with nothing on the chosen day should render nothing for that day.
+  const result = build(true);
   return Number.isFinite(maxVenues) ? result.slice(0, maxVenues) : result;
 }
 
