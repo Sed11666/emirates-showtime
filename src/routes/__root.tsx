@@ -22,6 +22,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { THEME_INIT_SCRIPT } from "@/hooks/useTheme";
+import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -158,6 +159,13 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        {/*
+          Vercel Web Analytics. It reports only from production deployments and
+          its /_vercel/insights request is blocked by ad blockers, so its counts
+          read low against Vercel's runtime logs. The logs are the source of
+          truth for "did anyone visit"; this is the readable dashboard on top.
+        */}
+        <Analytics />
         <Scripts />
       </body>
     </html>
