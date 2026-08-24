@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Heart, Info, Locate, SlidersHorizontal } from "lucide-react";
 
-import { buildDayOptions, toDayKey } from "@/lib/days";
+import { toDayKey } from "@/lib/days";
 import {
   CINEMA_LABELS,
   fetchCinemaFilms,
@@ -62,7 +62,9 @@ type TimeBand = "all" | "morning" | "evening";
 
 function MovieShowtimesPage() {
   const { slug } = Route.useParams();
-  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
+  // Today only. See the note in routes/cinemas.tsx: the database holds a single
+  // day, so a date strip here rendered today's times under future dates.
+  const day = toDayKey(new Date());
   const [language, setLanguage] = useState<string>("all");
   const [format, setFormat] = useState<string>("all");
   const [band, setBand] = useState<TimeBand>("all");
@@ -109,12 +111,13 @@ function MovieShowtimesPage() {
       .filter((block) => block.screenings.length > 0);
   }, [filteredFilms, day, coords, band, format]);
 
-  const days = buildDayOptions(7).filter((option) => option.value !== "any");
-  const monthLabel = new Intl.DateTimeFormat("en-AE", {
+  const todayLabel = new Intl.DateTimeFormat("en-AE", {
     timeZone: "Asia/Dubai",
+    weekday: "short",
+    day: "numeric",
     month: "short",
   })
-    .format(new Date(`${days[0]?.value ?? toDayKey(new Date())}T12:00:00`))
+    .format(new Date(`${day}T12:00:00`))
     .toUpperCase();
 
   const toggleFavourite = (key: string) =>
@@ -156,34 +159,11 @@ function MovieShowtimesPage() {
       <div className="sticky top-0 z-20 border-b border-border/60 bg-background/95 backdrop-blur">
         <div className="mx-auto w-full max-w-6xl px-4 py-3">
           <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
-            <span className="flex shrink-0 items-center rounded-full bg-muted px-2 text-[10px] font-semibold tracking-widest text-muted-foreground">
-              {monthLabel}
+            {/* Today's date, stated rather than chosen. The picker is gone until
+                the data behind it exists — see routes/cinemas.tsx. */}
+            <span className="flex shrink-0 items-center rounded-full bg-muted px-3 py-1 text-[11px] font-semibold tracking-widest text-muted-foreground">
+              {todayLabel}
             </span>
-            {days.map((option) => {
-              const active = option.value === day;
-              const dayNumber = option.sublabel.split(" ")[0] ?? "";
-              const weekday = new Intl.DateTimeFormat("en-AE", {
-                timeZone: "Asia/Dubai",
-                weekday: "short",
-              }).format(new Date(`${option.value}T12:00:00`));
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setDay(option.value)}
-                  aria-pressed={active}
-                  className={`min-w-[3.5rem] shrink-0 rounded-lg px-3 py-1.5 text-center transition-colors ${
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <span className="block text-base font-bold leading-tight">{dayNumber}</span>
-                  <span className="block text-[11px] leading-tight">{weekday}</span>
-                </button>
-              );
-            })}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">

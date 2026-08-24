@@ -24,6 +24,12 @@ export function toDayKey(date: Date): string {
   }).format(date);
 }
 
+/**
+ * Currently unused. The day pickers were removed because the database only ever
+ * holds the day it was scraped, so offering future days rendered today's times
+ * under tomorrow's date. Kept because it is exactly what a multi-day UI needs
+ * back, and because it is correct — the gap is the data, not this function.
+ */
 export function buildDayOptions(count = 7): DayOption[] {
   const now = new Date();
   const options: DayOption[] = [{ value: "any", label: "Any", sublabel: "day" }];

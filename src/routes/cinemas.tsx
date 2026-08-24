@@ -12,7 +12,6 @@ import { ChevronRight, Film, Locate, MapPin, Navigation, Search } from "lucide-r
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { DaySelector } from "@/components/day-selector";
 import {
   Select,
   SelectContent,
@@ -114,7 +113,21 @@ function CinemasPage() {
   const [cinema, setCinema] = useState<string>(cinemaParam ?? "all");
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
-  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
+  /**
+   * Today, and only today — the picker that used to set this is gone.
+   *
+   * The scraper stamps every screening with the Dubai day it was scraped, so
+   * the database holds today and nothing else. The picker offered seven days
+   * against that, and showtimesForDay falls back to "the latest schedule we
+   * have" when a day has no matches, so choosing Tomorrow rendered *today's*
+   * times under tomorrow's date — including ones that had already started.
+   *
+   * A site whose whole claim is that these times are real cannot show invented
+   * ones. Bring the picker back when the data behind it exists, which means
+   * scraping the chains directly: cinemauae publishes today only and ignores
+   * date parameters entirely.
+   */
+  const day = toDayKey(new Date());
   const [nearOnly, setNearOnly] = useState(false);
   const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle");
 
@@ -208,7 +221,7 @@ function CinemasPage() {
         if (!nearChains.has(film.cinema)) return false;
         if (film.venues.length > 0 && !matchesVenues(film.venues, nearby)) return false;
       }
-      if (day !== "any" && hasDatedShowtimes(film.showtimes)) {
+      if (hasDatedShowtimes(film.showtimes)) {
         return showtimesForDay(film.showtimes, day).length > 0;
       }
       return true;
@@ -361,8 +374,6 @@ function CinemasPage() {
             />
           </div>
 
-          <DaySelector value={day} onChange={setDay} />
-
           {/* Side by side on anything wider than a phone: three dropdowns cost
               one row, where the old pills cost three wrapping rows. */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -425,7 +436,7 @@ function CinemasPage() {
         {!isLoading && !error && filtered.length === 0 && (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
             {scopedTitle
-              ? `No screenings for ${scopedTitle} on the selected day. Try another day, or show all films.`
+              ? `No more screenings for ${scopedTitle} today. Show all films, or check back tomorrow.`
               : "No films match these filters yet. The next scheduled scrape will fill this in."}
           </p>
         )}
@@ -437,7 +448,7 @@ function CinemasPage() {
             // or the page becomes thousands of rows.
             const venues = showtimesByVenue(
               film.showtimes,
-              day === "any" ? toDayKey(new Date()) : day,
+              day,
               film.venues[0],
               movieSlug ? undefined : { maxVenues: 4, maxTimesPerVenue: 8 },
             )
@@ -601,7 +612,7 @@ function CinemasPage() {
                   </div>
                 ) : (
                   <p className="px-5 py-4 text-sm text-muted-foreground">
-                    No listed times for this day yet.
+                    No more times here today.
                   </p>
                 )}
               </div>
