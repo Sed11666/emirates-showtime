@@ -99,6 +99,15 @@ const PAGE_DELAY_MS = 900;
  */
 const SCRAPE_DAYS = 3;
 
+/**
+ * Self-pacing. PAGES_PER_RUN must stay at or under the pages a run actually
+ * completes — measured at 12 with three days per page — and PACE_WINDOW_MS must
+ * match the cron interval, currently every 15 minutes. A full pass is
+ * ceil(sitemap / PAGES_PER_RUN) fires, about four hours at these numbers.
+ */
+const PAGES_PER_RUN = 10;
+const PACE_WINDOW_MS = 15 * 60 * 1000;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -494,7 +503,31 @@ async function runScrape(request: Request) {
     );
   }
 
-  const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0) % Math.max(1, pages.length);
+  /**
+   * Where to start the walk.
+   *
+   * An explicit ?offset= still wins, so a manual run can target a page. With no
+   * offset the route paces itself from the clock rather than from a cursor in
+   * the database.
+   *
+   * The cursor version needed scraper_cursor.step to match how many pages a run
+   * actually completes. That number is a property of this code — it changed
+   * from 45 to ~30 to 12 in a single afternoon as the scrape went from one day
+   * to three — and every time it changed, a step nobody updated silently
+   * skipped pages. Deriving the offset here keeps the two in the same file.
+   *
+   * Each PACE_WINDOW_MS tick advances by PAGES_PER_RUN, so consecutive fires
+   * walk consecutive stretches and the whole sitemap is covered on a rotation.
+   * Overlap is harmless; only overshoot loses pages, so PAGES_PER_RUN is set
+   * below what a run measurably completes.
+   */
+  const explicitOffset = url.searchParams.get("offset");
+  const autoOffset =
+    Math.floor(Date.now() / PACE_WINDOW_MS) * PAGES_PER_RUN % Math.max(1, pages.length);
+  const offset =
+    explicitOffset === null
+      ? autoOffset
+      : Math.max(0, Number(explicitOffset) || 0) % Math.max(1, pages.length);
   const ordered = [...pages.slice(offset), ...pages.slice(0, offset)];
 
   // Validators and last-known content hashes for the pages we are about to
