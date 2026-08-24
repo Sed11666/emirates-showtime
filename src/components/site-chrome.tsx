@@ -5,12 +5,13 @@
  * Home, Cinemas, Events] [search, admin, account].
  * Mobile: the same header collapses to logo + compact location chip + search +
  * account, and the nav moves into a fixed bottom tab bar (MobileTabBar) so
- * Home / Cinemas / Events are always reachable with a thumb. The city chosen in
+ * Home / Cinemas / Coming soon / Events are always reachable with a thumb. The city chosen in
  * LocationSelector is persisted and read by useUserLocation as the fallback
  * position for nearest-cinema sorting. Admin-only links are gated by useIsAdmin.
  */
 import { Link } from "@tanstack/react-router";
 import {
+  CalendarClock,
   Clapperboard,
   Home,
   MapPin,
@@ -38,6 +39,7 @@ import { UAE_CITIES } from "@/lib/listings";
 const NAV = [
   { to: "/", label: "Home", icon: Home },
   { to: "/cinemas", label: "Cinemas", icon: Clapperboard },
+  { to: "/coming-soon", label: "Coming soon", icon: CalendarClock },
   { to: "/events", label: "Events", icon: Sparkles },
 ] as const;
 
