@@ -721,6 +721,12 @@ async function runScrape(request: Request) {
         ok: readSomething,
         ranAt: new Date().toISOString(),
         visited,
+        // Pages, not fetches, and reported on this branch too: it is the number
+        // scraper_cursor.step has to stay under, and a steady state of
+        // all-unchanged passes is exactly when you need to read it.
+        pagesWalked,
+        nextOffset: complete ? 0 : (offset + pagesWalked) % ordered.length,
+        pagesTotal: ordered.length,
         failed,
         notModified,
         unchangedContent,
