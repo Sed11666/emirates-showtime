@@ -501,13 +501,9 @@ async function runScrape(request: Request) {
   // walk, so unchanged pages cost a 304 and nothing else.
   const cache = new Map<string, CacheEntry & { film_keys: string[] }>();
   {
-    // Every day-variant of the pages we are about to walk, since each ?d= URL
-    // carries its own validators. Fewer base pages than before because each one
-    // now contributes up to SCRAPE_DAYS entries.
-    const base = ordered.slice(0, 60);
-    const window = base.flatMap((page) =>
-      Array.from({ length: SCRAPE_DAYS }, (_, d) => (d === 0 ? page : `${page}?d=${d}`)),
-    );
+    // One entry per page, not per day: the hash now covers every day the page
+    // produced, because a page is written all-or-nothing.
+    const window = ordered.slice(0, 60);
     const { data: cached } = await db.rpc("page_cache_get", {
       p_token: INGEST_TOKEN,
       p_urls: window,
@@ -528,103 +524,110 @@ async function runScrape(request: Request) {
   let unchangedContent = 0;
 
   for (const page of ordered) {
+    // Budget is checked once per page, never between its days. A page is
+    // written as a whole — see below — so stopping half way through one would
+    // produce exactly the partial write this guards against. Overshoot is
+    // bounded by SCRAPE_DAYS fetches, which the headroom under the caller's
+    // 120s timeout absorbs.
     if (Date.now() - startedAt > BUDGET_MS) break;
     pagesWalked += 1;
 
-    // cinemauae publishes three days per film behind ?d=0|1|2, each with its own
-    // booking links — d=1 links embed tomorrow's date, so they are real sessions
-    // and not repeats. d=0 is the bare URL, which keeps every existing cache
-    // entry valid, and ?d=3 and beyond simply fall back to d=0.
-    //
-    // All three days are read in one visit rather than across separate fires.
-    // A film's showtimes are written as a whole, so a partial set upserted now
-    // and completed later would leave the board short of a day in between.
-    for (let dayIndex = 0; dayIndex < SCRAPE_DAYS; dayIndex += 1) {
-      if (Date.now() - startedAt > BUDGET_MS) break;
+    const cachedEntry = cache.get(page);
 
+    /**
+     * All three days are read together, unconditionally, and the page is
+     * written all-or-nothing.
+     *
+     * ingest_cinema_films REPLACES a film's showtimes rather than merging, so
+     * any write that is missing a day deletes that day. Two things made that
+     * happen: a per-day 304 meant we never parsed that day and rebuilt the row
+     * without it, and a budget check between days could stop a page after d=0.
+     * Both silently destroyed tomorrow's screenings for films we had already
+     * scraped correctly.
+     *
+     * So: no per-day validators, and one hash covering every day. We lose the
+     * bandwidth a 304 would have saved, which is the cheaper half of the round
+     * trip anyway, and gain the guarantee that what we write is complete.
+     */
+    const dayResults: Array<{ dayKey: string; parsed: ReturnType<typeof parseMoviePage> }> = [];
+    let pageFailed = false;
+
+    for (let dayIndex = 0; dayIndex < SCRAPE_DAYS; dayIndex += 1) {
       const dayKey = dubaiDayPlus(dayIndex);
       const dayUrl = dayIndex === 0 ? page : `${page}?d=${dayIndex}`;
-      const cachedEntry = cache.get(dayUrl);
-
-      // An entry is only trustworthy if it can do both jobs a skip requires.
-      //
-      // film_keys: without them we cannot refresh last_seen_at on a skip, and
-      // the 48h retirement would quietly delete a healthy catalogue.
-      //
-      // Same day: screenings are stamped with the day the entry describes, so
-      // an entry written yesterday must not answer 304 — the page can be
-      // genuinely unchanged while the dates it produced have rolled forward.
-      const cachedDay = cachedEntry?.fetched_at
-        ? dubaiDayOf(new Date(cachedEntry.fetched_at))
-        : null;
-      const usable =
-        (cachedEntry?.film_keys?.length ?? 0) > 0 && cachedDay === today ? cachedEntry : undefined;
 
       let fetched: FetchResult;
       try {
-        fetched = await fetchConditional(dayUrl, usable);
+        fetched = await fetchConditional(dayUrl, undefined);
         visited += 1;
       } catch {
         failed += 1;
-        await sleep(PAGE_DELAY_MS);
-        continue;
-      }
-
-      // 304: nothing downloaded, nothing to parse. Keep the films this page is
-      // known to produce alive so retirement does not mistake quiet for gone.
-      if (fetched.status === "unchanged") {
-        notModified += 1;
-        keepAlive.push(...(usable?.film_keys ?? []));
-        cacheWrites.push({ url: dayUrl, unchanged: true });
-        await sleep(PAGE_DELAY_MS);
-        continue;
-      }
-
-      const parsed = parseMoviePage(fetched.html);
-      const { title, meta, screenings } = parsed;
-
-      // Most sitemap pages are coming-soon films with no screenings at all.
-      // Asking those for tomorrow and the day after would triple the load we
-      // put on the source to learn the same nothing three times over.
-      if (dayIndex === 0 && screenings.length === 0) {
-        cacheWrites.push({
-          url: dayUrl,
-          etag: fetched.etag,
-          last_modified: fetched.lastModified,
-          content_hash: await sha256(JSON.stringify({ day: dayKey, title, meta, screenings })),
-          film_keys: [],
-          unchanged: false,
-        });
-        await sleep(PAGE_DELAY_MS);
+        pageFailed = true;
         break;
       }
 
-      // Some servers omit validators. Hash the parsed result — not the raw HTML,
-      // which carries per-request noise — and skip the write when it matches.
-      //
-      // The day is part of the hash on purpose. Each screening is stamped with
-      // the day its page describes, so an unchanged page must still be rewritten
-      // once the date rolls over; without this the stored dates froze at
-      // whatever day the page last changed.
-      const contentHash = await sha256(JSON.stringify({ day: dayKey, title, meta, screenings }));
-      if (usable?.content_hash && usable.content_hash === contentHash) {
-        unchangedContent += 1;
-        keepAlive.push(...(usable.film_keys ?? []));
-        cacheWrites.push({
-          url: dayUrl,
-          etag: fetched.etag,
-          last_modified: fetched.lastModified,
-          content_hash: contentHash,
-          unchanged: true,
-        });
-        await sleep(PAGE_DELAY_MS);
-        continue;
+      // No validators were sent, so a 304 should be impossible. If the origin
+      // sends one anyway, treat it as a failed read rather than inventing an
+      // empty day: an empty day here would delete that day's screenings.
+      if (fetched.status === "unchanged") {
+        notModified += 1;
+        pageFailed = true;
+        break;
       }
 
-      const pageKeys: string[] = [];
-      if (title && !isPlaceholderTitle(title)) {
-        const key0 = titleKey(title);
-        for (const s of screenings) {
+      const parsed = parseMoviePage(fetched.html);
+      dayResults.push({ dayKey, parsed });
+
+      // Most of the sitemap is coming-soon titles with no screenings at all.
+      // Asking those for tomorrow and the day after would triple the load we
+      // put on the source to learn the same nothing three times over.
+      if (dayIndex === 0 && parsed.screenings.length === 0) break;
+
+      await sleep(PAGE_DELAY_MS);
+    }
+
+    // A page that could not be read in full is left exactly as it was. Writing
+    // what we did get would delete the days we did not.
+    if (pageFailed || dayResults.length === 0) {
+      await sleep(PAGE_DELAY_MS);
+      continue;
+    }
+
+    const title = dayResults[0]!.parsed.title;
+    const meta = dayResults[0]!.parsed.meta;
+
+    // One hash for the whole page, including every day it covers and the day it
+    // was taken on. The date is in there because screenings are stamped with
+    // the day we read them, so an unchanged page must still be rewritten once
+    // the date rolls over.
+    const contentHash = await sha256(
+      JSON.stringify({
+        days: dayResults.map((d) => d.dayKey),
+        title,
+        meta,
+        screenings: dayResults.map((d) => d.parsed.screenings),
+      }),
+    );
+
+    const cachedDay = cachedEntry?.fetched_at
+      ? dubaiDayOf(new Date(cachedEntry.fetched_at))
+      : null;
+    const cacheUsable =
+      (cachedEntry?.film_keys?.length ?? 0) > 0 && cachedDay === today ? cachedEntry : undefined;
+
+    if (cacheUsable?.content_hash && cacheUsable.content_hash === contentHash) {
+      unchangedContent += 1;
+      keepAlive.push(...(cacheUsable.film_keys ?? []));
+      cacheWrites.push({ url: page, etag: null, last_modified: null, content_hash: contentHash, unchanged: true });
+      await sleep(PAGE_DELAY_MS);
+      continue;
+    }
+
+    const pageKeys: string[] = [];
+    if (title && !isPlaceholderTitle(title)) {
+      const key0 = titleKey(title);
+      for (const { dayKey, parsed } of dayResults) {
+        for (const s of parsed.screenings) {
           if (only && !only.has(s.chainKey)) continue;
           touchedChains.add(s.chainKey);
           const city = CITY_NAMES[s.citySlug] ?? "";
@@ -645,8 +648,6 @@ async function runScrape(request: Request) {
               // own, and pointing that at cinemauae would hand them our clicks.
               source_url: CHAIN_HOME[s.chainKey] ?? "",
               booking_url: null as string | null,
-              // From the film's JSON-LD. Same values for every chain showing it,
-              // which is correct — these describe the film, not the screening.
               poster_url: meta.poster,
               imdb_id: meta.imdbId,
               genre: meta.genre,
@@ -665,8 +666,8 @@ async function runScrape(request: Request) {
           if (s.format && !formats.includes(s.format) && formats.length < 20) formats.push(s.format);
 
           const list = row["showtimes"] as Array<Record<string, string>>;
-          // Cap raised for three days of screenings; the venue+time guard now
-          // includes the date so the same slot on different days both survive.
+          // The identity of a screening includes its date now, so the same
+          // clock time on two different days both survive.
           if (
             list.length < 1200 &&
             !list.some(
@@ -680,17 +681,17 @@ async function runScrape(request: Request) {
           }
         }
       }
-
-      cacheWrites.push({
-        url: dayUrl,
-        etag: fetched.etag,
-        last_modified: fetched.lastModified,
-        content_hash: contentHash,
-        film_keys: pageKeys,
-        unchanged: false,
-      });
-      await sleep(PAGE_DELAY_MS);
     }
+
+    cacheWrites.push({
+      url: page,
+      etag: null,
+      last_modified: null,
+      content_hash: contentHash,
+      film_keys: pageKeys,
+      unchanged: false,
+    });
+    await sleep(PAGE_DELAY_MS);
   }
 
   // Pages, not fetches: each page now costs up to three requests, so counting
