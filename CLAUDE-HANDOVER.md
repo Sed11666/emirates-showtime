@@ -89,17 +89,50 @@ showsouk.com  (SSR reads the same DB)
 the chain's own booking page (VOX / Star / Cinemacity / …)
 ```
 
-**Trigger:** Supabase `pg_cron` job `scrape-aggregator-30m`, every 30 minutes.
-It advances a cursor in `public.scraper_cursor` (45 pages per fire) and POSTs to
-`https://www.showsouk.com/api/public/hooks/scrape-aggregator?offset=<pos>`.
+**Three days, not one.** cinemauae publishes today, tomorrow and the day after
+behind `?d=0|1|2` on each film page; `?d=3` falls back to `d=0`, so three is
+their ceiling. Every day carries its own booking links — a `d=1` Roxy URL embeds
+tomorrow's date — and tomorrow usually has *more* working links than today,
+because a screening that has already started loses its href at source.
 
-A full sitemap pass takes ~85 minutes. Only a minority of the pages in
-cinemauae's sitemap are currently-showing films; the rest are coming-soon titles
-with no screenings, so most passes legitimately write nothing.
+An earlier note in this file said cinemauae was today-only and multi-day was
+impossible. That was wrong: it came from testing `?date=` and `?showdate=`,
+guessing at parameter names instead of reading the day tabs that are in the
+markup of every page we fetch. `SCRAPE_DAYS` in the aggregator and `DAY_COUNT`
+in `lib/days` must stay in step.
 
-The sitemap grows — it was 132 pages when this was written and reported
-`pagesTotal: 157` on 2026-08-22 — so treat any page count here as indicative
-and read the current value out of the scraper's own response.
+**A page is written all-or-nothing — do not break this.**
+`ingest_cinema_films` **replaces** a film's showtimes rather than merging, so a
+write missing a day *deletes* that day. All three days are fetched together with
+no conditional validators, one hash covers the lot, and nothing is written unless
+every day was read. Two earlier variants each destroyed real data: a per-day
+`304` meant that day was never parsed and the row was rebuilt without it, and a
+budget check between days let a run write today alone over a row that already
+held three. Budget is checked once per page, never between its days.
+
+**Trigger:** `pg_cron` job `scrape-aggregator-15m`, every 15 minutes, a plain
+`net.http_post` with **no `?offset=`**.
+
+The route paces itself from the clock: `PAGES_PER_RUN` per `PACE_WINDOW_MS`
+tick, wrapping on the live sitemap length. `PAGES_PER_RUN` must stay at or under
+what a run measurably completes — 12, with three days per page — and
+`PACE_WINDOW_MS` must match the cron interval. Overlap is harmless; only
+overshoot loses pages. An explicit `?offset=` still wins for a manual run.
+
+`public.scraper_cursor` is **inert**: nothing reads or writes it. It previously
+held the cursor, and its `step` had to match how many pages a run completed —
+a number that moved 45 → ~30 → 12 in a single afternoon as the scrape went from
+one day to three. Each time it moved, a stale `step` skipped pages silently,
+which is how a third of the catalogue ended up with no future showtimes. The
+pacing constants now live beside the loop whose cost they describe.
+
+A full pass is ~16 fires, roughly four hours. Only a minority of sitemap pages
+are currently-showing films; the rest are coming-soon titles with no screenings,
+and those cost one fetch rather than three because a page with nothing on `d=0`
+skips the other two days.
+
+The sitemap grows — 132 pages when this was written, 157 on 2026-08-24 — so read
+`pagesTotal` out of the scraper's own response rather than trusting a number here.
 
 ### Why we scrape an aggregator rather than the chains
 This was a deliberate, informed decision by the owner. Measured comparison:
@@ -164,13 +197,18 @@ Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 
 ### Cron
 ```
-scrape-aggregator-30m   */30 * * * *   → showsouk.com (Vercel)   cinemas
+scrape-aggregator-15m   */15 * * * *   → showsouk.com (Vercel)   cinemas
 scrape-events-6h        15 */6 * * *   → lovable.app (frozen)    events
 resolve-posters-daily   17 4 * * *     → showsouk.com (Vercel)   posters
 ```
+The cinemas job is a plain `net.http_post` with **no query string**. It must not
+pass `?offset=` and must not touch `scraper_cursor` — the route paces itself
+(§4). A job that computed an offset was tried and failed silently for 40 minutes;
+if writes stop, check `cron.job_run_details` before assuming the route is down.
 Schedules are **UTC**, not Dubai, which is the one place in this project where
 Dubai time is not the answer. `17 4` is 08:17 Dubai, and the `:17` is
-deliberate: the aggregator fires at `:00` and `:30`, so this stays clear of it.
+deliberate: the aggregator now fires at `:00`, `:15`, `:30` and `:45`, so this
+stays clear of all four.
 Note `pg_cron` reports "succeeded" when `pg_net` *dispatches* the request — it
 never sees the HTTP result. **To check real outcomes, query `net._http_response`.**
 
@@ -280,6 +318,16 @@ cinemas scraper, and `src/lib/cinemas.ts`.
 - **Booking happens on `/cinemas`, not on `/movie/$slug`.** Chips link straight
   out to the chain (`040ea7c`). `/movie/$slug` still exists and still works, but
   **nothing links to it** — treat it as orphaned, not as the booking path.
+- **The board covers three days**, because that is what the source publishes
+  (§4). `DAY_COUNT` drives the picker and must match `SCRAPE_DAYS`.
+- **Never fall back to another day's times.** `showtimesForDay` and
+  `showtimesByVenue` each used to return an unfiltered set when the chosen day
+  had no matches, which rendered today's times — some already started — under a
+  future date. Both are now strictly day-filtered: an empty day means empty, and
+  saying so is the point.
+- **`/coming-soon` is not in the database** (`9dd945f`). It is one cached fetch
+  of cinemauae's coming-soon index, parsed server-side. Films there have a
+  release date and nothing else; do not invent showtimes for them.
 - **The click-out is never gated** (`877f38b`, reversing `3fe7866`). Sign-in is
   asked for only where it is genuinely required — Notify Me. The
   `AuthPromptProvider` machinery (`components/auth-prompt.tsx`, renamed from
@@ -322,58 +370,74 @@ cinemas scraper, and `src/lib/cinemas.ts`.
 
 ## 10. Current state
 
-Measured against the live database on **2026-08-22**. These move daily; re-run
+Measured against the live database on **2026-08-24**. These move daily; re-run
 the queries in §12 rather than trusting the numbers.
 
 ```
 7 chains: vox, star, novo, roxy, reel, cineroyal, cinemacity
-444 active film rows · 58 distinct titles · 3,439 screenings · 2,989 with a link
+435 active film rows · 58 distinct titles · 7,637 screenings · 6,768 with a link
+3 days: 24 Aug 2,892 · 25 Aug 2,694 · 26 Aug 1,917
 8 cities · 63 distinct screen names (64 in the geo list)
-posters: 152 of 444 rows on image.tmdb.org — every eligible row resolved
+posters: 43 of 435 rows on image.tmdb.org; 147 rows carry an imdb_id
 ```
 
-**The poster ratio is now maintained, not decaying.** 152 rows carry an
-`imdb_id` and all 152 are resolved; the remaining 292 have no id and are
-permanently unreachable, so **152 of 444 is the ceiling, not a shortfall**.
+Screenings roughly doubled on 2026-08-24 when the scrape went from one day to
+three. Coverage was still filling in when these were taken — a full pass is
+about four hours — so the per-chain counts below are a floor, not a total.
 
-Before `resolve-posters-daily` existed this number decayed between manual runs —
-152 of 442 on 22 Aug, then 44 of 444 hours later — because every scrape adds
-hotlinked rows. If you see it falling again, check the cron before anything else.
+**Posters read low here and that is expected mid-rotation.** Only rows carrying
+an `imdb_id` can be resolved, and `resolve-posters-daily` runs once a day, so
+after a large rescrape the ratio dips until the next run. A number that keeps
+falling day over day means the cron has stopped; a dip after a rescrape does not.
 
-**Per-screening booking links now work for five of seven chains** — Novo and
-Roxy both publish real session URLs, which the older note here denied.
+**Per-screening booking links work for five of seven chains.** The "exact" column
+counts URLs used by exactly one screening of that film, so it fell relative to
+"with a link" once three days were stored — worth re-deriving rather than reading
+as a regression.
 
 | chain | screenings | with a link | exact (unique to one screening) |
 |---|---|---|---|
-| vox | 1541 | 1398 | 1398 |
-| star | 609 | 572 | 572 |
-| roxy | 276 | 264 | 264 |
-| cinemacity | 258 | 255 | 255 |
-| novo | 227 | 221 | 221 |
-| cineroyal | 302 | 279 | **4** |
-| reel | 226 | 0 | 0 |
+| vox | 3200 | 2964 | 2124 |
+| star | 1250 | 1211 | 933 |
+| roxy | 790 | 786 | 508 |
+| cineroyal | 700 | 695 | **4** |
+| cinemacity | 689 | 680 | 444 |
+| reel | 575 | **0** | 0 |
+| novo | 433 | 432 | 324 |
 
-**Cine Royal** is film-level only and permanently so (§11.1): its 285 linked
-screenings share just 31 URLs. The 4 counted "exact" are films with a single
+**Cine Royal** is film-level only and permanently so (§11.1): its linked
+screenings share a handful of URLs. The 4 counted "exact" are films with a single
 screening, where the film URL is unique by accident — not partial success.
-**Reel** publishes no booking URLs at all; its booking sits behind a sign-in wall.
 
-**Poster caveat:** only 152 of 442 rows carry an `imdb_id`, and `resolve-posters`
-can only act on rows that have one. Every eligible row is resolved; the other
-**290 have no id and are permanently unreachable by that route**. The old claim
-that "100% of films have posters, genre, language, rating, runtime, synopsis" is
-true about *having* a poster and misleading about *owning* it.
+**Reel gets zero booking links, and that is the source's doing, not a parser
+bug.** cinemauae emits `booklink=0` — a literal placeholder for "no link" — on
+every Reel chip, and Reel is the **only** chain it does that for. Sampled across
+four pages: VOX 43 real links, Star 22, Cinemacity 14, Roxy 10, Cine Royal 8,
+Novo 1, and Reel 0 real against 10 zeros. `unwrapBooking` correctly rejects
+`"0"`, so every Reel screening falls through to the chain URL. That fallback is
+`reelcinemas.com/en-ae/showtime`, their showtimes chooser, not the marketing
+homepage (`35f0edb`). Reel's own film pages are `/movie-details/{internalId}/{slug}`
+and the id is unreachable — dropping it renders an empty page, their sitemap
+lists no film URLs, and `apiuae.reelcinemas.com` answers 401 on every path.
+
+**Poster caveat:** only rows carrying an `imdb_id` can be resolved, and most do
+not have one. Every eligible row gets resolved by `resolve-posters-daily`; the
+rest are permanently unreachable by that route. The old claim that "100% of films
+have posters, genre, language, rating, runtime, synopsis" is true about *having*
+a poster and misleading about *owning* it.
 
 Latest commits:
 ```
-e9b8bf9 Take venue coordinates from the source that names the venues
-33fdd40 Fix wrong cinema distances: stale location and bad coordinates
-dd25fb0 Make the Cinemas filters dropdowns
-877f38b Stop gating the click-out, ask for an account for alerts instead
-7e6307b Pass the clock time, not the display string, to isScreeningOver
-5379abe Drop films with nothing left to see from home and search
-8a1a1b2 Hide Google sign-in until it has credentials
-4c0143b Stop storing a session URL as a film-level booking link
+487172c Let the scraper pace itself instead of trusting a cursor
+4288dfd Write a page's three days all at once, or not at all
+e12e661 Scrape three days, and show them
+9dd945f Add Coming Soon, so next week has an answer
+8be6eef Stop offering days we have no schedule for
+05e88aa Actually install Vercel Web Analytics
+35f0edb Send Reel clicks to its showtimes page, not its front door
+f9c5c9c Scope Cinemas near you to the chain being filtered
+70e9d9a Carry the chain through when a home page tile opens Cinemas
+321297e Give signed-in visitors an account menu, and a working theme mechanism
 ```
 
 Venue coordinates are now taken from each screen's own page on cinemauae, the
@@ -517,8 +581,45 @@ progress` — those are Lovable editor syncs, not deliberate checkpoints.
     pipeline runs the check. The strictness this repo relies on is not currently
     being collected.
 
+13. **Vercel Web Analytics reads low by design.** It reports only from production
+    and its `/_vercel/insights` request is blocked by ad blockers. Vercel's
+    **runtime logs** are the source of truth for whether anyone visited — the
+    site is SSR, so every page view hits the function and is logged server-side.
+    It went uninstalled for a week because Vercel's own PR branch was never
+    merged, which is why the dashboard honestly read 0 (`05e88aa`).
+
+14. **Adding a dependency means updating BOTH lockfiles.** The repo carries
+    `bun.lock` and `bunfig.toml` alongside `package-lock.json`. Updating only
+    `package-lock` leaves bun's lockfile without the package, and an install
+    against a frozen bun lockfile then fails to resolve the import at build.
+
+15. **`/coming-soon` posters hotlink `cinema.aptrixx.com`.** There is no storage
+    layer behind that page, so `resolve-posters` cannot reach them. The IMDb ids
+    are parsed and present, so resolving through TMDB inside the server route —
+    reusing `TMDB_API_KEY`, cached with the film list — is a contained change
+    whenever it is wanted.
+
+16. **Reel Dubai Marina has Abu Dhabi coordinates.** `lib/venues.ts` gives it
+    `24.4755, 54.3224`, byte-identical to Cinema City's Marina Mall on the next
+    line, so it reads ~125 km away in a Dubai list. Now visible because the
+    nearby panel is chain-scoped and Reel only has three screens. **Not guessed
+    at**: this repo's history says guessing coordinates is what produced the
+    23 km Al Qana error. It wants a real value from someone with a map.
+
+17. **The three filter dropdowns have no accessible names.** They read as bare
+    unlabelled buttons in the accessibility tree.
+
 ### Closed since this list was written
 
+- ~~**Multi-day showtimes are impossible**~~ — **wrong, and now shipped.**
+  cinemauae serves three days behind `?d=0|1|2`. See §4; the earlier conclusion
+  came from guessing at parameter names rather than reading the page.
+- ~~**`resolve-posters` unscheduled**~~ — scheduled as `resolve-posters-daily`.
+- ~~**Home page chain tiles opened an unfiltered board**~~ — they passed
+  `search={{}}`, so picking VOX showed all seven (`70e9d9a`). Note that
+  `validateSearch` does **not** sanitise in this app: `useSearch()` returns the
+  raw query string, verified with an unrelated `?t=` param that came through
+  intact. Validate params in the component.
 - ~~**Novo deep links**~~ — **done.** Novo now publishes real per-screening
   session URLs (`uae.novocinemas.com/seat-selection/cinema/9/session/342071`):
   189 screenings, 189 distinct URLs. Roxy gained them too.
@@ -582,3 +683,33 @@ A healthy poster response looks like:
 the ratio is decaying again. `notFoundOnTmdb` rising means films whose IMDb id
 TMDB does not carry — that is a ceiling, not a fault. Note `rowsUpdated` comes
 from `set_posters`, which over-reports (§11.11); trust the SQL above instead.
+
+```sql
+-- three-day coverage. "both" should be most of the catalogue once a full pass
+-- has run (~4 hours). Falling rather than rising means writes are landing
+-- incomplete — see §4, a page must be written all-or-nothing.
+select count(*) filter (where d1 and d2) as both_days,
+       count(*) filter (where d1 <> d2)  as one_day,
+       count(*) filter (where not d1 and not d2) as neither
+from (
+  select exists (select 1 from jsonb_array_elements(f.showtimes) s
+                 where s->>'date' = to_char((now() at time zone 'Asia/Dubai')::date + 1, 'YYYY-MM-DD')) as d1,
+         exists (select 1 from jsonb_array_elements(f.showtimes) s
+                 where s->>'date' = to_char((now() at time zone 'Asia/Dubai')::date + 2, 'YYYY-MM-DD')) as d2
+  from cinema_films f where f.is_active
+) x;
+```
+
+```bash
+# what a run actually did. pagesWalked is reported on both branches now, and is
+# the number PAGES_PER_RUN must stay at or under.
+curl -sS -X POST "https://www.showsouk.com/api/public/hooks/scrape-aggregator" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+A healthy cinemas response looks like:
+`{"ok":true,"visited":36,"pagesWalked":12,"failed":0,"ingest":{"upserted":233,"retired":0}}`
+
+`visited` should be roughly three times `pagesWalked` — that is the three days
+per page. If it equals `pagesWalked`, only `d=0` is being read and tomorrow's
+screenings are about to be deleted by the next write.

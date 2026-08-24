@@ -53,9 +53,16 @@ generated (never edit it). TypeScript is strict — unused imports fail the buil
    the chain's own booking page (exact screening where available)
 ```
 
-Scheduling: `pg_cron` posts to the public scrape routes. Cinemas every 30
-minutes, walking the sitemap via a cursor in `scraper_cursor` (45 pages a fire,
-~85 minutes for a full pass). Events roughly every 6 hours.
+Scheduling: `pg_cron` posts to the public scrape routes. Cinemas every 15
+minutes as a plain `http_post` with **no query string** — the route paces itself
+from the clock (`PAGES_PER_RUN` per `PACE_WINDOW_MS`), so `scraper_cursor` is
+inert and nothing should pass `?offset=`. A full pass is ~16 fires, about four
+hours. Events roughly every 6 hours.
+
+Each film page is read for **three days** (`?d=0|1|2`, the source's ceiling) and
+written all-or-nothing: `ingest_cinema_films` replaces a film's showtimes rather
+than merging, so a write missing a day deletes that day. See
+CLAUDE-HANDOVER.md §4 before touching that loop.
 
 `scrape-cinemas.ts` still exists but is **disabled and unscheduled**. It used
 Firecrawl's LLM extraction, which fabricated plausible-looking VOX session ids
