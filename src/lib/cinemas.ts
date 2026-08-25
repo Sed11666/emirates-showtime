@@ -158,7 +158,28 @@ export function hasUpcomingScreenings(value: unknown, now: Date = new Date()): b
  * link to that exact screening on the chain's own site where we have one.
  */
 export type VenueScreening = { time: string; format: string | null; bookingUrl: string | null };
-export type VenueShowtimes = { venue: string; times: VenueScreening[] };
+export type VenueShowtimes = {
+  venue: string;
+  times: VenueScreening[];
+  /** Times this venue has that were trimmed away. 0 when nothing was hidden. */
+  hiddenTimes: number;
+};
+
+/**
+ * A trimmed board plus what the trimming cost, so the UI can say so.
+ *
+ * The browse list caps each film at a few venues and times — 35 films across 50
+ * screens would otherwise be thousands of rows on a phone. That cap used to be
+ * silent, which is worse than the trimming itself: a visitor comparing us with
+ * the source saw four venues where they knew there were fifty, with nothing to
+ * suggest the rest existed one click away.
+ */
+export type TrimmedShowtimes = {
+  venues: VenueShowtimes[];
+  /** Venues not shown at all. 0 when nothing was hidden. */
+  hiddenVenues: number;
+  totalVenues: number;
+};
 
 /**
  * Showtimes grouped by venue for the "Today's showtimes" board: each venue
@@ -178,8 +199,8 @@ export function showtimesByVenue(
    * film must not.
    */
   options?: { maxVenues?: number; maxTimesPerVenue?: number },
-): VenueShowtimes[] {
-  if (!Array.isArray(value)) return [];
+): TrimmedShowtimes {
+  if (!Array.isArray(value)) return { venues: [], hiddenVenues: 0, totalVenues: 0 };
   const maxVenues = options?.maxVenues ?? Infinity;
   const maxTimes = options?.maxTimesPerVenue ?? Infinity;
 
@@ -224,7 +245,8 @@ export function showtimesByVenue(
     return [...groups.entries()].map(([venue, times]) => {
       // Chronological, with past-midnight shows at the end of the evening.
       const ordered = [...times].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-      return { venue, times: Number.isFinite(maxTimes) ? ordered.slice(0, maxTimes) : ordered };
+      const shown = Number.isFinite(maxTimes) ? ordered.slice(0, maxTimes) : ordered;
+      return { venue, times: shown, hiddenTimes: ordered.length - shown.length };
     });
   };
 
@@ -232,8 +254,9 @@ export function showtimesByVenue(
   // day had no chips, which put another day's times under the selected date —
   // the same fault showtimesForDay had. With three real days scraped, a film
   // with nothing on the chosen day should render nothing for that day.
-  const result = build(true);
-  return Number.isFinite(maxVenues) ? result.slice(0, maxVenues) : result;
+  const all = build(true);
+  const venues = Number.isFinite(maxVenues) ? all.slice(0, maxVenues) : all;
+  return { venues, hiddenVenues: all.length - venues.length, totalVenues: all.length };
 }
 
 

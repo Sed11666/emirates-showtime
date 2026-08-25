@@ -491,12 +491,13 @@ function CinemasPage() {
             {filtered.map(({ film, distance }) => {
               // Scoped to one film: list every screen. Browsing all films: trim,
               // or the page becomes thousands of rows.
-              const venues = showtimesByVenue(
+              const board = showtimesByVenue(
                 film.showtimes,
                 day,
                 film.venues[0],
                 movieSlug ? undefined : { maxVenues: 4, maxTimesPerVenue: 8 },
-              )
+              );
+              const venues = board.venues
                 .map((v) => ({ ...v, km: coords ? venueDistanceKm(v.venue, coords) : null }))
                 // Nearest screen first, exactly as the rest of the site orders
                 // venues. Screens we have no coordinates for sink to the bottom
@@ -651,9 +652,41 @@ function CinemasPage() {
                                 </a>
                               );
                             })}
+                            {venue.hiddenTimes > 0 ? (
+                              <Link
+                                to="/cinemas"
+                                search={{ movie: filmSlug(film.title) }}
+                                className="flex min-w-[4.75rem] flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gold/40 px-3 py-2 text-gold transition-colors hover:border-gold/70 hover:bg-gold/5"
+                                aria-label={`Show ${venue.hiddenTimes} more ${
+                                  venue.hiddenTimes === 1 ? "time" : "times"
+                                } for ${film.title} at ${venue.venue}`}
+                              >
+                                <span className="text-sm font-semibold leading-none">
+                                  +{venue.hiddenTimes}
+                                </span>
+                                <span className="text-[10px] font-medium leading-none tracking-wide">
+                                  more
+                                </span>
+                              </Link>
+                            ) : null}
                           </div>
                         </div>
                       ))}
+
+                      {/* The trim used to be silent, which is worse than the
+                          trim: someone comparing us with the source saw four
+                          screens where they knew there were fifty, with nothing
+                          to say the rest were a click away. */}
+                      {board.hiddenVenues > 0 ? (
+                        <Link
+                          to="/cinemas"
+                          search={{ movie: filmSlug(film.title) }}
+                          className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/70 px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-gold/50 hover:text-gold"
+                        >
+                          Showing {venues.length} of {board.totalVenues} screens — see all
+                          <ChevronRight className="size-4" />
+                        </Link>
+                      ) : null}
                     </div>
                   ) : (
                     <p className="px-5 py-4 text-sm text-muted-foreground">
