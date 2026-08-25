@@ -18,6 +18,7 @@ import { Route as EventsRouteImport } from './routes/events'
 import { Route as MoviesRouteImport } from './routes/movies'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as CinemasChainRouteImport } from './routes/cinemas_.$chain'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as MovieSlugRouteImport } from './routes/movie.$slug'
 import { Route as ApiPublicComingSoonRouteImport } from './routes/api/public/coming-soon'
@@ -71,6 +72,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CinemasChainRoute = CinemasChainRouteImport.update({
+  id: '/cinemas_/$chain',
+  path: '/cinemas/$chain',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListingIdRoute = ListingIdRouteImport.update({
   id: '/listing/$id',
   path: '/listing/$id',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/movies': typeof MoviesRoute
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/cinemas/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/movies': typeof MoviesRoute
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/cinemas/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/movies': typeof MoviesRoute
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/cinemas_/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/movies'
     | '/search'
     | '/sitemap.xml'
+    | '/cinemas/$chain'
     | '/listing/$id'
     | '/movie/$slug'
     | '/api/public/coming-soon'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/movies'
     | '/search'
     | '/sitemap.xml'
+    | '/cinemas/$chain'
     | '/listing/$id'
     | '/movie/$slug'
     | '/api/public/coming-soon'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/movies'
     | '/search'
     | '/sitemap.xml'
+    | '/cinemas_/$chain'
     | '/listing/$id'
     | '/movie/$slug'
     | '/api/public/coming-soon'
@@ -233,6 +245,7 @@ export interface RootRouteChildren {
   MoviesRoute: typeof MoviesRoute
   SearchRoute: typeof SearchRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  CinemasChainRoute: typeof CinemasChainRoute
   ListingIdRoute: typeof ListingIdRoute
   MovieSlugRoute: typeof MovieSlugRoute
   ApiPublicComingSoonRoute: typeof ApiPublicComingSoonRoute
@@ -307,6 +320,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cinemas_/$chain': {
+      id: '/cinemas_/$chain'
+      path: '/cinemas/$chain'
+      fullPath: '/cinemas/$chain'
+      preLoaderRoute: typeof CinemasChainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/listing/$id': {
       id: '/listing/$id'
       path: '/listing/$id'
@@ -369,6 +389,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoviesRoute: MoviesRoute,
   SearchRoute: SearchRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  CinemasChainRoute: CinemasChainRoute,
   ListingIdRoute: ListingIdRoute,
   MovieSlugRoute: MovieSlugRoute,
   ApiPublicComingSoonRoute: ApiPublicComingSoonRoute,

@@ -231,10 +231,12 @@ function Home() {
             return (
               <Link
                 key={chain.key}
-                to="/cinemas"
-                // Carry the chain through: an empty search here was why every
-                // tile landed on the unfiltered board showing all seven.
-                search={{ cinema: chain.key }}
+                // Straight to the chain's own page rather than /cinemas?cinema=.
+                // A query parameter cannot carry its own title, description or
+                // canonical, so the filtered view could never rank for "vox
+                // cinemas showtimes" however good the data behind it was.
+                to="/cinemas/$chain"
+                params={{ chain: chain.key }}
                 className="group rounded-2xl border border-border/60 bg-card/50 px-5 py-7 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:gold-glow"
               >
                 <p className="font-display text-sm font-bold uppercase tracking-wide">

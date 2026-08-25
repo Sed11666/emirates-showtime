@@ -1,0 +1,257 @@
+/**
+ * Route "/cinemas/{chain}" — one chain's showtimes across the UAE.
+ *
+ * The filename uses the trailing-underscore form (`cinemas_.$chain`) so this
+ * does NOT nest inside routes/cinemas.tsx. Without it, TanStack would treat the
+ * browse page as a layout and render it around this one.
+ *
+ * Why this exists rather than /cinemas?cinema=vox: people search "vox cinemas
+ * showtimes", not "cinema showtimes filtered to vox". A query parameter cannot
+ * carry its own title, description or canonical, so the filtered view was
+ * unrankable by construction. This is the same data at a URL that can rank.
+ *
+ * Server-rendered, like the rest: the point is that a crawler sees the times.
+ */
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { Clapperboard, MapPin } from "lucide-react";
+
+import {
+  CINEMAS,
+  CINEMA_LABELS,
+  fetchChainFilms,
+  filmSlug,
+  hasUpcomingScreenings,
+  mergeFilmsByTitle,
+  showtimesByVenue,
+  type CinemaKey,
+} from "@/lib/cinemas";
+import { toDayKey } from "@/lib/days";
+import { VENUES, venueSlug } from "@/lib/venues";
+import { jsonLdDocument } from "@/lib/structured-data";
+
+const ORIGIN = "https://www.showsouk.com";
+
+function isChain(value: string): value is CinemaKey {
+  return CINEMAS.some((c) => c.key === value);
+}
+
+export const Route = createFileRoute("/cinemas_/$chain")({
+  loader: async ({ params }) => {
+    // Unknown chains 404 rather than rendering an empty page. A soft 200 on a
+    // nonsense URL is how a site accumulates thin pages in the index.
+    if (!isChain(params.chain)) throw notFound();
+    const day = toDayKey(new Date());
+    return { films: await fetchChainFilms(params.chain, day), day };
+  },
+  head: ({ params }) => {
+    const label = CINEMA_LABELS[params.chain] ?? params.chain;
+    const canonical = `${ORIGIN}/cinemas/${params.chain}`;
+    const screens = VENUES.filter((v) => v.cinema === params.chain).length;
+    const description = `${label} showtimes across ${screens} screens in the UAE — today's times by cinema, with a direct link to book on ${label}'s own site.`;
+    return {
+      meta: [
+        { title: `${label} Showtimes UAE — Today's Times | ShowSouk` },
+        { name: "description", content: description },
+        { property: "og:title", content: `${label} Showtimes in the UAE` },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: canonical },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: [{ rel: "canonical", href: canonical }],
+    };
+  },
+  component: ChainPage,
+  notFoundComponent: () => (
+    <p className="mx-auto max-w-3xl p-10 text-center text-muted-foreground">
+      No such cinema chain.{" "}
+      <Link to="/cinemas" className="text-gold underline-offset-4 hover:underline">
+        Browse all cinemas
+      </Link>
+    </p>
+  ),
+});
+
+function ChainPage() {
+  const { chain } = Route.useParams();
+  const { films, day } = Route.useLoaderData();
+
+  const label = CINEMA_LABELS[chain] ?? chain;
+  const screens = VENUES.filter((v) => v.cinema === chain);
+  const cities = [...new Set(screens.map((v) => v.city))].sort();
+
+  // One card per film, and only films with something left to watch today.
+  const showing = mergeFilmsByTitle(films).filter((film) => hasUpcomingScreenings(film.showtimes));
+
+  const jsonLd = jsonLdDocument([
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: `${ORIGIN}/` },
+        { "@type": "ListItem", position: 2, name: "Cinemas", item: `${ORIGIN}/cinemas` },
+        { "@type": "ListItem", position: 3, name: label, item: `${ORIGIN}/cinemas/${chain}` },
+      ],
+    },
+    {
+      "@type": "ItemList",
+      name: `Films showing at ${label} today`,
+      numberOfItems: showing.length,
+      itemListElement: showing.slice(0, 40).map((film, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        url: `${ORIGIN}/movie/${filmSlug(film.title)}`,
+        name: film.title,
+      })),
+    },
+  ]);
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
+        <nav aria-label="Breadcrumb" className="mb-4 text-xs text-muted-foreground">
+          <Link to="/cinemas" className="hover:text-foreground">
+            Cinemas
+          </Link>
+          <span className="mx-1.5">/</span>
+          <span className="text-foreground">{label}</span>
+        </nav>
+
+        <header className="mb-8">
+          <p className="text-sm uppercase tracking-[0.2em] text-primary">Now showing</p>
+          <h1 className="font-display text-3xl font-bold sm:text-4xl">
+            {label} Showtimes in the UAE
+          </h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            {showing.length} {showing.length === 1 ? "film" : "films"} playing today across{" "}
+            {screens.length} {label} {screens.length === 1 ? "screen" : "screens"} in{" "}
+            {cities.length === 1 ? cities[0] : `${cities.length} emirates`}. Pick a time to book
+            with {label} directly — we never sell the ticket.
+          </p>
+        </header>
+
+        {/* Every screen, named. This is the text that makes the page findable
+            for "vox mall of the emirates showtimes" and its many cousins. */}
+        <section className="mb-10 rounded-xl border border-border/70 bg-card/50 p-5">
+          <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold">
+            <MapPin className="size-4 text-primary" /> {label} cinemas
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {screens.map((venue) => (
+              <li
+                key={venueSlug(venue.name)}
+                className="rounded-lg border border-border/60 px-3 py-1.5 text-sm text-muted-foreground"
+              >
+                {venue.name.replace(/\s+Cinema$/i, "")}
+                <span className="ml-1.5 text-xs opacity-70">{venue.city}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {showing.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
+            No {label} screenings left today.{" "}
+            <Link to="/cinemas" className="text-gold underline-offset-4 hover:underline">
+              See what else is on
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="space-y-6">
+            {showing.map((film) => {
+              const board = showtimesByVenue(film.showtimes, day, film.venues[0], {
+                maxVenues: 6,
+                maxTimesPerVenue: 10,
+              });
+              return (
+                <article
+                  key={film.title}
+                  className="overflow-hidden rounded-xl border border-border/60 bg-card/40"
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-3">
+                    <h2 className="min-w-0 truncate font-display text-lg font-semibold">
+                      <Link
+                        to="/movie/$slug"
+                        params={{ slug: filmSlug(film.title) }}
+                        className="hover:text-gold"
+                      >
+                        {film.title}
+                      </Link>
+                    </h2>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {[film.genre, film.language, film.rating].filter(Boolean).join(" · ")}
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 p-5">
+                    {board.venues.map((venue) => (
+                      <div key={venue.venue}>
+                        <p className="mb-2 text-sm font-medium">
+                          {venue.venue}
+                          {venue.hiddenTimes > 0 ? (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              +{venue.hiddenTimes} more
+                            </span>
+                          ) : null}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {venue.times.map((screening) => (
+                            <a
+                              key={`${screening.time}|${screening.format ?? ""}`}
+                              href={screening.bookingUrl ?? film.booking_url ?? film.source_url ?? undefined}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Book ${film.title} at ${venue.venue}, ${screening.time}`}
+                              className="rounded-lg border border-border/70 bg-background/60 px-3 py-1.5 text-sm transition-colors hover:border-primary/70 hover:bg-primary/5"
+                            >
+                              {screening.time}
+                              {screening.format ? (
+                                <span className="ml-1.5 text-[10px] text-primary">
+                                  {screening.format}
+                                </span>
+                              ) : null}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {board.hiddenVenues > 0 ? (
+                      <Link
+                        to="/movie/$slug"
+                        params={{ slug: filmSlug(film.title) }}
+                        className="inline-flex items-center gap-1 text-sm text-gold hover:brightness-125"
+                      >
+                        <Clapperboard className="size-3.5" />
+                        Showing {board.venues.length} of {board.totalVenues} screens — see all
+                      </Link>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Chains link to each other so a crawler reaching one reaches them all
+            without needing the sitemap. */}
+        <nav className="mt-12 border-t border-border/60 pt-6">
+          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Other UAE cinemas</h2>
+          <ul className="flex flex-wrap gap-2">
+            {CINEMAS.filter((c) => c.key !== chain).map((c) => (
+              <li key={c.key}>
+                <Link
+                  to="/cinemas/$chain"
+                  params={{ chain: c.key }}
+                  className="rounded-lg border border-border/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-gold/50 hover:text-gold"
+                >
+                  {c.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </main>
+    </div>
+  );
+}

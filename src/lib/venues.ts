@@ -111,6 +111,20 @@ export const VENUES: Venue[] = [
   { cinema: "cinemacity", name: "Marina Mall Cinema", city: "Abu Dhabi", lat: 24.4755, lng: 54.3224 },
 ];
 
+/**
+ * "Mall of The Emirates Cinema" -> "mall-of-the-emirates". The trailing
+ * "Cinema" is dropped because every venue carries it, so it adds nothing to a
+ * URL and makes each one longer for no gain.
+ */
+export function venueSlug(name: string): string {
+  return name
+    .replace(/s+Cinema$/i, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export type Coords = { lat: number; lng: number };
 
 /** Approximate city centres, used when precise location isn't available. */

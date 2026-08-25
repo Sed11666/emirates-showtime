@@ -20,7 +20,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 
-import { fetchCinemaFilms, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
+import { CINEMAS, fetchCinemaFilms, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
 
 const ORIGIN = "https://www.showsouk.com";
 
@@ -49,6 +49,9 @@ async function build(): Promise<string> {
   const entries: string[] = [
     urlEntry("/", now, "hourly", "1.0"),
     urlEntry("/cinemas", now, "hourly", "0.9"),
+    // Chain landing pages. Static in number and always meaningful, so they go
+    // in unconditionally rather than depending on a database read.
+    ...CINEMAS.map((c) => urlEntry(`/cinemas/${c.key}`, now, "hourly", "0.9")),
   ];
 
   try {
