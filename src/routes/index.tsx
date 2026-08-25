@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Reveal } from "@/components/reveal";
 import {
   fetchCinemaFilms,
+  fetchCinemaFilmsForDay,
   filmFormats,
   filmSlug,
   hasUpcomingScreenings,
@@ -35,11 +36,16 @@ import {
   CINEMA_LABELS,
   type MergedFilm,
 } from "@/lib/cinemas";
+import { toDayKey } from "@/lib/days";
 
 import { VENUES } from "@/lib/venues";
 
 
 export const Route = createFileRoute("/")({
+  // Server-rendered so the Now Showing grid is in the HTML. Without it the
+  // homepage shipped an empty shell and search engines saw no film names at
+  // all. Today only; the client query pulls the full set right after.
+  loader: async () => ({ films: await fetchCinemaFilmsForDay(toDayKey(new Date())) }),
   head: () => ({
     meta: [
       { title: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },
@@ -149,7 +155,13 @@ function popularityScore(film: MergedFilm) {
 }
 
 function Home() {
-  const { data: films } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
+  const { films: ssrFilms } = Route.useLoaderData();
+  const { data: films } = useQuery({
+    queryKey: ["cinema-films"],
+    queryFn: fetchCinemaFilms,
+    initialData: ssrFilms,
+    initialDataUpdatedAt: 0,
+  });
 
   const merged = useMemo(
     () =>

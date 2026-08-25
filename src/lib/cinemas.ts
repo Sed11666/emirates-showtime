@@ -80,6 +80,43 @@ export async function fetchCinemaFilms(): Promise<CinemaFilm[]> {
 }
 
 /**
+ * The same films, trimmed to one day and to what a browse card renders.
+ *
+ * This exists for the route loader, which runs on the server: the full set is
+ * ~1.5MB of JSON, and a loader's return value is serialised into the HTML, so
+ * shipping all of it would trade a crawlable page for a slow one — and Core Web
+ * Vitals is itself a ranking signal. The heavy read stays server-to-Supabase;
+ * only the trimmed result crosses the wire.
+ *
+ * Synopsis is dropped because no card on /cinemas renders it. The client's own
+ * query fetches the complete set straight after hydration, so switching days or
+ * scoping to a film has everything by the time anyone can click.
+ */
+export async function fetchCinemaFilmsForDay(dayKey: string): Promise<CinemaFilm[]> {
+  const { data, error } = await supabase
+    .from("cinema_films")
+    .select(
+      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
+    )
+    .eq("is_active", true)
+    .order("title", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => {
+    const film = row as CinemaFilm;
+    const times = Array.isArray(film.showtimes) ? film.showtimes : [];
+    return {
+      ...film,
+      showtimes: times.filter((entry) => {
+        if (!entry || typeof entry !== "object") return true;
+        const date = (entry as Record<string, unknown>)["date"];
+        return typeof date !== "string" || date === dayKey;
+      }),
+    };
+  }) as CinemaFilm[];
+}
+
+/**
  * `text` is for display and reads "Venue · date · time". `time` is the bare
  * clock value — keep them apart: anything doing time arithmetic needs `time`,
  * and passing `text` to a parser silently yields "unparseable", which reads as

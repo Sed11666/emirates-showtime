@@ -27,6 +27,7 @@ import {
   CINEMA_LABELS,
   type CinemaKey,
   fetchCinemaFilms,
+  fetchCinemaFilmsForDay,
   filmSlug,
   hasDatedShowtimes,
   mergeFilmsByTitle,
@@ -76,6 +77,19 @@ export const Route = createFileRoute("/cinemas")({
       ...(view ? { view } : {}),
     };
   },
+  /**
+   * Server-rendered showtimes.
+   *
+   * Without this the HTML shipped an empty shell: zero film titles and zero
+   * times, with everything fetched after hydration. Googlebot renders
+   * JavaScript on a second pass that can lag days — useless for a board that
+   * changes hourly — and most other crawlers do not render it at all. So the
+   * page had 7,600 screenings and search engines could see none of them.
+   *
+   * Today only, because that is what the page opens on; the client's query
+   * pulls the full three days immediately after.
+   */
+  loader: async () => ({ films: await fetchCinemaFilmsForDay(toDayKey(new Date())) }),
   head: () => ({
 
     meta: [
@@ -198,9 +212,17 @@ function CinemasPage() {
   };
 
 
+  // Seeded from the loader so the first render — the one the server produces —
+  // already has films in it. The query then refetches the complete three-day
+  // set in the background, which is what day switching and film scoping need.
+  const { films: ssrFilms } = Route.useLoaderData();
   const { data, isLoading, error } = useQuery({
     queryKey: ["cinema-films"],
     queryFn: fetchCinemaFilms,
+    initialData: ssrFilms,
+    // initialData is today-only, so treat it as already stale and let the full
+    // fetch start at once rather than sitting on a partial set.
+    initialDataUpdatedAt: 0,
   });
 
   const films = useMemo(() => data ?? [], [data]);
