@@ -16,6 +16,7 @@ import { toDayKey } from "@/lib/days";
 import {
   CINEMA_LABELS,
   fetchCinemaFilms,
+  fetchFilmBySlug,
   filmFormats,
   filmSlug,
   titleKey,
@@ -25,17 +26,28 @@ import { formatDistance, venueBlocks } from "@/lib/showtimes";
 import { useUserLocation } from "@/hooks/useUserLocation";
 
 export const Route = createFileRoute("/movie/$slug")({
-  head: ({ params }) => {
-    const name = params.slug
-      .split("-")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
+  // Server-rendered: without this the page shipped an empty shell, the <h1>
+  // fell back to the raw lowercase slug, and a crawler saw a title tag over no
+  // content. Only this film's rows are serialised, so the payload is a few KB.
+  loader: async ({ params }) => ({ films: await fetchFilmBySlug(params.slug) }),
+  head: ({ params, loaderData }) => {
+    // Prefer the real title over a title-cased slug: the slug turns "Above and
+    // Below" into "Above And Below", and a <title> that disagrees with the <h1>
+    // is a needless mismatch for both readers and crawlers. Falls back to the
+    // slug when the loader has not run, which is what happens on a 404.
+    const name =
+      loaderData?.films?.[0]?.title ??
+      params.slug
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    const canonical = `https://www.showsouk.com/movie/${params.slug}`;
     return {
       meta: [
         { title: `${name} Showtimes & Tickets in the UAE | ShowSouk` },
         {
           name: "description",
-          content: `Cinema showtimes for ${name} across VOX, Reel, Novo and Roxy in the UAE, with the nearest screens to you listed first.`,
+          content: `Cinema showtimes for ${name} across VOX, Star, Novo, Roxy, Reel, Cinema City and Cine Royal in the UAE, with the nearest screens to you listed first.`,
         },
         { property: "og:title", content: `${name} — Showtimes in the UAE` },
         {
@@ -43,8 +55,10 @@ export const Route = createFileRoute("/movie/$slug")({
           content: `Pick a date and book ${name} at the cinema closest to you.`,
         },
         { property: "og:type", content: "video.movie" },
+        { property: "og:url", content: canonical },
         { name: "twitter:card", content: "summary_large_image" },
       ],
+      links: [{ rel: "canonical", href: canonical }],
     };
   },
   component: MovieShowtimesPage,
@@ -76,7 +90,16 @@ function MovieShowtimesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { data, isLoading } = useQuery({ queryKey: ["cinema-films"], queryFn: fetchCinemaFilms });
+  // Seeded from the loader so the server render already has the film. The
+  // shared cinema-films query then supplies the full catalogue for everything
+  // else on the page.
+  const { films: ssrFilms } = Route.useLoaderData();
+  const { data, isLoading } = useQuery({
+    queryKey: ["cinema-films"],
+    queryFn: fetchCinemaFilms,
+    initialData: ssrFilms,
+    initialDataUpdatedAt: 0,
+  });
 
   /** Every chain's copy of this title. */
   const matches = useMemo<CinemaFilm[]>(

@@ -117,6 +117,29 @@ export async function fetchCinemaFilmsForDay(dayKey: string): Promise<CinemaFilm
 }
 
 /**
+ * Every chain's copy of one film, for the film page's loader.
+ *
+ * Filtering happens here rather than in SQL because the slug is derived from
+ * the title through titleKey(), which Postgres has no equivalent of. The scan
+ * is server-side and the payload that reaches the browser is one film's rows —
+ * a few KB — instead of the whole catalogue.
+ *
+ * All three days, unlike the browse loader: this page is where someone picks a
+ * screening, so it needs the full schedule rather than just today's.
+ */
+export async function fetchFilmBySlug(slug: string): Promise<CinemaFilm[]> {
+  const { data, error } = await supabase
+    .from("cinema_films")
+    .select(
+      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, synopsis, formats, showtimes, booking_url, source_url, last_seen_at",
+    )
+    .eq("is_active", true)
+    .order("title", { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as CinemaFilm[]).filter((film) => filmSlug(film.title) === slug);
+}
+
+/**
  * `text` is for display and reads "Venue · date · time". `time` is the bare
  * clock value — keep them apart: anything doing time arithmetic needs `time`,
  * and passing `text` to a parser silently yields "unparseable", which reads as

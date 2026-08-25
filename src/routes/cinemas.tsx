@@ -106,10 +106,13 @@ export const Route = createFileRoute("/cinemas")({
           "Browse films now showing at VOX, Star, Novo, Cinema City, Cine Royal, Reel and Roxy in Dubai, Abu Dhabi and across the Emirates.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "/cinemas" },
+      { property: "og:url", content: "https://www.showsouk.com/cinemas" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
-    links: [{ rel: "canonical", href: "/cinemas" }],
+    // Absolute, not "/cinemas": a relative canonical is legal but Google
+    // documents absolute URLs as the reliable form, and og:url must be
+    // absolute for social crawlers regardless.
+    links: [{ rel: "canonical", href: "https://www.showsouk.com/cinemas" }],
   }),
   component: CinemasPage,
 });

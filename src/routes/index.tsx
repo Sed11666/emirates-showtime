@@ -52,7 +52,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "What's on across VOX, Reel, Novo and Roxy cinemas in Dubai, Abu Dhabi and the Emirates — now showing, today's showtimes and booking links in one place.",
+          "What's on across VOX, Star, Novo, Roxy, Reel, Cinema City and Cine Royal in Dubai, Abu Dhabi and the Emirates — now showing, today's showtimes and booking links in one place.",
       },
       { property: "og:title", content: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },
       {
@@ -60,8 +60,12 @@ export const Route = createFileRoute("/")({
         content: "Today's showtimes across UAE cinema chains, updated daily.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://www.showsouk.com/" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    // The homepage had no canonical at all, which leaves Google to pick between
+    // the apex and www itself. The apex already 308s to www, so state it.
+    links: [{ rel: "canonical", href: "https://www.showsouk.com/" }],
   }),
   component: Home,
 });

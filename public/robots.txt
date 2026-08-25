@@ -12,3 +12,6 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Regenerated from the live catalogue on request.
+Sitemap: https://www.showsouk.com/sitemap.xml
