@@ -118,7 +118,7 @@ export const VENUES: Venue[] = [
  */
 export function venueSlug(name: string): string {
   return name
-    .replace(/s+Cinema$/i, "")
+    .replace(/\s+Cinema$/i, "")
     .toLowerCase()
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, "-")

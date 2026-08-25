@@ -22,6 +22,7 @@ import { Route as CinemasChainRouteImport } from './routes/cinemas_.$chain'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as MovieSlugRouteImport } from './routes/movie.$slug'
 import { Route as ApiPublicComingSoonRouteImport } from './routes/api/public/coming-soon'
+import { Route as CinemasChainVenueRouteImport } from './routes/cinemas_.$chain_.$venue'
 import { Route as ApiPublicHooksResolvePostersRouteImport } from './routes/api/public/hooks/resolve-posters'
 import { Route as ApiPublicHooksScrapeAggregatorRouteImport } from './routes/api/public/hooks/scrape-aggregator'
 import { Route as ApiPublicHooksScrapeCinemasRouteImport } from './routes/api/public/hooks/scrape-cinemas'
@@ -92,6 +93,11 @@ const ApiPublicComingSoonRoute = ApiPublicComingSoonRouteImport.update({
   path: '/api/public/coming-soon',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CinemasChainVenueRoute = CinemasChainVenueRouteImport.update({
+  id: '/cinemas_/$chain_/$venue',
+  path: '/cinemas/$chain/$venue',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksResolvePostersRoute =
   ApiPublicHooksResolvePostersRouteImport.update({
     id: '/api/public/hooks/resolve-posters',
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
+  '/cinemas/$chain/$venue': typeof CinemasChainVenueRoute
   '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
+  '/cinemas/$chain/$venue': typeof CinemasChainVenueRoute
   '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
+  '/cinemas_/$chain_/$venue': typeof CinemasChainVenueRoute
   '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/listing/$id'
     | '/movie/$slug'
     | '/api/public/coming-soon'
+    | '/cinemas/$chain/$venue'
     | '/api/public/hooks/resolve-posters'
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/listing/$id'
     | '/movie/$slug'
     | '/api/public/coming-soon'
+    | '/cinemas/$chain/$venue'
     | '/api/public/hooks/resolve-posters'
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/listing/$id'
     | '/movie/$slug'
     | '/api/public/coming-soon'
+    | '/cinemas_/$chain_/$venue'
     | '/api/public/hooks/resolve-posters'
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   ListingIdRoute: typeof ListingIdRoute
   MovieSlugRoute: typeof MovieSlugRoute
   ApiPublicComingSoonRoute: typeof ApiPublicComingSoonRoute
+  CinemasChainVenueRoute: typeof CinemasChainVenueRoute
   ApiPublicHooksResolvePostersRoute: typeof ApiPublicHooksResolvePostersRoute
   ApiPublicHooksScrapeAggregatorRoute: typeof ApiPublicHooksScrapeAggregatorRoute
   ApiPublicHooksScrapeCinemasRoute: typeof ApiPublicHooksScrapeCinemasRoute
@@ -348,6 +361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicComingSoonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cinemas_/$chain_/$venue': {
+      id: '/cinemas_/$chain_/$venue'
+      path: '/cinemas/$chain/$venue'
+      fullPath: '/cinemas/$chain/$venue'
+      preLoaderRoute: typeof CinemasChainVenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/resolve-posters': {
       id: '/api/public/hooks/resolve-posters'
       path: '/api/public/hooks/resolve-posters'
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   ListingIdRoute: ListingIdRoute,
   MovieSlugRoute: MovieSlugRoute,
   ApiPublicComingSoonRoute: ApiPublicComingSoonRoute,
+  CinemasChainVenueRoute: CinemasChainVenueRoute,
   ApiPublicHooksResolvePostersRoute: ApiPublicHooksResolvePostersRoute,
   ApiPublicHooksScrapeAggregatorRoute: ApiPublicHooksScrapeAggregatorRoute,
   ApiPublicHooksScrapeCinemasRoute: ApiPublicHooksScrapeCinemasRoute,

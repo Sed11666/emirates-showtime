@@ -21,6 +21,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { CINEMAS, fetchCinemaFilms, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
+import { VENUES, venueSlug } from "@/lib/venues";
 
 const ORIGIN = "https://www.showsouk.com";
 
@@ -52,6 +53,12 @@ async function build(): Promise<string> {
     // Chain landing pages. Static in number and always meaningful, so they go
     // in unconditionally rather than depending on a database read.
     ...CINEMAS.map((c) => urlEntry(`/cinemas/${c.key}`, now, "hourly", "0.9")),
+    // One page per screen — the tier that answers "reel dubai mall showtimes".
+    // Driven by the venue directory, so a screen we cannot name is a screen we
+    // do not list.
+    ...VENUES.map((v) =>
+      urlEntry(`/cinemas/${v.cinema}/${venueSlug(v.name)}`, now, "hourly", "0.8"),
+    ),
   ];
 
   try {

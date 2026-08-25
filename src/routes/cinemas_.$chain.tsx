@@ -138,12 +138,15 @@ function ChainPage() {
           </h2>
           <ul className="flex flex-wrap gap-2">
             {screens.map((venue) => (
-              <li
-                key={venueSlug(venue.name)}
-                className="rounded-lg border border-border/60 px-3 py-1.5 text-sm text-muted-foreground"
-              >
-                {venue.name.replace(/\s+Cinema$/i, "")}
-                <span className="ml-1.5 text-xs opacity-70">{venue.city}</span>
+              <li key={venueSlug(venue.name)}>
+                <Link
+                  to="/cinemas/$chain/$venue"
+                  params={{ chain, venue: venueSlug(venue.name) }}
+                  className="inline-block rounded-lg border border-border/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-gold/50 hover:text-gold"
+                >
+                  {venue.name.replace(/\s+Cinema$/i, "")}
+                  <span className="ml-1.5 text-xs opacity-70">{venue.city}</span>
+                </Link>
               </li>
             ))}
           </ul>
