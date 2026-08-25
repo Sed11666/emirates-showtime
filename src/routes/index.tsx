@@ -37,6 +37,7 @@ import {
   type MergedFilm,
 } from "@/lib/cinemas";
 import { toDayKey } from "@/lib/days";
+import { jsonLdDocument, siteSchemas } from "@/lib/structured-data";
 
 import { VENUES } from "@/lib/venues";
 
@@ -194,6 +195,12 @@ function Home() {
 
   return (
     <div className="overflow-x-hidden">
+      {/* Who we are and how to search us — one graph, emitted once on the page
+          Google most often lands on for brand queries. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdDocument(siteSchemas()) }}
+      />
       <HeroSlider films={featured} />
 
       {/* ── Now showing ─────────────────────────────────────── */}

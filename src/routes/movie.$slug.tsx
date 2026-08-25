@@ -9,6 +9,12 @@
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import {
+  breadcrumbSchema,
+  jsonLdDocument,
+  movieSchema,
+  screeningSchemas,
+} from "@/lib/structured-data";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Heart, Info, Locate, SlidersHorizontal } from "lucide-react";
 
@@ -143,11 +149,28 @@ function MovieShowtimesPage() {
     .format(new Date(`${day}T12:00:00`))
     .toUpperCase();
 
+  /**
+   * Describes exactly what this page renders: the film, and the screenings for
+   * the day on screen. Marking up showings that are not visible is what Google
+   * treats as spam, so the day filter here is the same one the UI uses.
+   */
+  const jsonLd = useMemo(() => {
+    if (!primary) return null;
+    return jsonLdDocument([
+      movieSchema(primary, slug),
+      ...screeningSchemas(matches, slug, day),
+      breadcrumbSchema(primary.title, slug),
+    ]);
+  }, [primary, matches, slug, day]);
+
   const toggleFavourite = (key: string) =>
     setFavourites((list) => (list.includes(key) ? list.filter((k) => k !== key) : [...list, key]));
 
   return (
     <div className="min-h-screen bg-background">
+      {jsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      ) : null}
       {/* ── Film strip ─────────────────────────────────────── */}
       <div className="border-b border-border/60 bg-card/40">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-4">
