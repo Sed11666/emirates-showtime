@@ -300,7 +300,7 @@ function CinemasPage() {
         {/* One question — what should I watch — so one page. These were two nav
             items, which made the visitor choose a section before they had the
             information to choose with. */}
-        <div className="mb-8 flex gap-1 border-b border-border/60" role="tablist">
+        <div className="mb-8 flex gap-2 border-b border-border/60" role="tablist">
           {(
             [
               { id: "showing", label: "Now Showing" },
@@ -315,10 +315,10 @@ function CinemasPage() {
                 search={tab.id === "upcoming" ? { view: "upcoming" } : {}}
                 role="tab"
                 aria-selected={active}
-                className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                className={`-mb-px border-b-[3px] px-6 py-3.5 text-base font-semibold tracking-tight transition-colors sm:px-8 sm:text-lg ${
                   active
                     ? "border-gold text-gold"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
                 }`}
               >
                 {tab.label}
