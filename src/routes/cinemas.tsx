@@ -13,6 +13,7 @@ import { ChevronRight, Film, Locate, MapPin, Navigation, Search } from "lucide-r
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DaySelector } from "@/components/day-selector";
+import { UpcomingReleases } from "@/components/upcoming-releases";
 import {
   Select,
   SelectContent,
@@ -61,14 +62,18 @@ export const Route = createFileRoute("/cinemas")({
    * The real validation is in the component. Do not add a param here and assume
    * a bad value cannot reach state.
    */
-  validateSearch: (search: Record<string, unknown>): { movie?: string; cinema?: string } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { movie?: string; cinema?: string; view?: string } => {
     const movie = typeof search["movie"] === "string" ? search["movie"].trim() : "";
     const raw =
       typeof search["cinema"] === "string" ? search["cinema"].trim().toLowerCase() : "";
     const cinema = CINEMAS.some((c) => c.key === raw) ? raw : "";
+    const view = search["view"] === "upcoming" ? "upcoming" : "";
     return {
       ...(movie ? { movie } : {}),
       ...(cinema ? { cinema } : {}),
+      ...(view ? { view } : {}),
     };
   },
   head: () => ({
@@ -96,7 +101,12 @@ export const Route = createFileRoute("/cinemas")({
 });
 
 function CinemasPage() {
-  const { movie: movieSlug, cinema: rawCinemaParam } = Route.useSearch();
+  const { movie: movieSlug, cinema: rawCinemaParam, view: rawView } = Route.useSearch();
+
+  // Which of the two views is showing. In the URL because it has to survive a
+  // refresh and be linkable; validated here because validateSearch does not
+  // sanitise in this app (see the note on the route above).
+  const view: "showing" | "upcoming" = rawView === "upcoming" ? "upcoming" : "showing";
 
   /**
    * Sanitise here rather than trusting validateSearch. Verified in this app:
@@ -277,348 +287,385 @@ function CinemasPage() {
 
         {/* Says what the visitor gets, not how we get it. How often our scraper
             runs and when it last succeeded are our concerns, not theirs. */}
-        <header className="mb-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-primary">Now showing</p>
+        <header className="mb-6">
+          <p className="text-sm uppercase tracking-[0.2em] text-primary">UAE cinemas</p>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">UAE Cinema Showtimes</h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Today&rsquo;s screenings at every major cinema across the Emirates. Pick a time to book
-            with the cinema directly.
+            {view === "upcoming"
+              ? "Films announced for release, soonest first. Showtimes appear here the day they open."
+              : "Screenings at every major cinema across the Emirates. Pick a time to book with the cinema directly."}
           </p>
         </header>
 
-        <section className="mb-6 rounded-xl border border-border/70 bg-card/50 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="flex items-center gap-2 font-display text-base font-semibold">
-                <Navigation className="size-4 text-primary" />
-                {chainFilter ? `${CINEMA_LABELS[chainFilter]} near you` : "Cinemas near you"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {/* Count rather than a promised six: a smaller chain may not
-                    have six screens — Reel has three. The heading already names
-                    the chain, so this line does not repeat it. */}
-                {precise
-                  ? `The ${nearby?.length ?? 0} closest screens to your current location.`
-                  : "The closest screens to your selected city — share your location for exact distances."}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => requestLocation()} disabled={geoState === "loading"}>
-                <Locate className={`size-3.5 ${geoState === "loading" ? "animate-pulse" : ""}`} />
-                {precise ? "Update location" : "Use my location"}
-              </Button>
+        {/* One question — what should I watch — so one page. These were two nav
+            items, which made the visitor choose a section before they had the
+            information to choose with. */}
+        <div className="mb-8 flex gap-1 border-b border-border/60" role="tablist">
+          {(
+            [
+              { id: "showing", label: "Now Showing" },
+              { id: "upcoming", label: "Upcoming" },
+            ] as const
+          ).map((tab) => {
+            const active = view === tab.id;
+            return (
+              <Link
+                key={tab.id}
+                to="/cinemas"
+                search={tab.id === "upcoming" ? { view: "upcoming" } : {}}
+                role="tab"
+                aria-selected={active}
+                className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  active
+                    ? "border-gold text-gold"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
 
-              {nearby && (
-                <Button
-                  size="sm"
-                  variant={nearOnly ? "default" : "ghost"}
-                  onClick={() => setNearOnly((value) => !value)}
-                >
-                  {nearOnly ? "Showing nearby only" : "Filter to nearby"}
+        {view === "upcoming" ? (
+          <UpcomingReleases />
+        ) : (
+          <>
+          <section className="mb-6 rounded-xl border border-border/70 bg-card/50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+                  <Navigation className="size-4 text-primary" />
+                  {chainFilter ? `${CINEMA_LABELS[chainFilter]} near you` : "Cinemas near you"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {/* Count rather than a promised six: a smaller chain may not
+                      have six screens — Reel has three. The heading already names
+                      the chain, so this line does not repeat it. */}
+                  {precise
+                    ? `The ${nearby?.length ?? 0} closest screens to your current location.`
+                    : "The closest screens to your selected city — share your location for exact distances."}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => requestLocation()} disabled={geoState === "loading"}>
+                  <Locate className={`size-3.5 ${geoState === "loading" ? "animate-pulse" : ""}`} />
+                  {precise ? "Update location" : "Use my location"}
                 </Button>
+
+                {nearby && (
+                  <Button
+                    size="sm"
+                    variant={nearOnly ? "default" : "ghost"}
+                    onClick={() => setNearOnly((value) => !value)}
+                  >
+                    {nearOnly ? "Showing nearby only" : "Filter to nearby"}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {geoState === "denied" && (
+              <p className="mt-3 text-xs text-destructive">
+                Location unavailable. Allow location access in your browser, or pick a city below.
+              </p>
+            )}
+
+            {nearby && nearby.length > 0 && (
+              <ul className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+                {nearby.map((venue) => (
+                  <li key={`${venue.cinema}-${venue.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCinema(venue.cinema);
+                        setCity(venue.city);
+                      }}
+                      className="group w-full rounded-2xl border border-border/60 bg-card/50 px-5 py-6 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:gold-glow"
+                    >
+                      <p className="truncate font-display text-sm font-bold uppercase tracking-wide">
+                        {venue.name}
+                      </p>
+                      <p className="mt-1.5 truncate text-xs text-muted-foreground">
+                        {CINEMA_LABELS[venue.cinema]} · {venue.city}
+                      </p>
+                      <p className="mt-1 text-xs text-gold">
+                        {venue.distanceKm < 1
+                          ? `${Math.round(venue.distanceKm * 1000)} m away`
+                          : `${venue.distanceKm.toFixed(1)} km away`}
+                      </p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+          </section>
+
+
+          <div className="mb-6 space-y-4 rounded-xl border border-border/70 bg-card/50 p-4">
+            {/* Same field treatment as the header search overlay. */}
+            <div className="flex items-center gap-2 rounded-2xl border border-gold/25 bg-card px-4 py-1">
+              <Search className="size-4 shrink-0 text-primary" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search movies, cinemas & events"
+                className="border-0 bg-transparent px-0 focus-visible:ring-0"
+              />
+            </div>
+
+            {/* Three days is the source's ceiling, not a design choice — see
+                SCRAPE_DAYS. Offering more would repeat the bug this replaced. */}
+            <DaySelector value={day} onChange={setDay} days={DAY_COUNT} />
+
+            {/* Side by side on anything wider than a phone: three dropdowns cost
+                one row, where the old pills cost three wrapping rows. */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <FilterRow
+                label="Cinema"
+                allLabel="All cinemas"
+                value={cinema}
+                onChange={setCinema}
+                options={CINEMAS.map((c) => ({ value: c.key, label: c.label }))}
+              />
+              <FilterRow
+                label="City"
+                allLabel="All cities"
+                value={city}
+                onChange={setCity}
+                options={UAE_CITIES.map((c) => ({ value: c, label: c }))}
+              />
+              {languages.length > 0 && (
+                <FilterRow
+                  label="Language"
+                  allLabel="All languages"
+                  value={language}
+                  onChange={setLanguage}
+                  options={languages.map((l) => ({ value: l, label: l }))}
+                />
               )}
             </div>
           </div>
 
-          {geoState === "denied" && (
-            <p className="mt-3 text-xs text-destructive">
-              Location unavailable. Allow location access in your browser, or pick a city below.
-            </p>
-          )}
-
-          {nearby && nearby.length > 0 && (
-            <ul className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-              {nearby.map((venue) => (
-                <li key={`${venue.cinema}-${venue.name}`}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCinema(venue.cinema);
-                      setCity(venue.city);
-                    }}
-                    className="group w-full rounded-2xl border border-border/60 bg-card/50 px-5 py-6 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:gold-glow"
-                  >
-                    <p className="truncate font-display text-sm font-bold uppercase tracking-wide">
-                      {venue.name}
-                    </p>
-                    <p className="mt-1.5 truncate text-xs text-muted-foreground">
-                      {CINEMA_LABELS[venue.cinema]} · {venue.city}
-                    </p>
-                    <p className="mt-1 text-xs text-gold">
-                      {venue.distanceKm < 1
-                        ? `${Math.round(venue.distanceKm * 1000)} m away`
-                        : `${venue.distanceKm.toFixed(1)} km away`}
-                    </p>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-        </section>
-
-
-        <div className="mb-6 space-y-4 rounded-xl border border-border/70 bg-card/50 p-4">
-          {/* Same field treatment as the header search overlay. */}
-          <div className="flex items-center gap-2 rounded-2xl border border-gold/25 bg-card px-4 py-1">
-            <Search className="size-4 shrink-0 text-primary" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search movies, cinemas & events"
-              className="border-0 bg-transparent px-0 focus-visible:ring-0"
-            />
-          </div>
-
-          {/* Three days is the source's ceiling, not a design choice — see
-              SCRAPE_DAYS. Offering more would repeat the bug this replaced. */}
-          <DaySelector value={day} onChange={setDay} days={DAY_COUNT} />
-
-          {/* Side by side on anything wider than a phone: three dropdowns cost
-              one row, where the old pills cost three wrapping rows. */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <FilterRow
-              label="Cinema"
-              allLabel="All cinemas"
-              value={cinema}
-              onChange={setCinema}
-              options={CINEMAS.map((c) => ({ value: c.key, label: c.label }))}
-            />
-            <FilterRow
-              label="City"
-              allLabel="All cities"
-              value={city}
-              onChange={setCity}
-              options={UAE_CITIES.map((c) => ({ value: c, label: c }))}
-            />
-            {languages.length > 0 && (
-              <FilterRow
-                label="Language"
-                allLabel="All languages"
-                value={language}
-                onChange={setLanguage}
-                options={languages.map((l) => ({ value: l, label: l }))}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Scoped to one film: say so plainly and give a one-click way out,
-            otherwise a short list looks like broken filters. */}
-        {scopedTitle && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3">
-            <p className="text-sm text-muted-foreground">
-              Showing screens for{" "}
-              <span className="font-semibold text-foreground">{scopedTitle}</span>
-            </p>
-            <Link
-              to="/cinemas"
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-gold/60 hover:text-gold"
-            >
-              Show all films
-            </Link>
-          </div>
-        )}
-
-        {!isLoading && !error && hasIndirectBooking && filtered.length > 0 && (
-          <p className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <span
-              aria-hidden="true"
-              className="inline-block h-4 w-8 shrink-0 rounded border border-dashed border-border/60"
-            />
-            Dashed times open the cinema&rsquo;s booking site — that chain
-            doesn&rsquo;t publish a link to a single screening.
-          </p>
-        )}
-
-        {isLoading && <p className="text-muted-foreground">Loading showtimes…</p>}
-        {error && <p className="text-destructive">Could not load showtimes. Please try again.</p>}
-        {!isLoading && !error && filtered.length === 0 && (
-          <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-            {scopedTitle
-              ? `No more screenings for ${scopedTitle} today. Show all films, or check back tomorrow.`
-              : "No films match these filters yet. The next scheduled scrape will fill this in."}
-          </p>
-        )}
-
-        {/* Same showtimes-board treatment as the home page. */}
-        <div className="space-y-5">
-          {filtered.map(({ film, distance }) => {
-            // Scoped to one film: list every screen. Browsing all films: trim,
-            // or the page becomes thousands of rows.
-            const venues = showtimesByVenue(
-              film.showtimes,
-              day,
-              film.venues[0],
-              movieSlug ? undefined : { maxVenues: 4, maxTimesPerVenue: 8 },
-            )
-              .map((v) => ({ ...v, km: coords ? venueDistanceKm(v.venue, coords) : null }))
-              // Nearest screen first, exactly as the rest of the site orders
-              // venues. Screens we have no coordinates for sink to the bottom
-              // rather than being dropped.
-              .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
-
-            // A screening with no link of its own must not borrow another
-            // screening's. For chains that publish per-screening URLs, the
-            // film-level booking_url is just one of those sessions, so using it
-            // as a fallback would send someone to the wrong showing — worse
-            // than dropping them on the chain's own site. Only use it when it
-            // is genuinely a film-level page (Cine Royal's /chooseScreen/slug).
-            // How many screenings share each URL. A link used once is specific
-            // to that screening; one shared across several is a film page
-            // wearing a screening's clothes, which is how Cine Royal behaves.
-            const urlUses = new Map<string, number>();
-            for (const v of venues) {
-              for (const t of v.times) {
-                if (t.bookingUrl) urlUses.set(t.bookingUrl, (urlUses.get(t.bookingUrl) ?? 0) + 1);
-              }
-            }
-            const filmFallback =
-              film.booking_url && !urlUses.has(film.booking_url)
-                ? film.booking_url
-                : film.source_url;
-            return (
-              <div
-                key={film.id}
-                className="overflow-hidden rounded-2xl border border-border/60 bg-card/40"
+          {/* Scoped to one film: say so plainly and give a one-click way out,
+              otherwise a short list looks like broken filters. */}
+          {scopedTitle && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold/5 px-4 py-3">
+              <p className="text-sm text-muted-foreground">
+                Showing screens for{" "}
+                <span className="font-semibold text-foreground">{scopedTitle}</span>
+              </p>
+              <Link
+                to="/cinemas"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-gold/60 hover:text-gold"
               >
-                <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <Film className="size-4 shrink-0 text-gold" />
-                    <p className="truncate font-display text-base font-bold uppercase tracking-wide">
-                      {film.title}
-                    </p>
-                    {film.rating ? (
-                      <span className="shrink-0 rounded-md border border-gold/50 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
-                        {film.rating}
-                      </span>
-                    ) : null}
-                    {distance !== null ? (
-                      <span className="shrink-0 rounded-md border border-gold/40 px-1.5 py-0.5 text-[10px] font-medium text-gold">
-                        {distance < 1
-                          ? `${Math.round(distance * 1000)} m`
-                          : `${distance.toFixed(1)} km`}
-                      </span>
-                    ) : null}
-                  </div>
-                  {/* Stays inside Cinemas: scoping this page to the film shows
-                      every screen, which is what the old movie page was for. */}
-                  {!movieSlug ? (
-                    <Link
-                      to="/cinemas"
-                      search={{ movie: filmSlug(film.title) }}
-                      className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
-                    >
-                      All times <ChevronRight className="size-3.5" />
-                    </Link>
-                  ) : null}
-                </div>
+                Show all films
+              </Link>
+            </div>
+          )}
 
-                {venues.length > 0 ? (
-                  /* Each screen is its own panel rather than a hairline-divided
-                     row: with 36 venues on one film, dividers alone gave no
-                     sense of where one cinema ended and the next began. */
-                  <div className="space-y-3 p-4 sm:space-y-4 sm:p-5">
-                    {venues.map((venue) => (
-                      /* Stacked, not two columns: a venue with 25 screenings
-                         used to squeeze the name column to zero width, so the
-                         cinema showed as a bare map pin with no name. */
-                      <div
-                        key={venue.venue}
-                        className="rounded-xl border border-border/50 bg-background/40 p-4 transition-colors hover:border-border"
+          {!isLoading && !error && hasIndirectBooking && filtered.length > 0 && (
+            <p className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <span
+                aria-hidden="true"
+                className="inline-block h-4 w-8 shrink-0 rounded border border-dashed border-border/60"
+              />
+              Dashed times open the cinema&rsquo;s booking site — that chain
+              doesn&rsquo;t publish a link to a single screening.
+            </p>
+          )}
+
+          {isLoading && <p className="text-muted-foreground">Loading showtimes…</p>}
+          {error && <p className="text-destructive">Could not load showtimes. Please try again.</p>}
+          {!isLoading && !error && filtered.length === 0 && (
+            <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
+              {scopedTitle
+                ? `No more screenings for ${scopedTitle} today. Show all films, or check back tomorrow.`
+                : "No films match these filters yet. The next scheduled scrape will fill this in."}
+            </p>
+          )}
+
+          {/* Same showtimes-board treatment as the home page. */}
+          <div className="space-y-5">
+            {filtered.map(({ film, distance }) => {
+              // Scoped to one film: list every screen. Browsing all films: trim,
+              // or the page becomes thousands of rows.
+              const venues = showtimesByVenue(
+                film.showtimes,
+                day,
+                film.venues[0],
+                movieSlug ? undefined : { maxVenues: 4, maxTimesPerVenue: 8 },
+              )
+                .map((v) => ({ ...v, km: coords ? venueDistanceKm(v.venue, coords) : null }))
+                // Nearest screen first, exactly as the rest of the site orders
+                // venues. Screens we have no coordinates for sink to the bottom
+                // rather than being dropped.
+                .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+
+              // A screening with no link of its own must not borrow another
+              // screening's. For chains that publish per-screening URLs, the
+              // film-level booking_url is just one of those sessions, so using it
+              // as a fallback would send someone to the wrong showing — worse
+              // than dropping them on the chain's own site. Only use it when it
+              // is genuinely a film-level page (Cine Royal's /chooseScreen/slug).
+              // How many screenings share each URL. A link used once is specific
+              // to that screening; one shared across several is a film page
+              // wearing a screening's clothes, which is how Cine Royal behaves.
+              const urlUses = new Map<string, number>();
+              for (const v of venues) {
+                for (const t of v.times) {
+                  if (t.bookingUrl) urlUses.set(t.bookingUrl, (urlUses.get(t.bookingUrl) ?? 0) + 1);
+                }
+              }
+              const filmFallback =
+                film.booking_url && !urlUses.has(film.booking_url)
+                  ? film.booking_url
+                  : film.source_url;
+              return (
+                <div
+                  key={film.id}
+                  className="overflow-hidden rounded-2xl border border-border/60 bg-card/40"
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Film className="size-4 shrink-0 text-gold" />
+                      <p className="truncate font-display text-base font-bold uppercase tracking-wide">
+                        {film.title}
+                      </p>
+                      {film.rating ? (
+                        <span className="shrink-0 rounded-md border border-gold/50 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
+                          {film.rating}
+                        </span>
+                      ) : null}
+                      {distance !== null ? (
+                        <span className="shrink-0 rounded-md border border-gold/40 px-1.5 py-0.5 text-[10px] font-medium text-gold">
+                          {distance < 1
+                            ? `${Math.round(distance * 1000)} m`
+                            : `${distance.toFixed(1)} km`}
+                        </span>
+                      ) : null}
+                    </div>
+                    {/* Stays inside Cinemas: scoping this page to the film shows
+                        every screen, which is what the old movie page was for. */}
+                    {!movieSlug ? (
+                      <Link
+                        to="/cinemas"
+                        search={{ movie: filmSlug(film.title) }}
+                        className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
                       >
-                        <div className="mb-3.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                          <p className="flex items-center gap-1.5 text-[0.9375rem] font-semibold text-foreground">
-                            <MapPin className="size-4 shrink-0 self-center text-primary" />
-                            {venue.venue}
-                          </p>
-                          {/* Without a real fix this is measured from the city
-                              centre and can be tens of kilometres out, so say
-                              which it is rather than implying precision. */}
-                          {venue.km !== null ? (
-                            <span className="text-xs text-muted-foreground">
-                              {venue.km < 1
-                                ? `${Math.round(venue.km * 1000)} m`
-                                : `${venue.km.toFixed(1)} km`}
-                              {precise ? " away" : ` from ${userCity}`}
-                            </span>
-                          ) : null}
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {venue.times.length} {venue.times.length === 1 ? "show" : "shows"}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2.5">
-                          {venue.times.map((screening) => {
-                            // Straight out to the chain — no interstitial page.
-                            // Per-screening deep link where the chain exposes
-                            // one, else the film's page on that chain, else the
-                            // chain itself. Never construct a booking URL.
-                            const href = screening.bookingUrl ?? filmFallback;
-                            // Reel publishes no per-screening URL, so its chips
-                            // can only reach the chain's own site. Looking
-                            // identical to a chip that lands on a seat map sets
-                            // the visitor up to feel misled, so say so: dashed
-                            // border, muted label, and a tooltip.
-                            const exact =
-                              !!screening.bookingUrl && urlUses.get(screening.bookingUrl) === 1;
-                            return (
-                              <a
-                                key={`${screening.time}|${screening.format ?? ""}`}
-                                href={href ?? undefined}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={
-                                  exact
-                                    ? undefined
-                                    : "This cinema doesn't publish a direct link to a single screening — opens their booking site"
-                                }
-                                aria-label={`${
-                                  exact ? "Book" : "Open the cinema's booking site for"
-                                } ${film.title} at ${venue.venue}, ${screening.time}${
-                                  screening.format ? `, ${screening.format}` : ""
-                                }`}
-                                className={`flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-colors ${
-                                  exact
-                                    ? "border border-border/70 bg-background/60 hover:border-primary/70 hover:bg-primary/5"
-                                    : "border border-dashed border-border/60 bg-transparent hover:border-border hover:bg-muted/30"
-                                }`}
-                              >
-                                <span
-                                  className={`text-sm font-semibold leading-none ${
-                                    exact ? "text-foreground" : "text-muted-foreground"
-                                  }`}
-                                >
-                                  {screening.time}
-                                </span>
-                                {/* Screen type matters as much as the time: a
-                                    19:00 Gold seat is a different product from
-                                    a 19:00 Standard one. */}
-                                {/* Not force-uppercased: formats are stored in
-                                    canonical casing, and shouting them would
-                                    turn "Samsung ONYX" into "SAMSUNG ONYX". */}
-                                <span
-                                  className={`text-[10px] font-medium leading-none tracking-wide ${
-                                    exact ? "text-primary" : "text-muted-foreground/70"
-                                  }`}
-                                >
-                                  {screening.format ?? "Standard"}
-                                </span>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                        All times <ChevronRight className="size-3.5" />
+                      </Link>
+                    ) : null}
                   </div>
-                ) : (
-                  <p className="px-5 py-4 text-sm text-muted-foreground">
-                    No more times here today.
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
+
+                  {venues.length > 0 ? (
+                    /* Each screen is its own panel rather than a hairline-divided
+                       row: with 36 venues on one film, dividers alone gave no
+                       sense of where one cinema ended and the next began. */
+                    <div className="space-y-3 p-4 sm:space-y-4 sm:p-5">
+                      {venues.map((venue) => (
+                        /* Stacked, not two columns: a venue with 25 screenings
+                           used to squeeze the name column to zero width, so the
+                           cinema showed as a bare map pin with no name. */
+                        <div
+                          key={venue.venue}
+                          className="rounded-xl border border-border/50 bg-background/40 p-4 transition-colors hover:border-border"
+                        >
+                          <div className="mb-3.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                            <p className="flex items-center gap-1.5 text-[0.9375rem] font-semibold text-foreground">
+                              <MapPin className="size-4 shrink-0 self-center text-primary" />
+                              {venue.venue}
+                            </p>
+                            {/* Without a real fix this is measured from the city
+                                centre and can be tens of kilometres out, so say
+                                which it is rather than implying precision. */}
+                            {venue.km !== null ? (
+                              <span className="text-xs text-muted-foreground">
+                                {venue.km < 1
+                                  ? `${Math.round(venue.km * 1000)} m`
+                                  : `${venue.km.toFixed(1)} km`}
+                                {precise ? " away" : ` from ${userCity}`}
+                              </span>
+                            ) : null}
+                            <span className="ml-auto text-xs text-muted-foreground">
+                              {venue.times.length} {venue.times.length === 1 ? "show" : "shows"}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2.5">
+                            {venue.times.map((screening) => {
+                              // Straight out to the chain — no interstitial page.
+                              // Per-screening deep link where the chain exposes
+                              // one, else the film's page on that chain, else the
+                              // chain itself. Never construct a booking URL.
+                              const href = screening.bookingUrl ?? filmFallback;
+                              // Reel publishes no per-screening URL, so its chips
+                              // can only reach the chain's own site. Looking
+                              // identical to a chip that lands on a seat map sets
+                              // the visitor up to feel misled, so say so: dashed
+                              // border, muted label, and a tooltip.
+                              const exact =
+                                !!screening.bookingUrl && urlUses.get(screening.bookingUrl) === 1;
+                              return (
+                                <a
+                                  key={`${screening.time}|${screening.format ?? ""}`}
+                                  href={href ?? undefined}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={
+                                    exact
+                                      ? undefined
+                                      : "This cinema doesn't publish a direct link to a single screening — opens their booking site"
+                                  }
+                                  aria-label={`${
+                                    exact ? "Book" : "Open the cinema's booking site for"
+                                  } ${film.title} at ${venue.venue}, ${screening.time}${
+                                    screening.format ? `, ${screening.format}` : ""
+                                  }`}
+                                  className={`flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-colors ${
+                                    exact
+                                      ? "border border-border/70 bg-background/60 hover:border-primary/70 hover:bg-primary/5"
+                                      : "border border-dashed border-border/60 bg-transparent hover:border-border hover:bg-muted/30"
+                                  }`}
+                                >
+                                  <span
+                                    className={`text-sm font-semibold leading-none ${
+                                      exact ? "text-foreground" : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    {screening.time}
+                                  </span>
+                                  {/* Screen type matters as much as the time: a
+                                      19:00 Gold seat is a different product from
+                                      a 19:00 Standard one. */}
+                                  {/* Not force-uppercased: formats are stored in
+                                      canonical casing, and shouting them would
+                                      turn "Samsung ONYX" into "SAMSUNG ONYX". */}
+                                  <span
+                                    className={`text-[10px] font-medium leading-none tracking-wide ${
+                                      exact ? "text-primary" : "text-muted-foreground/70"
+                                    }`}
+                                  >
+                                    {screening.format ?? "Standard"}
+                                  </span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="px-5 py-4 text-sm text-muted-foreground">
+                      No more times here today.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          </>
+        )}
 
 
       </main>
