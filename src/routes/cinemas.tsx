@@ -31,6 +31,7 @@ import {
   filmSlug,
   hasDatedShowtimes,
   mergeFilmsByTitle,
+  rankByTrending,
   showtimesByVenue,
   showtimesForDay,
   titleKey,
@@ -270,10 +271,26 @@ function CinemasPage() {
       }
     }
 
-    // One card per movie, nearest first.
-    return mergeFilmsByTitle(matching)
-      .map((film) => ({ film, distance: distanceByTitle.get(titleKey(film.title)) ?? null }))
-      .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+    // One card per movie, most-trending first — the same ranking the home page,
+    // chain pages and city pages use, so a film promoted in a banner sits at the
+    // top here too instead of wherever the alphabet put it.
+    //
+    // Distance used to be the only sort key, and it barely discriminated: the
+    // films people come looking for play at nearly every mall, so most of the
+    // list shared one nearest-screen distance. Worse, with no location granted
+    // every distance was null and the comparator evaluated Infinity - Infinity,
+    // i.e. NaN, which the spec treats as 0 — so the whole board fell back to
+    // whatever Postgres returned, which is `order by title`. That is why every
+    // listing opened on a film beginning with "A".
+    //
+    // Distance is still computed and still shown on each card, and venues
+    // *within* a card remain nearest-first (see the venue panel below), which is
+    // where proximity actually helps someone choose.
+    const ranked = rankByTrending(mergeFilmsByTitle(matching), { dayKey: day });
+    return ranked.map((film) => ({
+      film,
+      distance: distanceByTitle.get(titleKey(film.title)) ?? null,
+    }));
   }, [films, movieSlug, search, cinema, city, language, day, nearOnly, nearby, coords]);
 
   /**

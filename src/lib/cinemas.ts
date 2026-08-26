@@ -485,13 +485,28 @@ const TRENDING_WEIGHTS = { screenings: 0.4, venues: 0.3, chains: 0.3 };
 
 export type TrendingSignals = { chains: number; venues: number; screenings: number };
 
+/**
+ * Which day to score, and from when.
+ *
+ * `dayKey` must be the day the surface is actually rendering — /cinemas has a
+ * date picker, so scoring today's schedule under a "Tomorrow" heading would
+ * rank the board by screenings the visitor cannot see. "any" scores every
+ * upcoming screening we hold. Pages that only ever show today can omit it.
+ */
+export type TrendingOptions = { dayKey?: string; now?: Date };
+
 /** The raw counts behind a film's trending score, for display and debugging. */
-export function trendingSignals(film: MergedFilm, now: Date = new Date()): TrendingSignals {
+export function trendingSignals(film: MergedFilm, options: TrendingOptions = {}): TrendingSignals {
+  const now = options.now ?? new Date();
   const today = toDayKey(now);
-  const upcoming = parseShowtimes(film.showtimes).filter(
-    (e) =>
-      (!e.date || e.date === today) && !isScreeningOver(e.time, e.date ?? null, today, now),
-  );
+  const dayKey = options.dayKey ?? today;
+  // isScreeningOver needs a concrete day to judge undated entries against;
+  // "any" has none, so fall back to today exactly as the chip filters do.
+  const against = dayKey === "any" ? today : dayKey;
+  const upcoming = parseShowtimes(film.showtimes).filter((e) => {
+    if (isScreeningOver(e.time, e.date ?? null, against, now)) return false;
+    return dayKey === "any" || !e.date || e.date === dayKey;
+  });
   return {
     chains: film.cinemas.length,
     venues: new Set(upcoming.map((e) => e.venue).filter(Boolean)).size,
@@ -506,9 +521,12 @@ export function trendingSignals(film: MergedFilm, now: Date = new Date()): Trend
  * determined by the data: an unstable sort here would let the hero and the grid
  * disagree about which film is second.
  */
-export function rankByTrending<T extends MergedFilm>(films: T[], now: Date = new Date()): T[] {
+export function rankByTrending<T extends MergedFilm>(
+  films: T[],
+  options: TrendingOptions = {},
+): T[] {
   const signals = new Map<string, TrendingSignals>();
-  for (const film of films) signals.set(film.id, trendingSignals(film, now));
+  for (const film of films) signals.set(film.id, trendingSignals(film, options));
 
   // Normalise against the best in this set. Floors of 1 keep an empty or
   // single-film catalogue from dividing by zero.

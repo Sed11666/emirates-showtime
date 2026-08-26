@@ -21,6 +21,7 @@ import {
   filmSlug,
   hasUpcomingScreenings,
   mergeFilmsByTitle,
+  rankByTrending,
   showtimesByVenue,
 } from "@/lib/cinemas";
 import { toDayKey } from "@/lib/days";
@@ -98,7 +99,16 @@ function VenuePage() {
 
   const chainLabel = CINEMA_LABELS[chain] ?? chain;
   const name = shortName(venueName);
-  const showing = mergeFilmsByTitle(films).filter((film) => hasUpcomingScreenings(film.showtimes));
+  // One card per film, only films with something left to watch, most-trending
+  // first — the same ranking the home page uses, so a visitor who arrives here
+  // from a banner finds that film at the top rather than buried in an
+  // alphabetical list. Ordering used to be whatever Postgres returned, which
+  // was `order by title`, so every listing on the site opened on whichever film
+  // happened to start with "A".
+  const showing = rankByTrending(
+    mergeFilmsByTitle(films).filter((film) => hasUpcomingScreenings(film.showtimes)),
+    { dayKey: day },
+  );
   const siblings = VENUES.filter((v) => v.cinema === chain && v.name !== venueName);
 
   const jsonLd = jsonLdDocument([
