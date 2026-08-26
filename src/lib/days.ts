@@ -69,13 +69,28 @@ export function isTodayKey(key: string) {
   return key === toDayKey(new Date());
 }
 
-/** Screenings before this hour belong to the previous evening, not a new day. */
-const LATE_NIGHT_ROLLOVER_HOUR = 5;
-
 /**
  * "7:45pm", "07:45 PM" and "19:45" all become minutes past midnight. A 00:20
- * screening returns 1460, not 20, so it sorts at the end of the evening it
- * actually belongs to rather than the start of the next morning.
+ * screening returns 20 — there is deliberately no late-night rollover.
+ *
+ * The source dates every screening by the calendar day it starts on, so a
+ * small-hours chip on the 27 Aug tab is 27 Aug 00:20, and is that day's
+ * *first* show rather than the tail of the 26th. Verified against a booking
+ * link that carries its own date: the 12:00 AM chip on the 27 Aug tab links to
+ * `theroxycinemas.com/en/seat-selection/.../27+Aug+2026/00:00/Silver`.
+ * cinemauae renders those chips with a `time-chip-late` class and a moon icon —
+ * that is decoration, and it does not shift the date. Do not read it as one.
+ *
+ * This used to add 24 hours to anything before 05:00 so late shows sorted at
+ * the end of the evening they "belonged" to. Combined with screeningStartMs it
+ * meant a 02:00 screening on today's board resolved to 02:00 *tomorrow*, so it
+ * never expired: on the morning of 26 Aug the board offered a 2am screening
+ * that had played hours earlier and the chain answered "booking unavailable".
+ * Because everything genuinely later that day had also finished, it was often
+ * the only chip left, so the day read as though it held one dead show.
+ *
+ * Both sort sites (lib/cinemas.ts, lib/showtimes.ts) order an already
+ * day-filtered list, so plain minutes sort them correctly.
  */
 export function timeToMinutes(raw: string): number {
   const match = raw.trim().match(/^(\d{1,2})[:.](\d{2})\s*([ap]\.?m\.?)?$/i);
@@ -85,7 +100,6 @@ export function timeToMinutes(raw: string): number {
   const suffix = match[3]?.toLowerCase();
   if (suffix?.startsWith("p") && hours < 12) hours += 12;
   if (suffix?.startsWith("a") && hours === 12) hours = 0;
-  if (hours < LATE_NIGHT_ROLLOVER_HOUR) hours += 24;
   return hours * 60 + minutes;
 }
 
@@ -95,12 +109,13 @@ const DUBAI_UTC_OFFSET_MS = 4 * 60 * 60 * 1000;
 /**
  * The real instant a screening starts, as epoch milliseconds.
  *
- * timeToMinutes' rollover is what makes this correct rather than clever: a
- * 00:20 screening listed under 12 Aug returns 1460 minutes, i.e. past the end
- * of that day, so it resolves to 00:20 on the 13th — which is when it actually
- * plays. Comparing rolled minutes directly against a rolled clock would be
- * wrong in the small hours, where "now" is ~1470 and a 09:50 show later the
- * same day is only 590, making the whole coming day look long finished.
+ * Straight arithmetic, and it has to stay that way: the day key is the calendar
+ * day the screening starts on and the minutes are minutes into that day, so a
+ * 00:20 show listed under 12 Aug is 12 Aug at 00:20. Anything that shifts one
+ * of the two — a rollover in timeToMinutes, a "cinema day" applied here — makes
+ * a small-hours screening resolve to a day later than it plays, and a screening
+ * dated in the future can never be over, so it is pinned to the board forever.
+ * That is exactly the bug this pair last had.
  */
 function screeningStartMs(dayKey: string, minutesFromMidnight: number): number | null {
   const match = dayKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);

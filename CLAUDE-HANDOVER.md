@@ -274,11 +274,26 @@ Screenings are stamped with the day they were scraped. A cache entry from
 yesterday must not be allowed to answer `304`, or the board silently serves
 yesterday's dates forever. `fetched_at` day is compared against Dubai today.
 
-**4. Rolled minutes are for sorting, not elapsed time.**
-`timeToMinutes` pushes past-midnight shows past 1440 so they sort at the end of
-their evening. Never compare that against a rolled clock — between midnight and
-5am it makes the whole coming day look finished. Use real epoch instants
-(`isScreeningOver` in `src/lib/days.ts`). Dubai is UTC+4 year-round, no DST.
+**4. There is no "cinema day". A small-hours show belongs to the date it starts.**
+`timeToMinutes` used to add 24 hours to anything before 05:00, on the belief
+that a 2am chip was the tail of the previous evening. The source does not work
+that way: each `?d=N` tab is one plain calendar day, 00:00–23:59, and a booking
+link that carries its own date proves it — the 12:00 AM chip on the 27 Aug tab
+links to `theroxycinemas.com/.../27+Aug+2026/00:00/`. cinemauae marks those
+chips `time-chip-late` with a moon icon, but that is **decoration only** and
+does not shift the date; do not take it as evidence of a rollover.
+
+The rollover pushed a 02:00 show on today's board to 02:00 *tomorrow*, and a
+screening dated in the future can never be over, so it was pinned to the board
+permanently. On the morning of 26 Aug the board offered a 2am screening that
+had played hours earlier and the chain answered "booking unavailable" — and
+because everything genuinely later that day had also finished, it was often the
+*only* chip left, so a venue read as though it had one dead show on it.
+Reproduced against the live catalogue: 4 venue panels in that state at 09:00.
+
+Both sort sites order an already day-filtered list, so plain minutes are right
+there too. Keep elapsed time on real epoch instants (`isScreeningOver` in
+`src/lib/days.ts`); Dubai is UTC+4 year-round, no DST.
 
 **5. LLM extraction fabricates URLs.**
 The previous Firecrawl scraper invented plausible VOX session ids
@@ -343,7 +358,10 @@ cinemas scraper, and `src/lib/cinemas.ts`.
   time`); feeding that in makes `timeToMinutes` return `MAX_SAFE_INTEGER`, which
   the guard reads as "not finished yet", so the filter silently passes
   everything. It put 54 cards on the home page when 32 films qualified.
-- Screenings disappear **30 minutes after they start**.
+- Screenings disappear **30 minutes after they start**, judged against the
+  calendar date they carry — a 00:30 show on the 27th is gone by 01:00 on the
+  27th, and tonight's late show lives on tomorrow's tab because that is the day
+  it starts. See §8.4; assuming a 5am "cinema day" here is what broke this.
 - Booking links resolve: per-screening URL → film `booking_url` → chain home.
   Never construct a booking URL by hand.
 - **A link only counts as exact when exactly one screening of that film uses

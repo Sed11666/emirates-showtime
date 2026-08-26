@@ -365,7 +365,9 @@ export function showtimesByVenue(
       groups.set(venue, list);
     }
     return [...groups.entries()].map(([venue, times]) => {
-      // Chronological, with past-midnight shows at the end of the evening.
+      // Chronological within the calendar day, which is how the source dates
+      // these: a 00:20 show is that day's first chip, not the previous night's
+      // last. `times` is already filtered to one day, so plain minutes suffice.
       const ordered = [...times].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
       const shown = Number.isFinite(maxTimes) ? ordered.slice(0, maxTimes) : ordered;
       return { venue, times: shown, hiddenTimes: ordered.length - shown.length };
