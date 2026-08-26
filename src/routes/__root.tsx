@@ -132,10 +132,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap",
       },
-      // ShowSouk marquee-gold "S". The ?v= is a cache-buster: browsers pin a
-      // favicon hard, and without it the previous icon survives a deploy for
-      // days in tabs that have already seen it. Bump it if the icon changes.
-      { rel: "icon", href: "/favicon.ico?v=2", type: "image/x-icon" },
+      // The header's own ticket mark (lucide Ticket, same path as SiteHeader)
+      // on the site's dark ground, drawn in marquee gold rather than the
+      // header's primary green: at 16px in a dark tab strip the green square
+      // merges into the strip and the mark goes murky. Gold survives it.
+      //
+      // The ?v= is a cache-buster. Browsers pin a favicon hard, and without it
+      // the previous icon survives a deploy for days in tabs that have already
+      // seen it. Bump it whenever the artwork changes.
+      { rel: "icon", href: "/favicon.ico?v=3", type: "image/x-icon" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
     ],
   }),
