@@ -125,6 +125,16 @@ export function venueSlug(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/** "Ras Al Khaimah" -> "ras-al-khaimah", and back via CITY_BY_SLUG. */
+export function citySlug(city: string): string {
+  return city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+/** Every emirate we have a screen in, keyed by slug. Drives the city pages. */
+export const CITY_BY_SLUG: Record<string, string> = Object.fromEntries(
+  [...new Set(VENUES.map((v) => v.city))].sort().map((city) => [citySlug(city), city]),
+);
+
 export type Coords = { lat: number; lng: number };
 
 /** Approximate city centres, used when precise location isn't available. */

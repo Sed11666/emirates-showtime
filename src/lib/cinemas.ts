@@ -148,6 +148,37 @@ export async function fetchChainFilms(chain: string, dayKey: string): Promise<Ci
 }
 
 /**
+ * One emirate's films for one day, for the city landing page's loader.
+ *
+ * cinema_films carries a city per row, so this filters in SQL and reads only
+ * what it needs. Showtimes are narrowed to the day here so the payload
+ * serialised into the HTML stays small.
+ */
+export async function fetchCityFilms(city: string, dayKey: string): Promise<CinemaFilm[]> {
+  const { data, error } = await supabase
+    .from("cinema_films")
+    .select(
+      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
+    )
+    .eq("is_active", true)
+    .eq("city", city)
+    .order("title", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as CinemaFilm[]).map((film) => {
+    const times = Array.isArray(film.showtimes) ? film.showtimes : [];
+    return {
+      ...film,
+      showtimes: times.filter((entry) => {
+        if (!entry || typeof entry !== "object") return true;
+        const date = (entry as Record<string, unknown>)["date"];
+        return typeof date !== "string" || date === dayKey;
+      }),
+    };
+  });
+}
+
+/**
  * Every chain's copy of one film, for the film page's loader.
  *
  * Filtering happens here rather than in SQL because the slug is derived from

@@ -35,6 +35,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { UAE_CITIES } from "@/lib/listings";
+import { CITY_BY_SLUG } from "@/lib/venues";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
@@ -201,6 +202,25 @@ export function SiteFooter() {
             Movies, concerts and experiences across Dubai, Abu Dhabi, Sharjah and the Northern
             Emirates.
           </p>
+          {/* Every emirate, on every page. The city pages are otherwise only
+              reachable from each other and the sitemap, and a page a crawler
+              has to be told about is weaker than one it can walk to. */}
+          <nav aria-label="Cinemas by emirate" className="mt-4">
+            <p className="mb-2 text-xs uppercase tracking-widest text-primary">By emirate</p>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+              {Object.entries(CITY_BY_SLUG).map(([slug, name]) => (
+                <li key={slug}>
+                  <Link
+                    to="/movies-in/$city"
+                    params={{ city: slug }}
+                    className="hover:text-foreground"
+                  >
+                    {name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
         <div className="text-sm">
           <p className="mb-3 text-xs uppercase tracking-widest text-primary">Browse</p>

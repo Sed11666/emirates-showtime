@@ -21,7 +21,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { CINEMAS, fetchCinemaFilms, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
-import { VENUES, venueSlug } from "@/lib/venues";
+import { CITY_BY_SLUG, VENUES, venueSlug } from "@/lib/venues";
 
 const ORIGIN = "https://www.showsouk.com";
 
@@ -58,6 +58,10 @@ async function build(): Promise<string> {
     // do not list.
     ...VENUES.map((v) =>
       urlEntry(`/cinemas/${v.cinema}/${venueSlug(v.name)}`, now, "hourly", "0.8"),
+    ),
+    // One page per emirate — "movies in dubai today" and its seven siblings.
+    ...Object.keys(CITY_BY_SLUG).map((slug) =>
+      urlEntry(`/movies-in/${slug}`, now, "hourly", "0.9"),
     ),
   ];
 
