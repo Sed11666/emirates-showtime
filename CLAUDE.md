@@ -28,7 +28,14 @@ history and the incident log behind several rules below.
 
 Do not introduce react-router-dom, a `src/pages` directory or an `App.tsx` page
 switcher; routing is TanStack file-based and `src/routeTree.gen.ts` is
-generated (never edit it). TypeScript is strict — unused imports fail the build.
+generated (never edit it) — but it **is** committed, and a new route must be
+committed with it. TypeScript is strict, though note `npm run build` is
+`vite build` and does **not** typecheck; run `tsc --noEmit` yourself.
+
+**Any page that lists films needs a route loader**, not a client-only query.
+The whole site is server-rendered so crawlers can see the showtimes; a page
+whose content arrives after hydration undoes that. See CLAUDE-HANDOVER §10b
+before adding a route.
 
 ---
 
@@ -77,8 +84,13 @@ src/
   routes/
     __root.tsx                providers, global head, site chrome, <Outlet/>
     index.tsx                 "/"  home: hero slider + Now Showing grid only
-    cinemas.tsx               "/cinemas" browse by chain/city/day + near-me
+    cinemas.tsx               "/cinemas" browse, Now Showing + Upcoming tabs
+    cinemas_.$chain.tsx       "/cinemas/{chain}" chain landing page
+    cinemas_.$chain_.$venue.tsx  "/cinemas/{chain}/{venue}" one screen
+    movies-in.$city.tsx       "/movies-in/{city}" one emirate
     movie.$slug.tsx           "/movie/$slug" showtime picker, nearest-first
+    sitemap[.]xml.ts          "/sitemap.xml" generated per request
+    coming-soon.tsx           redirect -> /cinemas?view=upcoming
     events.tsx                "/events" Coming Soon placeholder
     search.tsx                "/search?q=" grouped results
     listing.$id.tsx           "/listing/$id" admin-authored entry detail
@@ -88,6 +100,9 @@ src/
       scrape-aggregator.ts    LIVE cinema scraper (cron target)
       scrape-events.ts        arena events scraper (cron target)
       scrape-cinemas.ts       legacy Firecrawl scraper, disabled
+      resolve-posters.ts      swaps hotlinked artwork for TMDB (cron target)
+    api/public/
+      coming-soon.ts          upcoming releases, fetched + cached server-side
   lib/
     cinemas.ts                read layer + de-dup + showtime grouping
     showtimes.ts              venue blocks, distance sort, booking-URL fallback
@@ -95,10 +110,17 @@ src/
     venues.ts                 static UAE venue geo directory + Haversine
     search.ts                 internal-only search across our own tables
     listings.ts               curated `listings` CRUD helpers
-  hooks/                      useAuth, useIsAdmin, useUserLocation
+    coming-soon.ts            parses cinemauae's coming-soon index
+    structured-data.ts        schema.org JSON-LD builders
+  hooks/                      useAuth, useIsAdmin, useUserLocation, useTheme,
+                              useAuthProviders
   components/
     site-chrome.tsx           header + footer
     movie-poster-card.tsx     poster tile; routes to /cinemas, never to booking
+    account-menu.tsx          signed-in menu: identity, appearance, sign out
+    upcoming-releases.tsx     the Upcoming tab's grid
+    auth-panel.tsx            sign-in form, shared by /auth and the prompt
+    auth-prompt.tsx           AuthPromptProvider (was booking-gate)
     ui/                       shadcn primitives (do not restyle ad hoc)
   integrations/supabase/      GENERATED — never edit
 supabase/migrations/          SQL history
@@ -231,3 +253,6 @@ run the scraper route locally; it lives in the Vercel environment.
 | Theme / colours                   | `src/styles.css`                                   |
 | Permissions                       | `supabase/migrations/*` RLS + `hooks/useIsAdmin`   |
 | Diagnose the pipeline             | `net._http_response`, then `scraper_page_cache`    |
+| Add a landing page                | CLAUDE-HANDOVER §10b, then `cinemas_.$chain.tsx`   |
+| Change what search engines see    | that route's `loader`, then `lib/structured-data`  |
+| Add or remove a sitemap URL       | `routes/sitemap[.]xml.ts`                          |

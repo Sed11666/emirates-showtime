@@ -450,6 +450,98 @@ progress` — those are Lovable editor syncs, not deliberate checkpoints.
 
 ---
 
+## 10b. SEO — how the site is meant to be found
+
+Added 2026-08-25/26. Before it, the site had **8 pages, none of which
+contained a film name or a showtime in the HTML**, no sitemap, and no
+structured data. Everything was fetched after hydration, so search engines saw
+an empty shell. It is now 116 URLs, all server-rendered.
+
+### Everything is server-rendered. Keep it that way.
+Each route loads its data in a TanStack **route loader**, not a client-only
+`useQuery`, and seeds the query from it. If you add a page that lists films,
+give it a loader — a page whose content arrives after hydration is invisible to
+most crawlers and lags days behind on Googlebot's second pass, which is useless
+for a board that changes hourly.
+
+Loaders return a **trimmed projection**, not the full catalogue: a loader's
+return value is serialised into the HTML, and the whole set is ~1.5MB. Today
+only, minus fields the page does not render. The heavy read stays
+server-to-Supabase. `initialDataUpdatedAt: 0` marks the seed stale so the
+client immediately fetches the complete three days.
+
+### The page tiers, and why each exists
+| Tier | URL | Answers |
+|---|---|---|
+| Browse | `/cinemas` | "what's on" |
+| Chain | `/cinemas/{chain}` | "vox cinemas showtimes" |
+| Venue | `/cinemas/{chain}/{venue}` | "reel dubai mall showtimes" |
+| City | `/movies-in/{city}` | "movies in dubai today" |
+| Film | `/movie/{slug}` | "mutiny showtimes uae" |
+
+**A query parameter cannot rank.** `/cinemas?cinema=vox` had the right data at a
+URL with no title, description or canonical of its own — that is why the chain
+tier exists rather than a filter.
+
+**URL shapes are constrained by the router.** `/cinemas/dubai` collides with
+`/cinemas/$chain`; `/cinemas/city/dubai` collides with the venue route, which
+reads it as chain "city". Hence `/movies-in/{city}`. The chain and venue routes
+use the trailing-underscore filenames (`cinemas_.$chain`,
+`cinemas_.$chain_.$venue`) so neither `/cinemas` nor the chain page becomes a
+layout wrapped around them.
+
+**Unknown chain, venue, city or film throws `notFound`.** A soft 200 on a
+nonsense URL is how a site teaches Google it is thin.
+
+### Internal linking is deliberate
+home → chain tiles → chains → venues; footer → all eight cities → venues; every
+listing → film pages. No tier depends on the sitemap alone: a page a crawler has
+to be told about ranks worse than one it can walk to. If you add a tier, link it
+from something.
+
+### Sitemap
+`/sitemap.xml` is a **server route generated per request** from the live
+catalogue (`routes/sitemap[.]xml.ts`), not a static file. Static pages, seven
+chains, 64 venues, eight cities, and one entry per film that still has a
+screening to come — so the count drifts by a few daily as films finish their
+runs, which is correct. `robots.txt` names it. Deliberately excluded, with
+reasons in the file: auth, admin, the `/coming-soon` redirect,
+`?view=upcoming` (its canonical points at `/cinemas`), legacy `/movies`, search,
+listings and the empty `/events`.
+
+The filename escapes the dot as `sitemap[.]xml.ts`; TanStack treats `.` as a
+path separator, so `sitemap.xml.ts` would serve `/sitemap/xml`.
+
+### Structured data
+`lib/structured-data.ts`. One `@graph` per page so nodes reference each other by
+`@id` — every `ScreeningEvent` points at the one `Movie` rather than restating
+it. Film pages carry Movie + up to 80 ScreeningEvent + BreadcrumbList; venue
+pages MovieTheater + BreadcrumbList; chain and city pages BreadcrumbList +
+ItemList; the homepage Organization + WebSite.
+
+**Only ever describe what the page renders.** The events use the same day filter
+as the UI. Google treats markup for absent content as spam, and tying the two
+together is what stops them drifting.
+
+Cost is not a reason to trim it: 49KB raw on a film page is **2.7KB gzipped**,
+because near-identical events compress away.
+
+`ScreeningEvent` will not produce a Google showtimes box — those come from a
+partner feed, not open markup. It is still correct and is what AI crawlers read.
+
+### Canonicals
+Absolute on every page, never relative. `og:url` likewise, since a relative
+`og:url` is meaningless to a social crawler. The apex 308s to `www`, and every
+canonical points at `www`.
+
+### Search Console
+Verified via a meta tag in `__root.tsx`. The property is a **domain property**
+(`showsouk.com`), which covers apex and www together — so the sitemap is
+submitted as the full URL, not a relative path. The **AMP report showing a red
+icon is not an error**: the site has no AMP pages and never will.
+
+---
+
 ## 11. Outstanding work
 
 1. **Cine Royal deep links — CLOSED 2026-08-19: not possible. Do not reopen.**
@@ -609,8 +701,33 @@ progress` — those are Lovable editor syncs, not deliberate checkpoints.
 17. **The three filter dropdowns have no accessible names.** They read as bare
     unlabelled buttons in the accessibility tree.
 
+18. **Terms and Privacy pages do not exist.** They are 404s. A public site
+    without them reads as unfinished to visitors and to Google's quality
+    signals, and the account menu deliberately omits the links rather than
+    pointing at nothing.
+
+19. **No backlinks.** A new domain with none ranks slowly however clean the
+    markup is, and this is the ceiling everything else now sits under. UAE
+    listings sites, local communities, a Google Business Profile. Nothing
+    technical will substitute for it.
+
+20. **Nothing on the site can earn a link.** Schedules do not get linked to;
+    guides do. "Best cinemas in Dubai", IMAX vs Dolby, that sort of thing. This
+    is the gap between a site that is technically correct and one that ranks.
+
+21. **The trim banner over-counts.** "Showing 4 of N screens" reported totals
+    that included days other than the one selected — 4 of 34 at a moment when
+    only 88 screenings remained that day. The chips are right, the total is
+    suspect. Introduced with the banner, not with the three-day scrape.
+
 ### Closed since this list was written
 
+- ~~**No sitemap, no structured data, content invisible to crawlers**~~ —
+  **done 2026-08-25/26.** See §10b. 8 pages with no film data in the HTML
+  became 116 server-rendered URLs with JSON-LD throughout.
+- ~~**`/movie/$slug` renders the raw lowercase slug as its `<h1>`**~~ — it was
+  the fallback for "data has not arrived", and with no server data that was the
+  whole page. Fixed by the loader.
 - ~~**Multi-day showtimes are impossible**~~ — **wrong, and now shipped.**
   cinemauae serves three days behind `?d=0|1|2`. See §4; the earlier conclusion
   came from guessing at parameter names rather than reading the page.
