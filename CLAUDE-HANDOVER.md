@@ -443,7 +443,9 @@ f9c5c9c Scope Cinemas near you to the chain being filtered
 Venue coordinates are now taken from each screen's own page on cinemauae, the
 same record the venue names come from, so identity always matches and no
 geocoding guesswork is involved: **63 of 64 exact** (`e9b8bf9`). Only Reel
-Springs Souk has no page there.
+Springs Souk has no page there. The two `Marina Mall Cinema` rows are sourced
+from Google Maps instead, because one source page cannot fill two venues sharing
+a name — see the closed item in §11.
 
 Interleaved with those are several commits named only `Changes` or `Work in
 progress` — those are Lovable editor syncs, not deliberate checkpoints.
@@ -691,37 +693,50 @@ icon is not an error**: the site has no AMP pages and never will.
     reusing `TMDB_API_KEY`, cached with the film list — is a contained change
     whenever it is wanted.
 
-16. **Reel Dubai Marina has Abu Dhabi coordinates.** `lib/venues.ts` gives it
-    `24.4755, 54.3224`, byte-identical to Cinema City's Marina Mall on the next
-    line, so it reads ~125 km away in a Dubai list. Now visible because the
-    nearby panel is chain-scoped and Reel only has three screens. **Not guessed
-    at**: this repo's history says guessing coordinates is what produced the
-    23 km Al Qana error. It wants a real value from someone with a map.
-
-17. **The three filter dropdowns have no accessible names.** They read as bare
+16. **The three filter dropdowns have no accessible names.** They read as bare
     unlabelled buttons in the accessibility tree.
 
-18. **Terms and Privacy pages do not exist.** They are 404s. A public site
+17. **Terms and Privacy pages do not exist.** They are 404s. A public site
     without them reads as unfinished to visitors and to Google's quality
     signals, and the account menu deliberately omits the links rather than
     pointing at nothing.
 
-19. **No backlinks.** A new domain with none ranks slowly however clean the
+18. **No backlinks.** A new domain with none ranks slowly however clean the
     markup is, and this is the ceiling everything else now sits under. UAE
     listings sites, local communities, a Google Business Profile. Nothing
     technical will substitute for it.
 
-20. **Nothing on the site can earn a link.** Schedules do not get linked to;
+19. **Nothing on the site can earn a link.** Schedules do not get linked to;
     guides do. "Best cinemas in Dubai", IMAX vs Dolby, that sort of thing. This
     is the gap between a site that is technically correct and one that ranks.
 
-21. **The trim banner over-counts.** "Showing 4 of N screens" reported totals
+20. **The trim banner over-counts.** "Showing 4 of N screens" reported totals
     that included days other than the one selected — 4 of 34 at a moment when
     only 88 screenings remained that day. The chips are right, the total is
     suspect. Introduced with the banner, not with the three-day scrape.
 
 ### Closed since this list was written
 
+- ~~**Reel Dubai Marina has Abu Dhabi coordinates**~~ — **fixed 2026-08-26**,
+  along with its twin. It shared Cinema City's Abu Dhabi point byte for byte, so
+  it read ~125 km away to every Dubai visitor.
+
+  The duplicate name is the whole cause: cinemauae publishes **one**
+  `Marina Mall Cinema` page and we carry two venues under that name, so the
+  `e9b8bf9` bulk update could not attribute it and skipped **both** rows — which
+  is why Cinema City's Abu Dhabi value was an unverified estimate too, and why
+  both were still 4-decimal in a file that is otherwise 6. If another duplicate
+  name appears, expect the same silent skip.
+
+  Both now come from Google Maps, each confirmed by the listing's own address
+  rather than by the pin looking plausible — accepting a plausible-looking
+  result is what produced the 23 km Al Qana and 27 km National Cinema errors.
+  Reel `25.076812, 55.140668` (Level 2, Dubai Marina Mall, Al Marsha St), which
+  sits ~700 m inland of Roxy's The Beach as it should; Cinema City
+  `24.47666, 54.322447` (Cinemacity Starlight, Marina Mall Abu Dhabi), ~130 m
+  from the old estimate, so that one was never really wrong. cinemauae's single
+  page reads `25.076236, 55.141459`, 120 m from the Reel value — independent
+  confirmation that the page they publish is the Dubai screen.
 - ~~**No sitemap, no structured data, content invisible to crawlers**~~ —
   **done 2026-08-25/26.** See §10b. 8 pages with no film data in the HTML
   became 116 server-rendered URLs with JSON-LD throughout.

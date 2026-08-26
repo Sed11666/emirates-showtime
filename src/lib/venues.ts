@@ -103,12 +103,24 @@ export const VENUES: Venue[] = [
   { cinema: "cinemacity", name: "Fountain Views Cinema", city: "Dubai", lat: 25.19457, lng: 55.281721 },
   { cinema: "cinemacity", name: "Zero 6 Mall Cinema", city: "Sharjah", lat: 25.290003, lng: 55.498341 },
   { cinema: "cinemacity", name: "Rahmania Mall Cinema", city: "Sharjah", lat: 25.329421, lng: 55.603205 },
-  // Both Reel (Dubai Marina) and Cinema City (Abu Dhabi) call a screen
-  // "Marina Mall Cinema". Matching is name-only, so a distance for either
-  // resolves to whichever is closer to the visitor. Left as-is: it affects a
-  // displayed distance, never which link a chip opens.
-  { cinema: "reel", name: "Marina Mall Cinema", city: "Dubai", lat: 24.4755, lng: 54.3224 },
-  { cinema: "cinemacity", name: "Marina Mall Cinema", city: "Abu Dhabi", lat: 24.4755, lng: 54.3224 },
+  // Both Reel (Dubai Marina) and Cinema City (Abu Dhabi) call a screen "Marina
+  // Mall Cinema", and matching is name-only, so venueDistanceKm sees both and
+  // returns the nearer. Right for a visitor in either city; wrong only for
+  // someone reading the far one's distance from the other emirate — a displayed
+  // number, never which link a chip opens.
+  //
+  // This pair is why the rest of the file's rule — take the coordinate from the
+  // venue's own page on cinemauae — could not be applied here. cinemauae has a
+  // single "Marina Mall Cinema" page and we have two venues under that name, so
+  // the bulk update skipped both and left them sharing Abu Dhabi's estimate,
+  // which put Reel's Dubai screen ~125 km from every Dubai visitor. Both values
+  // below are from Google Maps, each confirmed by the listing's own address
+  // rather than by the pin looking plausible: Reel Cinemas, Level 2, Dubai
+  // Marina Mall, Al Marsha St; Cinemacity Starlight, Marina Mall Abu Dhabi.
+  // cinemauae's one page reads 25.076236, 55.141459 — 120 m from the Reel value
+  // here, which is the check that it is the Dubai screen they describe.
+  { cinema: "reel", name: "Marina Mall Cinema", city: "Dubai", lat: 25.076812, lng: 55.140668 },
+  { cinema: "cinemacity", name: "Marina Mall Cinema", city: "Abu Dhabi", lat: 24.47666, lng: 54.322447 },
 ];
 
 /**
