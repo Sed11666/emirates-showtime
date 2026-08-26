@@ -2,10 +2,15 @@
  * Route "/" — ShowSouk home (discovery hub), modelled on BookMyShow.
  *
  * Sections, top to bottom:
- *  1. Hero slider — top 4 popular scraped films, auto-advancing.
+ *  1. Hero slider — the HERO_COUNT most-trending films, auto-advancing.
  *  2. Now Showing — de-duplicated film grid (mergeFilmsByTitle) with format
  *     badges (2D/3D/IMAX/4DX) so a title appears once, not once per chain.
+ *     It **leads with the carousel's films, in the carousel's order**, then
+ *     continues down the same ranking; they are not held back from it.
  *  3. Cinema chains + newsletter footer.
+ *
+ * Both orders come from rankByTrending (lib/cinemas.ts) — one ranking drives
+ * the page, so the banner and the grid can never disagree.
  *
  * All data is live scraped data from `cinema_films`; nothing is mocked.
  *
@@ -32,6 +37,7 @@ import {
   filmSlug,
   hasUpcomingScreenings,
   mergeFilmsByTitle,
+  rankByTrending,
   CINEMAS,
   CINEMA_LABELS,
   type MergedFilm,
@@ -153,11 +159,8 @@ function NotifyMeCta() {
   );
 }
 
-/** Popularity heuristic: playing at more chains, venues and times ranks higher. */
-function popularityScore(film: MergedFilm) {
-  const showtimes = Array.isArray(film.showtimes) ? film.showtimes.length : 0;
-  return film.cinemas.length * 100 + film.venues.length * 10 + showtimes;
-}
+/** How many films ride the hero carousel, and therefore lead the grid. */
+const HERO_COUNT = 4;
 
 function Home() {
   const { films: ssrFilms } = Route.useLoaderData();
@@ -168,30 +171,41 @@ function Home() {
     initialDataUpdatedAt: 0,
   });
 
-  const merged = useMemo(
+  const ranked = useMemo(
     () =>
-      mergeFilmsByTitle(films ?? [])
-        // Only titles you can still go and see. Without this the grid keeps
-        // showing films whose last screening started hours ago — roughly half
-        // the catalogue by late evening — and every card leads to an empty
-        // showtime list.
-        .filter((film) => hasUpcomingScreenings(film.showtimes))
-        .sort((a, b) => popularityScore(b) - popularityScore(a)),
+      rankByTrending(
+        mergeFilmsByTitle(films ?? [])
+          // Only titles you can still go and see. Without this the grid keeps
+          // showing films whose last screening started hours ago — roughly half
+          // the catalogue by late evening — and every card leads to an empty
+          // showtime list.
+          .filter((film) => hasUpcomingScreenings(film.showtimes)),
+      ),
     [films],
   );
 
-  /** Top 4 most popular titles — the sliding hero cards. */
+  /** The most-trending titles that have artwork — the sliding hero cards. */
   const featured = useMemo(
-    () => merged.filter((f) => f.poster_url?.startsWith("http")).slice(0, 4),
-    [merged],
+    () => ranked.filter((f) => f.poster_url?.startsWith("http")).slice(0, HERO_COUNT),
+    [ranked],
   );
-  const featuredIds = new Set(featured.map((f) => f.id));
 
-  /** Everything else goes into the Now Showing grid below. */
-  const rest = useMemo<PosterItem[]>(
-    () => merged.filter((f) => !featuredIds.has(f.id)).map(filmToPoster),
-    [merged],
-  );
+  /**
+   * The grid leads with the same films as the carousel, in the same order.
+   *
+   * They used to be filtered *out* of it, so the four titles the page shouts
+   * about were the four you could not find underneath — the top of the board
+   * appeared to be missing exactly the films it was promoting.
+   *
+   * Concatenating rather than just rendering `ranked` matters: the hero needs a
+   * poster and some films have none, so the hero four are not always the first
+   * four by score. Leading with the hero list keeps banner and grid in step
+   * whatever the artwork coverage is.
+   */
+  const nowShowing = useMemo<PosterItem[]>(() => {
+    const heroIds = new Set(featured.map((f) => f.id));
+    return [...featured, ...ranked.filter((f) => !heroIds.has(f.id))].map(filmToPoster);
+  }, [ranked, featured]);
 
   return (
     <div className="overflow-x-hidden">
@@ -211,9 +225,9 @@ function Home() {
         subtitle="What's on across UAE cinemas this week"
         action={{ label: "All showtimes" }}
       >
-        {rest.length > 0 ? (
+        {nowShowing.length > 0 ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            {rest.map((item) => (
+            {nowShowing.map((item) => (
               <MoviePosterCard key={item.id} item={item} fullWidth />
             ))}
           </div>

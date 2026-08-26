@@ -207,20 +207,21 @@ export async function fetchFilmBySlug(slug: string): Promise<CinemaFilm[]> {
  * and passing `text` to a parser silently yields "unparseable", which reads as
  * "not finished yet" and quietly disables whatever filter depends on it.
  */
-type ParsedShowtime = { date: string | null; time: string; text: string };
+type ParsedShowtime = { date: string | null; time: string; venue: string; text: string };
 
 function parseShowtimes(value: unknown): ParsedShowtime[] {
   if (!Array.isArray(value)) return [];
   return value
     .map((entry): ParsedShowtime | null => {
-      if (typeof entry === "string") return { date: null, time: entry, text: entry };
+      if (typeof entry === "string") return { date: null, time: entry, venue: "", text: entry };
       if (entry && typeof entry === "object") {
         const row = entry as Record<string, unknown>;
         const parts = [row["venue"], row["date"], row["time"]].filter(Boolean);
         const text = parts.join(" · ");
         if (!text) return null;
         const time = typeof row["time"] === "string" ? row["time"].trim() : "";
-        return { date: parseDayKey(row["date"]), time, text };
+        const venue = typeof row["venue"] === "string" ? row["venue"].trim() : "";
+        return { date: parseDayKey(row["date"]), time, venue, text };
       }
       return null;
     })
@@ -450,6 +451,94 @@ export type MergedFilm = CinemaFilm & { cinemas: string[]; screenFormats: string
  * One card per movie: the same title playing at VOX, Reel, Novo and Roxy is
  * collapsed into a single entry carrying every chain and screen format.
  */
+/**
+ * What "trending" means here: how much screen capacity UAE exhibitors are
+ * giving a film **right now**. We have no ticket sales and no ratings feed, so
+ * the schedule itself is the honest signal — it is the chains' own revealed
+ * judgement of demand, and they revise it weekly.
+ *
+ * Three components, each normalised against the strongest film in the same
+ * catalogue so they are comparable rather than competing on raw magnitude:
+ *
+ *  - `screenings` — how many showings still to come today. The clearest signal:
+ *    a blockbuster gets hundreds a day, a limited release gets a handful.
+ *  - `venues` — how many distinct screens carry it, so one megaplex stacking a
+ *    film every 20 minutes cannot outrank a film playing across the country.
+ *  - `chains` — how many of the chains carry it, so a single chain's exclusive
+ *    does not top a national board. This one saturates (the big titles are on
+ *    every chain), which is intended: it separates the broad from the niche and
+ *    then lets capacity decide among the leaders.
+ *
+ * Deliberately scored on **today only**, for two reasons. It is what "trending"
+ * means, and it is the only window both renders agree on: the home loader ships
+ * today's showtimes (see fetchCinemaFilmsForDay) while the client query fetches
+ * three days, so a score counting every day would rank one way in the HTML and
+ * another after hydration, visibly reshuffling the hero and the first cards.
+ *
+ * Weights are a judgement call, so they are named and tunable rather than
+ * hidden in an expression. The previous version used bare magic numbers
+ * (chains * 100 + venues * 10 + screenings) which read as a priority order but
+ * was not one: screening counts reach the thousands, so that term swamped the
+ * other two and the multipliers bought nothing.
+ */
+const TRENDING_WEIGHTS = { screenings: 0.4, venues: 0.3, chains: 0.3 };
+
+export type TrendingSignals = { chains: number; venues: number; screenings: number };
+
+/** The raw counts behind a film's trending score, for display and debugging. */
+export function trendingSignals(film: MergedFilm, now: Date = new Date()): TrendingSignals {
+  const today = toDayKey(now);
+  const upcoming = parseShowtimes(film.showtimes).filter(
+    (e) =>
+      (!e.date || e.date === today) && !isScreeningOver(e.time, e.date ?? null, today, now),
+  );
+  return {
+    chains: film.cinemas.length,
+    venues: new Set(upcoming.map((e) => e.venue).filter(Boolean)).size,
+    screenings: upcoming.length,
+  };
+}
+
+/**
+ * Films ordered most-trending first. Pure — returns a new array.
+ *
+ * Ties break on raw screenings, then venues, then title, so the order is fully
+ * determined by the data: an unstable sort here would let the hero and the grid
+ * disagree about which film is second.
+ */
+export function rankByTrending<T extends MergedFilm>(films: T[], now: Date = new Date()): T[] {
+  const signals = new Map<string, TrendingSignals>();
+  for (const film of films) signals.set(film.id, trendingSignals(film, now));
+
+  // Normalise against the best in this set. Floors of 1 keep an empty or
+  // single-film catalogue from dividing by zero.
+  const peak = { chains: 1, venues: 1, screenings: 1 };
+  for (const s of signals.values()) {
+    peak.chains = Math.max(peak.chains, s.chains);
+    peak.venues = Math.max(peak.venues, s.venues);
+    peak.screenings = Math.max(peak.screenings, s.screenings);
+  }
+
+  const score = (film: T) => {
+    const s = signals.get(film.id) ?? { chains: 0, venues: 0, screenings: 0 };
+    return (
+      TRENDING_WEIGHTS.chains * (s.chains / peak.chains) +
+      TRENDING_WEIGHTS.venues * (s.venues / peak.venues) +
+      TRENDING_WEIGHTS.screenings * (s.screenings / peak.screenings)
+    );
+  };
+
+  return [...films].sort((a, b) => {
+    const byScore = score(b) - score(a);
+    if (byScore !== 0) return byScore;
+    const sa = signals.get(a.id) ?? { chains: 0, venues: 0, screenings: 0 };
+    const sb = signals.get(b.id) ?? { chains: 0, venues: 0, screenings: 0 };
+    if (sb.screenings !== sa.screenings) return sb.screenings - sa.screenings;
+    if (sb.venues !== sa.venues) return sb.venues - sa.venues;
+    return a.title.localeCompare(b.title);
+  });
+}
+
 export function mergeFilmsByTitle(films: CinemaFilm[]): MergedFilm[] {
   const map = new Map<string, MergedFilm>();
   for (const film of films) {
