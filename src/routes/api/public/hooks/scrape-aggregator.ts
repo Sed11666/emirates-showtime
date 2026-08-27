@@ -703,7 +703,10 @@ async function runScrape(request: Request) {
     const cacheUsable =
       (cachedEntry?.film_keys?.length ?? 0) > 0 && cachedDay === today ? cachedEntry : undefined;
 
-    if (cacheUsable?.content_hash && cacheUsable.content_hash === contentHash) {
+    // A chain-filtered run ignores the cache in both directions: it must not
+    // skip a page whose rows it has never written for the chain being asked
+    // for, and it must not refresh an entry it is only half reading.
+    if (!only && cacheUsable?.content_hash && cacheUsable.content_hash === contentHash) {
       unchangedContent += 1;
       keepAlive.push(...(cacheUsable.film_keys ?? []));
       cacheWrites.push({ url: page, etag: null, last_modified: null, content_hash: contentHash, unchanged: true });
@@ -773,14 +776,23 @@ async function runScrape(request: Request) {
       }
     }
 
-    cacheWrites.push({
-      url: page,
-      etag: null,
-      last_modified: null,
-      content_hash: contentHash,
-      film_keys: pageKeys,
-      unchanged: false,
-    });
+    // Never cache a page read through a chain filter. pageKeys only collects
+    // the chains that passed the filter, so the entry would claim a page holds
+    // fewer films than it does — and because the hash matches, a later full run
+    // would skip it as unchanged, leaving the other chains on that page neither
+    // re-ingested nor touched, and eventually retired for looking stale.
+    // A filtered run is a debugging tool; it must not be able to mask a page
+    // from the runs that keep everything else alive.
+    if (!only) {
+      cacheWrites.push({
+        url: page,
+        etag: null,
+        last_modified: null,
+        content_hash: contentHash,
+        film_keys: pageKeys,
+        unchanged: false,
+      });
+    }
     await sleep(PAGE_DELAY_MS);
   }
 
