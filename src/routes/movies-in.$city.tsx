@@ -24,7 +24,7 @@ import {
   showtimesByVenue,
 } from "@/lib/cinemas";
 import { toDayKey } from "@/lib/days";
-import { CITY_BY_SLUG, VENUES, citySlug, venueSlug } from "@/lib/venues";
+import { CITY_BY_SLUG, VENUES, bookingTarget, citySlug, venueSlug } from "@/lib/venues";
 import { jsonLdDocument } from "@/lib/structured-data";
 
 const ORIGIN = "https://www.showsouk.com";
@@ -207,12 +207,13 @@ function CityPage() {
                           {venue.times.map((screening) => (
                             <a
                               key={`${screening.time}|${screening.format ?? ""}`}
-                              href={
-                                screening.bookingUrl ??
-                                film.booking_url ??
-                                film.source_url ??
-                                undefined
-                              }
+                              href={bookingTarget({
+                                screeningUrl: screening.bookingUrl,
+                                venueName: venue.venue,
+                                chain: film.cinema,
+                                filmUrl: film.booking_url,
+                                chainUrl: film.source_url,
+                              })}
                               target="_blank"
                               rel="noopener noreferrer"
                               aria-label={`Book ${film.title} at ${venue.venue}, ${screening.time}`}

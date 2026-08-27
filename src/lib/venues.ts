@@ -14,6 +14,18 @@ export type Venue = {
   city: string;
   lat: number;
   lng: number;
+  /**
+   * This screen's own page on the chain's site, where the chain publishes one.
+   *
+   * Used as a booking fallback for screenings that have no per-showing link:
+   * landing on "Reel Cinemas at The Dubai Mall", which lists what is playing
+   * there, beats landing on a chain-wide chooser that asks the visitor to pick
+   * the cinema they already picked.
+   *
+   * Only fill this in from the chain's own sitemap or navigation — never guess
+   * a pattern. A 404 is worse than the chain page it replaced.
+   */
+  url?: string;
 };
 
 /**
@@ -53,8 +65,11 @@ export const VENUES: Venue[] = [
   { cinema: "vox", name: "Al Hamra Mall Cinema", city: "Ras Al Khaimah", lat: 25.683129, lng: 55.781931 },
 
   // Reel
-  { cinema: "reel", name: "Dubai Mall Cinema", city: "Dubai", lat: 25.203117, lng: 55.279006 },
-  { cinema: "reel", name: "Springs Souk Cinema", city: "Dubai", lat: 25.0666, lng: 55.1841 },
+  // Reel is the only chain cinemauae publishes no booking links for, so its
+  // chips always fall through. These three URLs are taken from Reel's own
+  // sitemap, not inferred, and each lists what is playing at that screen.
+  { cinema: "reel", name: "Dubai Mall Cinema", city: "Dubai", lat: 25.203117, lng: 55.279006, url: "https://reelcinemas.com/en-ae/locations/the-dubai-mall" },
+  { cinema: "reel", name: "Springs Souk Cinema", city: "Dubai", lat: 25.0666, lng: 55.1841, url: "https://reelcinemas.com/en-ae/locations/the-springs-souk" },
 
   // Novo
   { cinema: "novo", name: "Dragon Mart Cinema", city: "Dubai", lat: 25.174961, lng: 55.417626 },
@@ -103,6 +118,7 @@ export const VENUES: Venue[] = [
   { cinema: "cinemacity", name: "Fountain Views Cinema", city: "Dubai", lat: 25.19457, lng: 55.281721 },
   { cinema: "cinemacity", name: "Zero 6 Mall Cinema", city: "Sharjah", lat: 25.290003, lng: 55.498341 },
   { cinema: "cinemacity", name: "Rahmania Mall Cinema", city: "Sharjah", lat: 25.329421, lng: 55.603205 },
+
   // Both Reel (Dubai Marina) and Cinema City (Abu Dhabi) call a screen "Marina
   // Mall Cinema", and matching is name-only, so venueDistanceKm sees both and
   // returns the nearer. Right for a visitor in either city; wrong only for
@@ -119,7 +135,7 @@ export const VENUES: Venue[] = [
   // Marina Mall, Al Marsha St; Cinemacity Starlight, Marina Mall Abu Dhabi.
   // cinemauae's one page reads 25.076236, 55.141459 — 120 m from the Reel value
   // here, which is the check that it is the Dubai screen they describe.
-  { cinema: "reel", name: "Marina Mall Cinema", city: "Dubai", lat: 25.076812, lng: 55.140668 },
+  { cinema: "reel", name: "Marina Mall Cinema", city: "Dubai", lat: 25.076812, lng: 55.140668, url: "https://reelcinemas.com/en-ae/locations/dubai-marina-mall" },
   { cinema: "cinemacity", name: "Marina Mall Cinema", city: "Abu Dhabi", lat: 24.47666, lng: 54.322447 },
 ];
 
@@ -146,6 +162,50 @@ export function citySlug(city: string): string {
 export const CITY_BY_SLUG: Record<string, string> = Object.fromEntries(
   [...new Set(VENUES.map((v) => v.city))].sort().map((city) => [citySlug(city), city]),
 );
+
+/**
+ * The chain's own page for one screen, or null when we do not have one.
+ *
+ * Name matching is normalised the same way matchesVenues does it, because the
+ * venue string arrives from the scraper and its spacing and casing drift.
+ */
+export function venueUrl(venueName: string, chain?: string): string | null {
+  const wanted = normalize(venueName);
+  if (!wanted) return null;
+  const hit = VENUES.find(
+    (v) => (!chain || v.cinema === chain) && v.url && normalize(v.name) === wanted,
+  );
+  return hit?.url ?? null;
+}
+
+/**
+ * Where a time chip should send someone, best available first:
+ *
+ *   1. the exact screening on the chain's site
+ *   2. that screen's own page on the chain's site
+ *   3. the film's page, when the chain publishes a film-level URL
+ *   4. the chain itself
+ *
+ * Step 2 exists for Reel, whose chips never have step 1 — cinemauae publishes
+ * booklink=0 for every one of them — and for whom step 3 and 4 both landed on
+ * a chain-wide chooser that asked the visitor to pick the cinema they had just
+ * picked here.
+ */
+export function bookingTarget(options: {
+  screeningUrl?: string | null;
+  venueName?: string | null;
+  chain?: string | null;
+  filmUrl?: string | null;
+  chainUrl?: string | null;
+}): string | undefined {
+  const { screeningUrl, venueName, chain, filmUrl, chainUrl } = options;
+  if (screeningUrl) return screeningUrl;
+  if (venueName) {
+    const forVenue = venueUrl(venueName, chain ?? undefined);
+    if (forVenue) return forVenue;
+  }
+  return filmUrl ?? chainUrl ?? undefined;
+}
 
 export type Coords = { lat: number; lng: number };
 

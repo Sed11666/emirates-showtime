@@ -43,6 +43,7 @@ import {
   nearestVenues,
   venueDistanceKm,
   type NearbyVenue,
+  bookingTarget,
 } from "@/lib/venues";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
@@ -638,10 +639,15 @@ function CinemasPage() {
                           <div className="flex flex-wrap gap-2.5">
                             {venue.times.map((screening) => {
                               // Straight out to the chain — no interstitial page.
-                              // Per-screening deep link where the chain exposes
-                              // one, else the film's page on that chain, else the
-                              // chain itself. Never construct a booking URL.
-                              const href = screening.bookingUrl ?? filmFallback;
+                              // Per-screening deep link, else that screen's own
+                              // page, else the film's page, else the chain.
+                              // Never construct a booking URL.
+                              const href = bookingTarget({
+                                screeningUrl: screening.bookingUrl,
+                                venueName: venue.venue,
+                                chain: film.cinema,
+                                filmUrl: filmFallback,
+                              });
                               // Reel publishes no per-screening URL, so its chips
                               // can only reach the chain's own site. Looking
                               // identical to a chip that lands on a seat map sets

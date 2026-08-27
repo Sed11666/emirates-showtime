@@ -25,7 +25,7 @@ import {
   showtimesByVenue,
 } from "@/lib/cinemas";
 import { toDayKey } from "@/lib/days";
-import { VENUES, venueSlug } from "@/lib/venues";
+import { VENUES, bookingTarget, venueSlug } from "@/lib/venues";
 import { jsonLdDocument } from "@/lib/structured-data";
 
 const ORIGIN = "https://www.showsouk.com";
@@ -211,9 +211,13 @@ function VenuePage() {
                     {times.map((screening) => (
                       <a
                         key={`${screening.time}|${screening.format ?? ""}`}
-                        href={
-                          screening.bookingUrl ?? film.booking_url ?? film.source_url ?? undefined
-                        }
+                        href={bookingTarget({
+                          screeningUrl: screening.bookingUrl,
+                          venueName,
+                          chain,
+                          filmUrl: film.booking_url,
+                          chainUrl: film.source_url,
+                        })}
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`Book ${film.title} at ${chainLabel} ${name}, ${screening.time}`}
