@@ -27,7 +27,12 @@ import {
   type CinemaKey,
 } from "@/lib/cinemas";
 import { toDayKey } from "@/lib/days";
-import { VENUES, bookingTarget, venueSlug } from "@/lib/venues";
+import { VENUES, venueSlug } from "@/lib/venues";
+import {
+  VenueShowtimesBlock,
+  countUrlUses,
+  filmLevelFallback,
+} from "@/components/venue-showtimes";
 import { jsonLdDocument } from "@/lib/structured-data";
 
 const ORIGIN = "https://www.showsouk.com";
@@ -176,6 +181,7 @@ function ChainPage() {
                 maxVenues: 6,
                 maxTimesPerVenue: 10,
               });
+              const uses = countUrlUses(board.venues);
               return (
                 <article
                   key={film.title}
@@ -196,43 +202,18 @@ function ChainPage() {
                     </span>
                   </div>
 
-                  <div className="space-y-4 p-5">
+                  <div className="space-y-3 p-4 sm:space-y-4 sm:p-5">
                     {board.venues.map((venue) => (
-                      <div key={venue.venue}>
-                        <p className="mb-2 text-sm font-medium">
-                          {venue.venue}
-                          {venue.hiddenTimes > 0 ? (
-                            <span className="ml-2 text-xs font-normal text-muted-foreground">
-                              +{venue.hiddenTimes} more
-                            </span>
-                          ) : null}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {venue.times.map((screening) => (
-                            <a
-                              key={`${screening.time}|${screening.format ?? ""}`}
-                              href={bookingTarget({
-                                screeningUrl: screening.bookingUrl,
-                                venueName: venue.venue,
-                                chain,
-                                filmUrl: film.booking_url,
-                                chainUrl: film.source_url,
-                              })}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label={`Book ${film.title} at ${venue.venue}, ${screening.time}`}
-                              className="rounded-lg border border-border/70 bg-background/60 px-3 py-1.5 text-sm transition-colors hover:border-primary/70 hover:bg-primary/5"
-                            >
-                              {screening.time}
-                              {screening.format ? (
-                                <span className="ml-1.5 text-[10px] text-primary">
-                                  {screening.format}
-                                </span>
-                              ) : null}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
+                      <VenueShowtimesBlock
+                        key={venue.venue}
+                        venue={venue}
+                        filmTitle={film.title}
+                        filmSlug={filmSlug(film.title)}
+                        chain={chain}
+                        filmUrl={filmLevelFallback(film.booking_url, film.source_url, uses)}
+                        chainUrl={film.source_url}
+                        uses={uses}
+                      />
                     ))}
                     {board.hiddenVenues > 0 ? (
                       <Link
