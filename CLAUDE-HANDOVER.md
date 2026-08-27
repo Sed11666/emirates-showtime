@@ -590,12 +590,25 @@ icon is not an error**: the site has no AMP pages and never will.
    `/home/chooseScreen/{slug}` link is already the best target that exists.
    This is a ceiling in their product, not a gap in our parser.
 
-   Still genuinely available from that endpoint, if we ever want it: real screen
-   metadata per screening — `screenType` (STANDARD / ROYAL KIDS / ROYAL CLASS),
-   `screen` (e.g. CINEMA 4), `availableSeats`, and `showTime` as a true UTC
-   instant. We currently store `format: "Regular"` for every Cine Royal
-   screening because that is all cinemauae gives us. Useful, but it is showtime
-   enrichment, not deep linking.
+   **Do not scrape that endpoint for screen types. It is a no-op — checked.**
+   An earlier version of this note said we store `format: "Regular"` for every
+   Cine Royal screening and that their API could recover the real screen type.
+   That was true when written and stopped being true once the chip parser began
+   reading `time-chip-exp` and `f6e2ab3`/`ce8edcb` canonicalised formats.
+   cinemauae now supplies Cine Royal's screen types itself, and they agree with
+   Cine Royal's own API exactly: on a live comparison of one film's 18
+   screenings, **18 unchanged, 0 changed**. The distribution today is Standard
+   579, Royal Class 99, Royal Kids 66, Royal Plus 59 — and note their API's
+   coarser grouping does not even carry Royal Plus, so adopting it would lose
+   detail as well as cost a request per film per day.
+
+   The enrichment was written, shipped and reverted (`8a0aef7`, `113affd`)
+   because this note was trusted over a query against the live table. Before
+   building anything on a claim in this file, check the data.
+
+   What that endpoint still uniquely has, if a use ever appears:
+   `availableSeats`, `screen` (e.g. CINEMA 4), and `showTime` as a true UTC
+   instant. None of those are rendered anywhere today.
 
    Venue → `cinemaRefId`: Khalidiyah Mall 2, Dalma Mall 101, Al Dhannah Mall
    200, Deerfields Mall 300, WTC Mall Abu Dhabi 10000001.
