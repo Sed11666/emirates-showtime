@@ -28,7 +28,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 
-import { fetchReelFilms, matchReelFilm, reelMovieUrl } from "@/lib/reel-films";
+import { fetchReelFeed, matchReelFilm, reelMovieUrl, type ReelFeed } from "@/lib/reel-films";
 
 const ORIGIN = "https://cinemauae.com";
 const SITEMAP = `${ORIGIN}/sitemap.xml`;
@@ -65,10 +65,13 @@ const CHAIN_HOME: Record<string, string> = {
   // — so this fallback is what every Reel screening actually opens, and landing
   // on "pick a cinema and a time" beats landing on a hero banner.
   //
-  // Not the film's own page: those are /movie-details/{internalId}/{slug} and
-  // the id only exists after their React app runs or behind an API that 401s,
-  // so there is no id we can reach with a plain fetch. /showtime is in their
-  // sitemap, which is as stable a public URL as they publish.
+  // Only the last resort now. This comment used to say a film's own page was
+  // unreachable because the id needed their React app or an API that 401s —
+  // that was wrong, and wrong in the expensive direction: it sat here long
+  // enough to be treated as settled. Reel publishes Films.json and
+  // Sessions.json as plain unauthenticated JSON (see lib/reel-films), so a
+  // matched film gets /movie-details/{id}/{slug} and this is used only when the
+  // title cannot be matched with confidence.
   reel: "https://reelcinemas.com/en-ae/showtime",
   novo: "https://uae.novocinemas.com/",
   roxy: "https://www.theroxycinemas.com/",
@@ -876,17 +879,36 @@ async function runScrape(request: Request) {
   // ids are public (see lib/reel-films), and a film page is a genuine
   // film-level URL — the thing this field is for — so it goes in ahead of the
   // chain. Fetched once per run and only when a Reel row is present.
-  const reelFilms = batch.some((row) => row["cinema"] === "reel") ? await fetchReelFilms() : [];
+  //
+  // The same feed also carries Reel's own schedule, which is better than what
+  // we read second-hand: cinemauae was giving us nothing at all for the third
+  // day of our own picker, where Reel publishes a full day of sessions. So a
+  // matched Reel row takes its showtimes, venues and screen types from source.
+  const dayKeys = Array.from({ length: SCRAPE_DAYS }, (_, i) => dubaiDayPlus(i));
+  const reel: ReelFeed = batch.some((row) => row["cinema"] === "reel")
+    ? await fetchReelFeed(dayKeys)
+    : { films: [], screenings: new Map() };
 
   for (const row of batch) {
+    if (row["cinema"] === "reel" && reel.films.length > 0) {
+      const film = matchReelFilm(String(row["title"] ?? ""), reel.films);
+      const own = film ? reel.screenings.get(film.id) : undefined;
+      if (film) row["booking_url_reel"] = reelMovieUrl(film);
+      // Only when the feed actually has screenings: an empty list here would
+      // replace a real schedule with nothing, which is the one failure this
+      // whole path must not have.
+      if (own && own.length > 0) {
+        row["showtimes"] = own.map((s) => ({ ...s }));
+        row["venues"] = [...new Set(own.map((s) => s.venue))];
+        row["formats"] = [...new Set(own.map((s) => s.format))];
+      }
+    }
+
     const times = row["showtimes"] as Array<Record<string, string>>;
     const links = new Set(times.map((s) => s["booking_url"]).filter(Boolean));
     const shared = links.size === 1 ? [...links][0]! : null;
-    let reelUrl: string | null = null;
-    if (!shared && row["cinema"] === "reel" && reelFilms.length > 0) {
-      const film = matchReelFilm(String(row["title"] ?? ""), reelFilms);
-      if (film) reelUrl = reelMovieUrl(film);
-    }
+    const reelUrl = (row["booking_url_reel"] as string | undefined) ?? null;
+    delete row["booking_url_reel"];
     row["booking_url"] = shared ?? reelUrl ?? CHAIN_HOME[String(row["cinema"])] ?? null;
   }
 

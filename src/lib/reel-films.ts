@@ -31,6 +31,46 @@ const LANGUAGES =
 export type ReelFilm = { id: string; title: string; base: string; language: string | null };
 
 /**
+ * Reel's cinema ids against our venue names. Only the UAE screens: the same
+ * feed carries Granada Mall and Marassi Bahrain, which are Reel branches we do
+ * not list and must not start showing under a UAE city.
+ */
+const VENUE_BY_CINEMA_ID: Record<string, string> = {
+  "0001": "Dubai Mall Cinema",
+  "0002": "Marina Mall Cinema",
+  "0006": "Springs Souk Cinema",
+};
+
+/**
+ * Screen name to the format vocabulary the rest of the site already uses.
+ *
+ * Reel names the room, not the experience — "Platinum Suites 3", "Dolby Screen
+ * 7", "Screen 4" — and Experience.json only lists which experiences a location
+ * offers, not which room is which. The room name is the only per-session link
+ * to an experience, so it is read here rather than joined.
+ */
+function screenFormat(screenName: string): string {
+  const name = screenName.toLowerCase();
+  if (name.includes("platinum")) return "Platinum Suites";
+  if (name.includes("premium")) return "Premium";
+  if (name.includes("dolby")) return "Dolby";
+  if (name.includes("junior")) return "Reel Junior";
+  if (name.includes("screenx")) return "ScreenX";
+  if (name.includes("imax")) return "IMAX";
+  return "Standard";
+}
+
+export type ReelScreening = { date: string; time: string; venue: string; format: string };
+
+type RawSession = {
+  ScheduledFilmId?: string;
+  CinemaId?: string;
+  Showtime?: string;
+  ScreenName?: string;
+  AllowTicketSales?: boolean;
+};
+
+/**
  * A title reduced to something comparable, plus the language it names.
  *
  * The two sources spell the same film differently: cinemauae writes
@@ -131,21 +171,56 @@ export function reelMovieUrl(film: ReelFilm): string {
  * Returns [] on any failure, so a bad fetch costs the deep links for that run
  * and nothing else.
  */
-export async function fetchReelFilms(): Promise<ReelFilm[]> {
+export type ReelFeed = {
+  films: ReelFilm[];
+  /** Screenings for the requested days, by Reel film id. */
+  screenings: Map<string, ReelScreening[]>;
+};
+
+/**
+ * Reel's catalogue and schedule, restricted to the given Dubai day keys.
+ *
+ * Returns an empty feed on any failure. Callers must treat that as "no Reel
+ * data this run" and leave what is already stored alone — a fetch that fails
+ * must never be able to blank a chain's showtimes.
+ */
+export async function fetchReelFeed(dayKeys: string[]): Promise<ReelFeed> {
+  const empty: ReelFeed = { films: [], screenings: new Map() };
   try {
     const [filmsRes, sessionsRes] = await Promise.all([fetch(FILMS_URL), fetch(SESSIONS_URL)]);
-    if (!filmsRes.ok || !sessionsRes.ok) return [];
-    const films = (await filmsRes.json()) as { value?: Array<{ ID?: string; Title?: string }> };
-    const sessions = (await sessionsRes.json()) as {
-      value?: Array<{ ScheduledFilmId?: string }>;
-    };
+    if (!filmsRes.ok || !sessionsRes.ok) return empty;
+    const filmsJson = (await filmsRes.json()) as { value?: Array<{ ID?: string; Title?: string }> };
+    const sessionsJson = (await sessionsRes.json()) as { value?: RawSession[] };
+    const sessions = sessionsJson.value ?? [];
+    if (sessions.length === 0) return empty;
+
+    const wanted = new Set(dayKeys);
+    const screenings = new Map<string, ReelScreening[]>();
+    for (const s of sessions) {
+      const venue = VENUE_BY_CINEMA_ID[s.CinemaId ?? ""];
+      // Showtime has no zone because Vista stores each cinema's local time, and
+      // every one of these is Dubai. Slicing beats parsing: `new Date` on a
+      // bare timestamp is read as UTC and would move late shows to the day before.
+      const stamp = s.Showtime ?? "";
+      const date = stamp.slice(0, 10);
+      if (!venue || !s.ScheduledFilmId || !wanted.has(date)) continue;
+      if (s.AllowTicketSales === false) continue;
+      const list = screenings.get(s.ScheduledFilmId) ?? [];
+      list.push({ date, time: stamp.slice(11, 16), venue, format: screenFormat(s.ScreenName ?? "") });
+      screenings.set(s.ScheduledFilmId, list);
+    }
+    for (const list of screenings.values()) {
+      list.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+    }
+
     const showing = new Set(
-      (sessions.value ?? []).map((s) => s.ScheduledFilmId).filter(Boolean) as string[],
+      sessions.map((s) => s.ScheduledFilmId).filter(Boolean) as string[],
     );
-    return (films.value ?? [])
+    const films = (filmsJson.value ?? [])
       .filter((f) => f.ID && f.Title && showing.has(f.ID))
       .map((f) => ({ id: f.ID!, title: f.Title!.trim(), ...parseTitle(f.Title!) }));
+    return { films, screenings };
   } catch {
-    return [];
+    return empty;
   }
 }

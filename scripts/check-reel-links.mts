@@ -10,14 +10,22 @@
  */
 import { readFileSync } from "node:fs";
 
-import { fetchReelFilms, matchReelFilm, reelMovieUrl, parseTitle } from "../src/lib/reel-films";
+import { fetchReelFeed, matchReelFilm, reelMovieUrl, parseTitle } from "../src/lib/reel-films";
+
+const dubaiDay = (plus: number) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dubai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() + plus * 86_400_000));
 
 const env = readFileSync(new URL("../.env", import.meta.url), "utf8");
 const pick = (key: string) => new RegExp(`${key}="([^"]*)"`).exec(env)?.[1] ?? "";
 const SUPABASE_URL = pick("VITE_SUPABASE_URL");
 const KEY = pick("VITE_SUPABASE_PUBLISHABLE_KEY");
 
-const films = await fetchReelFilms();
+const { films } = await fetchReelFeed([0, 1, 2].map(dubaiDay));
 console.log(`reel films with sessions: ${films.length}`);
 if (films.length === 0) {
   console.log("FAIL: no films — the GCS feed moved or changed shape");
