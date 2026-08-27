@@ -200,6 +200,14 @@ export function bookingTarget(options: {
 }): string | undefined {
   const { screeningUrl, venueName, chain, filmUrl, chainUrl } = options;
   if (screeningUrl) return screeningUrl;
+  // A page about this film beats the venue's own page. Someone who clicked a
+  // time has chosen a film, and the film page carries its dates, its venues and
+  // its booking buttons, where the venue page is that screen's whole schedule.
+  //
+  // Guarded on filmUrl !== chainUrl because filmLevelFallback hands back the
+  // chain's home page when there is no real film URL, and letting that jump the
+  // queue would reintroduce the bug where Reel chips opened reelcinemas.com.
+  if (filmUrl && filmUrl !== chainUrl) return filmUrl;
   if (venueName) {
     const forVenue = venueUrl(venueName, chain ?? undefined);
     if (forVenue) return forVenue;

@@ -28,6 +28,8 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 
+import { fetchReelFilms, matchReelFilm, reelMovieUrl } from "@/lib/reel-films";
+
 const ORIGIN = "https://cinemauae.com";
 const SITEMAP = `${ORIGIN}/sitemap.xml`;
 const UA =
@@ -868,11 +870,24 @@ async function runScrape(request: Request) {
   // /chooseScreen/slug) and is the right fallback. Several distinct URLs means
   // they are session-specific and none of them describes the film, so fall back
   // to the chain instead.
+  //
+  // Reel is the exception. It publishes no screening links at all, so every
+  // Reel chip used to fall through to the chain's showtimes page. Their film
+  // ids are public (see lib/reel-films), and a film page is a genuine
+  // film-level URL — the thing this field is for — so it goes in ahead of the
+  // chain. Fetched once per run and only when a Reel row is present.
+  const reelFilms = batch.some((row) => row["cinema"] === "reel") ? await fetchReelFilms() : [];
+
   for (const row of batch) {
     const times = row["showtimes"] as Array<Record<string, string>>;
     const links = new Set(times.map((s) => s["booking_url"]).filter(Boolean));
     const shared = links.size === 1 ? [...links][0]! : null;
-    row["booking_url"] = shared ?? CHAIN_HOME[String(row["cinema"])] ?? null;
+    let reelUrl: string | null = null;
+    if (!shared && row["cinema"] === "reel" && reelFilms.length > 0) {
+      const film = matchReelFilm(String(row["title"] ?? ""), reelFilms);
+      if (film) reelUrl = reelMovieUrl(film);
+    }
+    row["booking_url"] = shared ?? reelUrl ?? CHAIN_HOME[String(row["cinema"])] ?? null;
   }
 
   // Upsert and retirement both happen inside the SECURITY DEFINER function.
