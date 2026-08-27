@@ -4,7 +4,9 @@
  * $slug comes from filmSlug(title). Because the same movie exists as separate
  * rows per chain, we gather every CinemaFilm sharing titleKey(), then build
  * VenueBlocks (lib/showtimes) sorted nearest-first using useUserLocation.
- * Filters: date (next 7 Dubai days), language, format, time-of-day.
+ * Filters: date (three Dubai days), cinema, city. No language filter — a page is
+ * one film and a booking is for one language, so there is nothing to choose
+ * between. No format filter either: the screen type is on every chip already.
  * Each time chip deep-links to that exact screening on the chain's own site.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -16,20 +18,24 @@ import {
   screeningSchemas,
 } from "@/lib/structured-data";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Heart, Info, Locate, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, Locate } from "lucide-react";
 
 import { DAY_COUNT, buildDayOptions, toDayKey } from "@/lib/days";
-import { bookingTarget } from "@/lib/venues";
+import { FilterRow } from "@/components/filter-row";
+import {
+  VenueShowtimesBlock,
+  countUrlUses,
+  filmLevelFallback,
+} from "@/components/venue-showtimes";
 import {
   CINEMA_LABELS,
   fetchCinemaFilms,
   fetchFilmBySlug,
-  filmFormats,
   filmSlug,
   titleKey,
   type CinemaFilm,
 } from "@/lib/cinemas";
-import { formatDistance, venueBlocks } from "@/lib/showtimes";
+import { venueBlocks } from "@/lib/showtimes";
 import { useUserLocation } from "@/hooks/useUserLocation";
 
 export const Route = createFileRoute("/movie/$slug")({
@@ -79,22 +85,16 @@ export const Route = createFileRoute("/movie/$slug")({
   ),
 });
 
-type TimeBand = "all" | "morning" | "evening";
-
 function MovieShowtimesPage() {
   const { slug } = Route.useParams();
   // Three days, matching DAY_COUNT and the scraper's SCRAPE_DAYS. This was
   // briefly collapsed to today alone when the database held one day; it holds
   // three now, so the picker is real again rather than decorative.
   const [day, setDay] = useState<string>(() => toDayKey(new Date()));
-  const [language, setLanguage] = useState<string>("all");
   const [chain, setChain] = useState<string>("all");
   // Named cityFilter, not city: useUserLocation already returns a `city`, and
   // that one is where the visitor is rather than what they filtered to.
   const [cityFilter, setCityFilter] = useState<string>("all");
-  const [format, setFormat] = useState<string>("all");
-  const [band, setBand] = useState<TimeBand>("all");
-  const [favourites, setFavourites] = useState<string[]>([]);
 
   const { coords, city, precise, requestPrecise } = useUserLocation();
   useEffect(() => {
@@ -120,8 +120,6 @@ function MovieShowtimesPage() {
   );
 
   const primary = matches[0];
-  const languages = [...new Set(matches.map((f) => f.language).filter(Boolean) as string[])];
-  const formats = [...new Set(matches.flatMap((f) => filmFormats(f)))];
   const chains = [...new Set(matches.map((f) => f.cinema))].sort();
   const cities = [...new Set(matches.map((f) => f.city).filter(Boolean) as string[])].sort();
 
@@ -129,30 +127,58 @@ function MovieShowtimesPage() {
     () =>
       matches.filter(
         (film) =>
-          (language === "all" || film.language === language) &&
           (chain === "all" || film.cinema === chain) &&
           (cityFilter === "all" || film.city === cityFilter),
       ),
-    [matches, language, chain, cityFilter],
+    [matches, chain, cityFilter],
   );
 
-  const blocks = useMemo(() => {
-    const rows = venueBlocks(filteredFilms, day, coords);
-    return rows
-      .map((block) => ({
-        ...block,
-        screenings: block.screenings.filter((screening) => {
-          if (band === "morning" && screening.minutes >= 12 * 60) return false;
-          if (band === "evening" && screening.minutes < 17 * 60) return false;
-          if (format !== "all") {
-            const label = (screening.format ?? "").toUpperCase();
-            if (!label.includes(format)) return false;
-          }
-          return true;
-        }),
-      }))
-      .filter((block) => block.screenings.length > 0);
-  }, [filteredFilms, day, coords, band, format]);
+  const blocks = useMemo(
+    () => venueBlocks(filteredFilms, day, coords).filter((block) => block.screenings.length > 0),
+    [filteredFilms, day, coords],
+  );
+
+  /**
+   * Counted across every venue of the film, not per venue: a URL used once is
+   * that screening's, while one shared by several is a film page in disguise,
+   * and only the whole-film view can tell those apart.
+   */
+  const uses = useMemo(
+    () =>
+      countUrlUses(
+        blocks.map((block) => ({
+          venue: block.venue,
+          times: block.screenings,
+          hiddenTimes: 0,
+        })),
+      ),
+    [blocks],
+  );
+
+  /**
+   * Whether any chip on this page is dashed. Derived from the same test the
+   * chip itself uses rather than re-deriving it from the raw showtimes, so the
+   * note cannot end up explaining a marker that is not there, or missing one
+   * that is.
+   */
+  const hasIndirectBooking = useMemo(
+    () =>
+      blocks.some((block) =>
+        block.screenings.some(
+          (screening) => !(screening.bookingUrl && uses.get(screening.bookingUrl) === 1),
+        ),
+      ),
+    [blocks, uses],
+  );
+
+  /** Each chain's own site, for chips with no screening link of their own. */
+  const chainUrlByCinema = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const film of matches) {
+      if (!map.has(film.cinema)) map.set(film.cinema, film.source_url);
+    }
+    return map;
+  }, [matches]);
 
   const todayLabel = new Intl.DateTimeFormat("en-AE", {
     timeZone: "Asia/Dubai",
@@ -176,9 +202,6 @@ function MovieShowtimesPage() {
       breadcrumbSchema(primary.title, slug),
     ]);
   }, [primary, matches, slug, day]);
-
-  const toggleFavourite = (key: string) =>
-    setFavourites((list) => (list.includes(key) ? list.filter((k) => k !== key) : [...list, key]));
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,9 +229,9 @@ function MovieShowtimesPage() {
             <h1 className="truncate font-display text-lg font-bold uppercase tracking-wide sm:text-xl">
               {primary?.title ?? slug.replace(/-/g, " ")}
             </h1>
-            {/* Genre and certificate only. Language and runtime are carried by
-                the spec line below, and the header sits beside the poster where
-                a short label reads better than a full spec list. */}
+            {/* Genre and certificate only — runtime is carried by the spec line
+                below, and the header sits beside the poster where a short label
+                reads better than a full spec list. */}
             <p className="truncate text-sm text-muted-foreground">
               {[primary?.genre, primary?.rating].filter(Boolean).join(", ") ||
                 "Now showing in UAE cinemas"}
@@ -247,10 +270,6 @@ function MovieShowtimesPage() {
                   {(
                     [
                       ["Genre", primary.genre],
-                      [
-                        languages.length === 1 ? "Language" : "Languages",
-                        languages.length > 0 ? languages.join(", ") : null,
-                      ],
                       ["Runtime", primary.duration_mins ? `${primary.duration_mins} mins` : null],
                       ["Rating", primary.rating],
                     ] as Array<[string, string | null]>
@@ -320,71 +339,39 @@ function MovieShowtimesPage() {
               })}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground">
-              <SlidersHorizontal className="size-3.5" /> Filters
-            </span>
-            <span className="h-5 w-px bg-border" />
-            {languages.length > 0 ? (
-              <FilterChip
-                label={language === "all" ? "All languages" : language}
-                active={language !== "all"}
-                onClick={() =>
-                  setLanguage((current) => {
-                    const list = ["all", ...languages];
-                    const index = list.indexOf(current);
-                    return list[(index + 1) % list.length] ?? "all";
-                  })
-                }
-              />
-            ) : null}
+          {/* Cinema and city are dropdowns, matching /cinemas. As pills they
+              cycled through their values on click, so the options were invisible
+              until you had clicked past them — unworkable at seven chains and
+              eight emirates. Format stays a pill: it is a short, fixed set you
+              toggle rather than choose between. */}
+          <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
             {/* Only offered when the film actually plays at more than one chain
                 or city — a filter with a single option is a control that cannot
                 do anything. */}
             {chains.length > 1 ? (
-              <FilterChip
-                label={chain === "all" ? "All cinemas" : (CINEMA_LABELS[chain] ?? chain)}
-                active={chain !== "all"}
-                onClick={() =>
-                  setChain((current) => {
-                    const list = ["all", ...chains];
-                    const index = list.indexOf(current);
-                    return list[(index + 1) % list.length] ?? "all";
-                  })
-                }
+              <FilterRow
+                label="Cinema"
+                allLabel="All cinemas"
+                value={chain}
+                onChange={setChain}
+                options={chains.map((c) => ({ value: c, label: CINEMA_LABELS[c] ?? c }))}
               />
             ) : null}
             {cities.length > 1 ? (
-              <FilterChip
-                label={cityFilter === "all" ? "All cities" : cityFilter}
-                active={cityFilter !== "all"}
-                onClick={() =>
-                  setCityFilter((current) => {
-                    const list = ["all", ...cities];
-                    const index = list.indexOf(current);
-                    return list[(index + 1) % list.length] ?? "all";
-                  })
-                }
+              <FilterRow
+                label="City"
+                allLabel="All cities"
+                value={cityFilter}
+                onChange={setCityFilter}
+                options={cities.map((c) => ({ value: c, label: c }))}
               />
             ) : null}
-            {formats.map((option) => (
-              <FilterChip
-                key={option}
-                label={option}
-                active={format === option}
-                onClick={() => setFormat((current) => (current === option ? "all" : option))}
-              />
-            ))}
-            <FilterChip
-              label="Morning"
-              active={band === "morning"}
-              onClick={() => setBand((current) => (current === "morning" ? "all" : "morning"))}
-            />
-            <FilterChip
-              label="After 5 PM"
-              active={band === "evening"}
-              onClick={() => setBand((current) => (current === "evening" ? "all" : "evening"))}
-            />
+          </div>
+
+          {/* Not a filter, so it outlived the filter row: the nearest-first
+              ordering is this page's main promise, and without a precise fix it
+              is measuring from a city centre. */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
             {!precise ? (
               <button
                 type="button"
@@ -402,22 +389,6 @@ function MovieShowtimesPage() {
       </div>
 
       <main className="mx-auto w-full max-w-6xl px-4 py-5">
-        {/* ── Legend ───────────────────────────────────────── */}
-        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border/60 bg-card/40 px-4 py-2.5 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <Info className="size-3.5" /> Nearest to {precise ? "you" : city} first
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-foreground" /> Available
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-gold" /> Filling fast
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-primary" /> Almost full
-          </span>
-        </div>
-
         {isLoading ? <p className="text-muted-foreground">Loading showtimes…</p> : null}
 
         {!isLoading && blocks.length === 0 ? (
@@ -426,95 +397,54 @@ function MovieShowtimesPage() {
           </p>
         ) : null}
 
-        <div className="space-y-3">
-          {blocks.map((block) => {
-            const distance = formatDistance(block.distanceKm);
-            const favourite = favourites.includes(block.key);
-            return (
-              <section
-                key={block.key}
-                className="grid gap-4 rounded-2xl border border-border/60 bg-card/40 p-4 sm:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] sm:p-5"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-background/60 text-[10px] font-bold uppercase tracking-wider text-gold">
-                    {(CINEMA_LABELS[block.cinema] ?? block.cinema).slice(0, 4)}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-start gap-2">
-                      <p className="font-semibold leading-snug">
-                        {CINEMA_LABELS[block.cinema] ?? block.cinema}: {block.venue}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => toggleFavourite(block.key)}
-                        aria-label={favourite ? "Remove from favourites" : "Add to favourites"}
-                        className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
-                      >
-                        <Heart className={`size-4 ${favourite ? "fill-primary text-primary" : ""}`} />
-                      </button>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {[distance, block.city].filter(Boolean).join(" · ") || "Distance unavailable"}
-                    </p>
-                    <p className="text-xs text-muted-foreground/70">Non-cancellable</p>
-                  </div>
-                </div>
+        {!isLoading && hasIndirectBooking && blocks.length > 0 ? (
+          <p className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className="inline-block h-4 w-8 shrink-0 rounded border border-dashed border-border/60"
+            />
+            Dashed times open the cinema&rsquo;s booking site — that chain
+            doesn&rsquo;t publish a link to a single screening.
+          </p>
+        ) : null}
 
-                <div className="flex flex-wrap gap-2.5 sm:justify-start">
-                  {block.screenings.map((screening) => (
-                    <a
-                      key={`${screening.time}-${screening.format ?? ""}`}
-                      href={
-                        bookingTarget({
-                          screeningUrl: screening.bookingUrl,
-                          venueName: block.venue,
-                          chain: block.cinema,
-                          filmUrl: block.bookingUrl,
-                        }) ?? "#"
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex min-w-[6.25rem] flex-col items-center rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-center transition-colors hover:border-gold/60 hover:text-gold"
-                    >
-                      <span className="text-sm font-medium">{screening.time.toUpperCase()}</span>
-                      {screening.format ? (
-                        <span className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {screening.format}
-                        </span>
-                      ) : null}
-                    </a>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+        {/* The same panel every other page uses. This route had grown its own
+            copy, which meant it silently lacked the two things that component
+            exists to guarantee: the dashed marker on chips that cannot reach a
+            single screening, and the film-level fallback that stops a chip
+            opening someone else's seat map. */}
+        <div className="space-y-3">
+          {blocks.map((block) => (
+            <VenueShowtimesBlock
+              key={block.key}
+              venue={{
+                // Chain-qualified, unlike the pages that show one chain at a
+                // time: this list spans every chain, and "Dubai Mall Cinema"
+                // alone does not say whose it is.
+                venue: `${CINEMA_LABELS[block.cinema] ?? block.cinema}: ${block.venue}`,
+                times: block.screenings,
+                hiddenTimes: 0,
+                km: block.distanceKm,
+              }}
+              filmTitle={primary?.title ?? slug.replace(/-/g, " ")}
+              filmSlug={slug}
+              chain={block.cinema}
+              filmUrl={filmLevelFallback(
+                block.bookingUrl,
+                chainUrlByCinema.get(block.cinema) ?? null,
+                uses,
+              )}
+              chainUrl={chainUrlByCinema.get(block.cinema) ?? null}
+              uses={uses}
+              // Names the city actually being measured from, not a hardcoded
+              // Dubai: with the picker set to Sharjah, "4.8 km from Dubai" was
+              // both wrong and contradicted the header.
+              distanceSuffix={precise ? " away" : ` from ${city}`}
+            />
+          ))}
         </div>
       </main>
     </div>
   );
 }
 
-function FilterChip({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border/70 text-muted-foreground hover:border-gold/60 hover:text-foreground"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
