@@ -4,9 +4,15 @@
  * Precise browser geolocation when granted (cached in localStorage under
  * "showsouk:coords" so we don't re-prompt), otherwise the centre of the city
  * chosen in the header ("showsouk:city"). Feeds lib/venues + lib/showtimes.
+ *
+ * A granted fix is only used when it is near a screen we list. Outside that,
+ * every page fell back to ordering by a distance no one can act on — a visitor
+ * abroad saw "2608.6 km away" against each cinema. Those visitors get the
+ * city-centre ordering instead, and `outsideServiceArea` so the UI can explain
+ * why the location button did nothing.
  */
 import { useEffect, useState } from "react";
-import { CITY_CENTERS, type Coords } from "@/lib/venues";
+import { CITY_CENTERS, withinServiceArea, type Coords } from "@/lib/venues";
 
 const COORDS_KEY = "showsouk:coords";
 const CITY_KEY = "showsouk:city";
@@ -55,20 +61,34 @@ export function useUserLocation() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [city, setCity] = useState<string>("Dubai");
   const [precise, setPrecise] = useState(false);
+  /**
+   * A real fix was obtained, but nowhere near a screen we list. Kept separate
+   * from `precise` because the UI needs to tell these apart: "we don't know
+   * where you are" invites a location prompt, while "you are 5,000 km from the
+   * nearest cinema" makes that button pointless.
+   */
+  const [outsideServiceArea, setOutsideServiceArea] = useState(false);
+
+  const centreOf = (name: string | null) =>
+    CITY_CENTERS[name ?? "Dubai"] ?? CITY_CENTERS["Dubai"] ?? null;
 
   useEffect(() => {
     const storedCity = window.localStorage.getItem(CITY_KEY);
     if (storedCity) setCity(storedCity);
 
     const cached = readCached();
-    if (cached) {
+    // A cached fix from outside the service area is honoured no more than a
+    // fresh one: someone who allowed location abroad would otherwise keep
+    // being measured from there for the whole TTL.
+    if (cached && withinServiceArea(cached)) {
       setCoords(cached);
       setPrecise(true);
       return;
     }
+    if (cached) setOutsideServiceArea(true);
     // City centre is a placeholder, not a location: distances from it can be
     // tens of kilometres out, so `precise` stays false and the UI can say so.
-    setCoords(CITY_CENTERS[storedCity ?? "Dubai"] ?? CITY_CENTERS["Dubai"] ?? null);
+    setCoords(centreOf(storedCity));
   }, []);
 
   /**
@@ -88,9 +108,21 @@ export function useUserLocation() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const point = { lat: position.coords.latitude, lng: position.coords.longitude };
+        // A fix from outside the service area is worse than none: ordering by
+        // it is meaningless and the distances read "2608.6 km away". Fall back
+        // to the chosen city's centre and say so, rather than caching a
+        // position every screen would then be measured from.
+        if (!withinServiceArea(point)) {
+          setOutsideServiceArea(true);
+          setPrecise(false);
+          setCoords(centreOf(window.localStorage.getItem(CITY_KEY)));
+          onError?.();
+          return;
+        }
         writeCached(point);
         setCoords(point);
         setPrecise(true);
+        setOutsideServiceArea(false);
         onSuccess?.(point);
       },
       () => onError?.(),
@@ -108,5 +140,5 @@ export function useUserLocation() {
     );
   };
 
-  return { coords, city, precise, requestPrecise };
+  return { coords, city, precise, outsideServiceArea, requestPrecise };
 }

@@ -162,7 +162,13 @@ function CinemasPage() {
   // centre of the header city. Ask once on mount so the panel fills itself in.
   // Aliased: `city` here is the filter dropdown's value ("all", "Dubai", …),
   // which is a different thing from where the visitor actually is.
-  const { coords, precise, requestPrecise, city: userCity } = useUserLocation();
+  const {
+    coords,
+    precise,
+    outsideServiceArea,
+    requestPrecise,
+    city: userCity,
+  } = useUserLocation();
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -381,14 +387,20 @@ function CinemasPage() {
                       the chain, so this line does not repeat it. */}
                   {precise
                     ? `The ${nearby?.length ?? 0} closest screens to your current location.`
-                    : "The closest screens to your selected city — share your location for exact distances."}
+                    : outsideServiceArea
+                      ? // Their location was granted and is simply too far away, so
+                        // inviting them to share it again would be a dead end.
+                        `You appear to be outside the UAE, so these are the closest screens to ${userCity} city centre.`
+                      : "The closest screens to your selected city — share your location for exact distances."}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => requestLocation()} disabled={geoState === "loading"}>
-                  <Locate className={`size-3.5 ${geoState === "loading" ? "animate-pulse" : ""}`} />
-                  {precise ? "Update location" : "Use my location"}
-                </Button>
+                {!outsideServiceArea && (
+                  <Button size="sm" variant="outline" onClick={() => requestLocation()} disabled={geoState === "loading"}>
+                    <Locate className={`size-3.5 ${geoState === "loading" ? "animate-pulse" : ""}`} />
+                    {precise ? "Update location" : "Use my location"}
+                  </Button>
+                )}
 
                 {nearby && (
                   <Button
@@ -402,7 +414,10 @@ function CinemasPage() {
               </div>
             </div>
 
-            {geoState === "denied" && (
+            {/* Not shown when the fix simply landed outside the UAE: the hook
+                reports that through onError too, and telling someone to allow
+                access they already granted sends them to fix the wrong thing. */}
+            {geoState === "denied" && !outsideServiceArea && (
               <p className="mt-3 text-xs text-destructive">
                 Location unavailable. Allow location access in your browser, or pick a city below.
               </p>
@@ -426,10 +441,15 @@ function CinemasPage() {
                       <p className="mt-1.5 truncate text-xs text-muted-foreground">
                         {CINEMA_LABELS[venue.cinema]} · {venue.city}
                       </p>
+                      {/* "away" only when the fix is the visitor's own. These
+                          read "847 m away" for anyone on a city-centre
+                          fallback, which is a claim about a position we do not
+                          have — most visibly for someone abroad. */}
                       <p className="mt-1 text-xs text-gold">
                         {venue.distanceKm < 1
-                          ? `${Math.round(venue.distanceKm * 1000)} m away`
-                          : `${venue.distanceKm.toFixed(1)} km away`}
+                          ? `${Math.round(venue.distanceKm * 1000)} m`
+                          : `${venue.distanceKm.toFixed(1)} km`}
+                        {precise ? " away" : ` from ${userCity}`}
                       </p>
                     </button>
                   </li>

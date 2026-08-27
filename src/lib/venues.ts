@@ -234,6 +234,76 @@ export function distanceKm(a: Coords, b: Coords): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/**
+ * A coarse outline of the UAE, [lat, lng], walked clockwise from the far west.
+ *
+ * Deliberately a shape and not a radius or a rectangle, both of which were
+ * tried and measurably fail:
+ *
+ *   - Radius from the nearest screen: Sohar in Oman is 92 km from a UAE cinema
+ *     while Liwa, which is inside the UAE, is 153 km. No threshold separates
+ *     them, so one either excludes UAE residents or admits Omani cities.
+ *   - Bounding box: the UAE reaches ~51.58°E and Doha sits at 51.53°E, leaving
+ *     a 2 km margin — a rounding error away from telling Qatar it is local.
+ *
+ * Following the coast and the land borders instead puts Doha several hundred km
+ * outside with no tuning. It is intentionally low resolution: a few kilometres
+ * of error on a border decides only whether a distance label says "away" or
+ * "from Dubai", so precision beyond this buys nothing.
+ */
+const UAE_OUTLINE: Array<[number, number]> = [
+  // Gulf coast, west to north-east, drawn a little offshore so that seafront
+  // cinemas — Marina Mall, Nation Towers, The Beach, Palm Jumeirah — sit inside
+  // it. A first pass traced the coast through those points and put thirteen
+  // real screens in the sea.
+  [23.9, 51.45], // Saudi border on the west coast
+  // The far west runs almost north–south around 51.6°E. Doha is at 51.53°E but
+  // more than a degree further north, so reaching out here to hold Al Sila does
+  // not reach Qatar.
+  [24.35, 51.5],
+  [24.45, 52.2],
+  [24.35, 52.6], // off Ruwais
+  [24.6, 53.3],
+  [24.75, 54.2], // off Abu Dhabi island
+  [25.05, 54.8],
+  [25.45, 55.2], // off Dubai
+  [25.75, 55.5],
+  [26.12, 55.95], // off Ras Al Khaimah
+  [26.15, 56.15], // north, stopping short of Omani Musandam
+  // East coast and the Oman land border, north to south.
+  [25.65, 56.35],
+  [25.3, 56.45], // Fujairah
+  [24.95, 56.5], // Kalba
+  [24.78, 56.22], // leaves Hatta inside
+  [24.15, 55.9], // Al Ain, on the Buraimi border
+  [23.5, 55.65],
+  [22.6, 55.3], // southern desert, Saudi and Oman
+  [22.55, 54.0],
+  [22.9, 52.4],
+  [23.4, 51.55], // north again along the Saudi border
+];
+
+/**
+ * Whether a position is in the UAE, by ray casting against UAE_OUTLINE.
+ *
+ * Border towns on the Omani side — Buraimi sits a few kilometres from Al Ain's
+ * screens — can fall inside. That is the right answer for what this decides:
+ * those visitors really do drive to these cinemas, and a distance in kilometres
+ * is useful to them.
+ */
+export function withinServiceArea(point: Coords): boolean {
+  let inside = false;
+  for (let i = 0, j = UAE_OUTLINE.length - 1; i < UAE_OUTLINE.length; j = i++) {
+    const [latI, lngI] = UAE_OUTLINE[i]!;
+    const [latJ, lngJ] = UAE_OUTLINE[j]!;
+    const straddles = latI > point.lat !== latJ > point.lat;
+    if (!straddles) continue;
+    const crossingLng = ((lngJ - lngI) * (point.lat - latI)) / (latJ - latI) + lngI;
+    if (point.lng < crossingLng) inside = !inside;
+  }
+  return inside;
+}
+
 export type NearbyVenue = Venue & { distanceKm: number };
 
 /**

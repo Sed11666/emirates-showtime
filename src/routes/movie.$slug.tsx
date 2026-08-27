@@ -96,7 +96,7 @@ function MovieShowtimesPage() {
   // that one is where the visitor is rather than what they filtered to.
   const [cityFilter, setCityFilter] = useState<string>("all");
 
-  const { coords, city, precise, requestPrecise } = useUserLocation();
+  const { coords, city, precise, outsideServiceArea, requestPrecise } = useUserLocation();
   useEffect(() => {
     if (!precise) requestPrecise();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,7 +372,14 @@ function MovieShowtimesPage() {
               ordering is this page's main promise, and without a precise fix it
               is measuring from a city centre. */}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            {!precise ? (
+            {outsideServiceArea ? (
+              // The fix was granted and simply landed too far away, so the
+              // button is replaced rather than left to do nothing.
+              <p className="text-xs text-muted-foreground">
+                You appear to be outside the UAE — screens are ordered from {city} city
+                centre.
+              </p>
+            ) : !precise ? (
               <button
                 type="button"
                 // Wrapped, not passed by reference: requestPrecise's first parameter
