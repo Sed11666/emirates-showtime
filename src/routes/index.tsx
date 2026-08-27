@@ -22,7 +22,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, ChevronRight, Clock, Star } from "lucide-react";
+import { Bell, ChevronRight, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MoviePosterCard, filmToPoster, type PosterItem } from "@/components/movie-poster-card";
@@ -324,23 +324,19 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
       <div className="relative mx-auto flex min-h-[560px] max-w-7xl flex-col justify-end px-4 pb-10 pt-24 sm:min-h-[78vh] sm:pb-14 sm:pt-28">
         {active ? (
           <>
+            {/* Genre and screen formats. Language sits in the row under the
+                title rather than here, so it is not repeated as a chip; runtime
+                is not shown anywhere in movie meta. Folding genre in with the
+                formats keeps one chip list rather than two identical ones. */}
             <div className="flex flex-wrap gap-2">
-              {[active.genre, active.language].filter(Boolean).map((chip) => (
-                <span
-                  key={chip as string}
-                  className="rounded-md border border-gold/40 bg-background/50 px-2.5 py-1 text-[11px] uppercase tracking-wider text-gold backdrop-blur"
-                >
-                  {chip}
-                </span>
-              ))}
-              {filmFormats(active)
-                .slice(0, 2)
-                .map((format) => (
+              {[active.genre, ...filmFormats(active).slice(0, 2)]
+                .filter(Boolean)
+                .map((chip) => (
                   <span
-                    key={format}
+                    key={chip as string}
                     className="rounded-md border border-gold/40 bg-background/50 px-2.5 py-1 text-[11px] uppercase tracking-wider text-gold backdrop-blur"
                   >
-                    {format}
+                    {chip}
                   </span>
                 ))}
             </div>
@@ -355,19 +351,13 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
                   <Star className="size-4 fill-gold text-gold" /> {active.rating}
                 </span>
               ) : null}
-              {active.duration_mins ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock className="size-4" /> {Math.floor(active.duration_mins / 60)}h{" "}
-                  {active.duration_mins % 60}m
-                </span>
-              ) : null}
-              <span>Now Showing in UAE</span>
+              {active.language ? <span>{active.language}</span> : null}
             </div>
 
             <Button asChild variant="gold" size="lg" className="mt-7 w-fit">
               {/* Same destination as the poster cards below: the hero is a
                   movie banner, so it must not lead somewhere different. */}
-              <Link to="/cinemas" search={{ movie: filmSlug(active.title) }}>
+              <Link to="/movie/$slug" params={{ slug: filmSlug(active.title) }}>
                 Get Showtimes <ChevronRight className="size-4" />
               </Link>
             </Button>

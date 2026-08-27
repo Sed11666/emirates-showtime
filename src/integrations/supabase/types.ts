@@ -32,9 +32,11 @@ export type Database = {
       cinema_films: {
         Row: {
           booking_url: string | null
+          cast_names: string[] | null
           cinema: string
           city: string
           created_at: string
+          director: string | null
           duration_mins: number | null
           first_seen_at: string
           formats: string[]
@@ -56,9 +58,11 @@ export type Database = {
         }
         Insert: {
           booking_url?: string | null
+          cast_names?: string[] | null
           cinema: string
           city?: string
           created_at?: string
+          director?: string | null
           duration_mins?: number | null
           first_seen_at?: string
           formats?: string[]
@@ -80,9 +84,11 @@ export type Database = {
         }
         Update: {
           booking_url?: string | null
+          cast_names?: string[] | null
           cinema?: string
           city?: string
           created_at?: string
+          director?: string | null
           duration_mins?: number | null
           first_seen_at?: string
           formats?: string[]

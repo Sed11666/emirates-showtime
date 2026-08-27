@@ -18,7 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Heart, Info, Locate, SlidersHorizontal } from "lucide-react";
 
-import { toDayKey } from "@/lib/days";
+import { DAY_COUNT, buildDayOptions, toDayKey } from "@/lib/days";
 import { bookingTarget } from "@/lib/venues";
 import {
   CINEMA_LABELS,
@@ -83,10 +83,15 @@ type TimeBand = "all" | "morning" | "evening";
 
 function MovieShowtimesPage() {
   const { slug } = Route.useParams();
-  // Today only. See the note in routes/cinemas.tsx: the database holds a single
-  // day, so a date strip here rendered today's times under future dates.
-  const day = toDayKey(new Date());
+  // Three days, matching DAY_COUNT and the scraper's SCRAPE_DAYS. This was
+  // briefly collapsed to today alone when the database held one day; it holds
+  // three now, so the picker is real again rather than decorative.
+  const [day, setDay] = useState<string>(() => toDayKey(new Date()));
   const [language, setLanguage] = useState<string>("all");
+  const [chain, setChain] = useState<string>("all");
+  // Named cityFilter, not city: useUserLocation already returns a `city`, and
+  // that one is where the visitor is rather than what they filtered to.
+  const [cityFilter, setCityFilter] = useState<string>("all");
   const [format, setFormat] = useState<string>("all");
   const [band, setBand] = useState<TimeBand>("all");
   const [favourites, setFavourites] = useState<string[]>([]);
@@ -117,10 +122,18 @@ function MovieShowtimesPage() {
   const primary = matches[0];
   const languages = [...new Set(matches.map((f) => f.language).filter(Boolean) as string[])];
   const formats = [...new Set(matches.flatMap((f) => filmFormats(f)))];
+  const chains = [...new Set(matches.map((f) => f.cinema))].sort();
+  const cities = [...new Set(matches.map((f) => f.city).filter(Boolean) as string[])].sort();
 
   const filteredFilms = useMemo(
-    () => matches.filter((film) => language === "all" || film.language === language),
-    [matches, language],
+    () =>
+      matches.filter(
+        (film) =>
+          (language === "all" || film.language === language) &&
+          (chain === "all" || film.cinema === chain) &&
+          (cityFilter === "all" || film.city === cityFilter),
+      ),
+    [matches, language, chain, cityFilter],
   );
 
   const blocks = useMemo(() => {
@@ -193,24 +206,118 @@ function MovieShowtimesPage() {
             <h1 className="truncate font-display text-lg font-bold uppercase tracking-wide sm:text-xl">
               {primary?.title ?? slug.replace(/-/g, " ")}
             </h1>
+            {/* Genre and certificate only. Language and runtime are carried by
+                the spec line below, and the header sits beside the poster where
+                a short label reads better than a full spec list. */}
             <p className="truncate text-sm text-muted-foreground">
-              {[primary?.genre, primary?.language, primary?.rating, primary?.duration_mins ? `${primary.duration_mins} mins` : null]
-                .filter(Boolean)
-                .join(", ") || "Now showing in UAE cinemas"}
+              {[primary?.genre, primary?.rating].filter(Boolean).join(", ") ||
+                "Now showing in UAE cinemas"}
             </p>
           </div>
         </div>
       </div>
 
+      {/* ── What the film is ───────────────────────────────────
+          Deliberately brief. Someone who clicked a poster wants a sentence to
+          confirm they picked the right film, not a review — the times below are
+          what they came for, and a wall of text pushes them off the screen.
+          Every other UAE listings site leads with the marketing copy; leading
+          with "is this the one, and when can I see it" is the difference. */}
+      {primary?.synopsis ? (
+        <section className="border-b border-border/60 bg-card/20">
+          <div className="mx-auto w-full max-w-6xl px-4 py-5">
+            <div className="flex gap-5">
+              {primary.poster_url ? (
+                <img
+                  src={primary.poster_url}
+                  alt=""
+                  aria-hidden="true"
+                  className="hidden h-40 w-28 shrink-0 rounded-lg object-cover sm:block"
+                />
+              ) : null}
+              <div className="min-w-0">
+                <p className="line-clamp-4 text-sm leading-relaxed text-muted-foreground sm:text-[0.9375rem]">
+                  {primary.synopsis}
+                </p>
+                {/* Specs carry no visible label: "Action" is self-evidently a
+                    genre and "95 mins" a runtime, so printing the word doubles
+                    the text for nothing and makes the label compete with the
+                    value. The names stay for screen readers. */}
+                <dl className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.8125rem] text-muted-foreground">
+                  {(
+                    [
+                      ["Genre", primary.genre],
+                      [
+                        languages.length === 1 ? "Language" : "Languages",
+                        languages.length > 0 ? languages.join(", ") : null,
+                      ],
+                      ["Runtime", primary.duration_mins ? `${primary.duration_mins} mins` : null],
+                      ["Rating", primary.rating],
+                    ] as Array<[string, string | null]>
+                  )
+                    .filter((entry): entry is [string, string] => Boolean(entry[1]))
+                    .map(([label, value], index) => (
+                      <div key={label} className="flex items-center gap-2.5">
+                        {index > 0 ? (
+                          <span aria-hidden="true" className="text-muted-foreground/35">
+                            &middot;
+                          </span>
+                        ) : null}
+                        <dt className="sr-only">{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                </dl>
+
+                {/* Director and cast are deliberately not rendered yet: the
+                    presentation needed more design work than the spec line, so
+                    they are held back rather than shipped cluttered. The scraper
+                    keeps populating cinema_films.director and .cast_names, so
+                    turning them back on is a render change only. */}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {/* ── Date strip + filters ───────────────────────────── */}
       <div className="sticky top-0 z-20 border-b border-border/60 bg-background/95 backdrop-blur">
         <div className="mx-auto w-full max-w-6xl px-4 py-3">
+          {/* Pick a day first: on a film page the visitor has chosen what to
+              watch and is now choosing when, so the date leads the filters. */}
           <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
-            {/* Today's date, stated rather than chosen. The picker is gone until
-                the data behind it exists — see routes/cinemas.tsx. */}
-            <span className="flex shrink-0 items-center rounded-full bg-muted px-3 py-1 text-[11px] font-semibold tracking-widest text-muted-foreground">
-              {todayLabel}
-            </span>
+            {buildDayOptions(DAY_COUNT)
+              .filter((option) => option.value !== "any")
+              .map((option) => {
+                const active = option.value === day;
+                const weekday = new Intl.DateTimeFormat("en-AE", {
+                  timeZone: "Asia/Dubai",
+                  weekday: "short",
+                }).format(new Date(`${option.value}T12:00:00`));
+                const dayNumber = new Intl.DateTimeFormat("en-AE", {
+                  timeZone: "Asia/Dubai",
+                  day: "numeric",
+                  month: "short",
+                }).format(new Date(`${option.value}T12:00:00`));
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setDay(option.value)}
+                    aria-pressed={active}
+                    className={`min-w-[4.5rem] shrink-0 rounded-lg px-3 py-1.5 text-center transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-border/60 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-semibold uppercase leading-tight">
+                      {weekday}
+                    </span>
+                    <span className="block text-xs leading-tight">{dayNumber}</span>
+                  </button>
+                );
+              })}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -225,6 +332,35 @@ function MovieShowtimesPage() {
                 onClick={() =>
                   setLanguage((current) => {
                     const list = ["all", ...languages];
+                    const index = list.indexOf(current);
+                    return list[(index + 1) % list.length] ?? "all";
+                  })
+                }
+              />
+            ) : null}
+            {/* Only offered when the film actually plays at more than one chain
+                or city — a filter with a single option is a control that cannot
+                do anything. */}
+            {chains.length > 1 ? (
+              <FilterChip
+                label={chain === "all" ? "All cinemas" : (CINEMA_LABELS[chain] ?? chain)}
+                active={chain !== "all"}
+                onClick={() =>
+                  setChain((current) => {
+                    const list = ["all", ...chains];
+                    const index = list.indexOf(current);
+                    return list[(index + 1) % list.length] ?? "all";
+                  })
+                }
+              />
+            ) : null}
+            {cities.length > 1 ? (
+              <FilterChip
+                label={cityFilter === "all" ? "All cities" : cityFilter}
+                active={cityFilter !== "all"}
+                onClick={() =>
+                  setCityFilter((current) => {
+                    const list = ["all", ...cities];
                     const index = list.indexOf(current);
                     return list[(index + 1) % list.length] ?? "all";
                   })

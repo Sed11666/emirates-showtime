@@ -209,7 +209,8 @@ function VenuePage() {
                       </Link>
                     </h2>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {[film.genre, film.language, film.rating].filter(Boolean).join(" · ")}
+                      {/* Genre and certificate only, matching /movie/$slug. */}
+                      {[film.genre, film.rating].filter(Boolean).join(" · ")}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2">

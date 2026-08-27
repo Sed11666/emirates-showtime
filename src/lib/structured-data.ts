@@ -53,6 +53,10 @@ export function movieSchema(film: CinemaFilm, slug: string): Record<string, unkn
     inLanguage: film.language ?? undefined,
     contentRating: film.rating ?? undefined,
     duration: isoDuration(film.duration_mins),
+    // director and actor are held back with the visible credits on /movie/$slug.
+    // Google asks that structured data describe what the page actually shows, so
+    // marking up names we render nowhere would be the kind of mismatch that gets
+    // a rich result suppressed. Restore both alongside the visible block.
   });
 }
 

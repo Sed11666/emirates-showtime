@@ -285,7 +285,23 @@ export type MovieMeta = {
   rating: string | null;
   durationMins: number | null;
   synopsis: string | null;
+  /**
+   * From the page's Movie JSON-LD, which carries `director` as a Person node.
+   * Their markup repeats it, but the structured version is the one that will
+   * survive a redesign.
+   */
+  director: string | null;
+  /**
+   * Cast is markup-only — their JSON-LD has no `actor` — so this reads the
+   * "Cast: A, B, C" line. Capped at the billed few: a full list is a credits
+   * page, and the film page shows a line, not a scroll.
+   */
+  cast: string[];
 };
+
+/** "Cast:</strong> Jason Statham, Annabelle Wallis" -> the names. */
+const CAST_RX = /Cast:\s*<\/(?:strong|b)>\s*([^<]{2,300})/i;
+const MAX_CAST = 4;
 
 const LD_RX = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g;
 const META_DESC_RX = /<meta name="description" content="([^"]*)"/i;
@@ -341,7 +357,41 @@ export function parseMovieMeta(html: string): MovieMeta {
     durationMins: durationMins > 0 ? durationMins : null,
     synopsis:
       typeof synopsis === "string" && synopsis.trim() ? decodeEntities(synopsis).trim() : null,
+    director: parseDirector(ld),
+    cast: parseCast(html),
   };
+}
+
+/** JSON-LD `director` is a Person node, or occasionally a list of them. */
+function parseDirector(ld: Record<string, unknown> | null): string | null {
+  const raw = ld?.["director"];
+  const nameOf = (value: unknown): string | null => {
+    if (typeof value === "string") return value.trim() || null;
+    if (value && typeof value === "object") {
+      const name = (value as Record<string, unknown>)["name"];
+      return typeof name === "string" && name.trim() ? name.trim() : null;
+    }
+    return null;
+  };
+  const names = (Array.isArray(raw) ? raw : [raw]).map(nameOf).filter(Boolean) as string[];
+  return names.length > 0 ? decodeEntities(names.join(", ")) : null;
+}
+
+function parseCast(html: string): string[] {
+  const line = CAST_RX.exec(html)?.[1];
+  if (!line) return [];
+  return decodeEntities(line)
+    .split(/\s*,\s*/)
+    .map((name) => name.trim())
+    // Guards against a stray sentence being split on its commas. Bounded by word
+    // count rather than by punctuation: initials and suffixes are normal in the
+    // Tamil, Telugu and Hindi titles that make up much of this catalogue, so a
+    // full-stop rule would quietly drop "S. S. Rajamouli" and "Robert Downey Jr."
+    .filter(
+      (name) =>
+        name.length > 1 && name.length <= 60 && name.split(/\s+/).length <= 5,
+    )
+    .slice(0, MAX_CAST);
 }
 
 /** Pure: movie-page HTML -> flat screening rows. No network; unit-testable. */
@@ -688,6 +738,8 @@ async function runScrape(request: Request) {
               rating: meta.rating,
               duration_mins: meta.durationMins,
               synopsis: meta.synopsis,
+              director: meta.director,
+              cast_names: meta.cast,
               is_active: true,
               last_seen_at: runStartedAt,
             };

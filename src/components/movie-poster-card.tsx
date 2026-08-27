@@ -5,7 +5,7 @@
  * badges (2D/3D/IMAX/4DX) are shown on the poster so a de-duplicated title
  * still communicates where/how it is playing. Clicking opens /movie/$slug.
  */
-import { Clock, Star, Ticket } from "lucide-react";
+import { Star, Ticket } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { MergedFilm } from "@/lib/cinemas";
 import { filmFormats, filmSlug } from "@/lib/cinemas";
@@ -17,7 +17,6 @@ export type PosterItem = {
   poster: string | null;
   meta: string[];
   rating: string | null;
-  duration: number | null;
   /** Screen formats (IMAX, 4DX, 3D, 2D…) shown on the poster. */
   formats: string[];
   tag: string | null;
@@ -28,9 +27,11 @@ export function filmToPoster(film: MergedFilm): PosterItem {
     id: film.id,
     title: film.title,
     poster: film.poster_url,
-    meta: [film.genre, film.language, film.city].filter(Boolean) as string[],
+    // Genre and language. City is deliberately absent: a film row exists per
+    // city, so the card would name whichever one happened to merge first and
+    // read as though that were the only place it plays.
+    meta: [film.genre, film.language].filter(Boolean) as string[],
     rating: film.rating,
-    duration: film.duration_mins,
     formats: film.screenFormats ?? filmFormats(film),
     tag: null,
   };
@@ -62,9 +63,13 @@ export function MoviePosterCard({
       : "w-[10.5rem] sm:w-[12rem]";
   return (
     <Link
-      to="/cinemas"
-      search={{ movie: filmSlug(item.title) }}
-      aria-label={`${item.title} — see showtimes in the Cinemas section`}
+      // The film's own page, not the browse board scoped to it. Someone who
+      // clicked a poster has chosen a film and wants to know what it is and
+      // when they can see it — the Cinemas board answers "what's on", which is
+      // the question they already stopped asking.
+      to="/movie/$slug"
+      params={{ slug: filmSlug(item.title) }}
+      aria-label={`${item.title} — synopsis and showtimes`}
       className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:gold-glow ${width} ${className}`}
     >
 
@@ -104,15 +109,12 @@ export function MoviePosterCard({
 
           <div className="grid grid-rows-[0fr] transition-all duration-500 group-hover:grid-rows-[1fr]">
             <div className="overflow-hidden">
+              {/* Certificate only — runtime was dropped from movie meta across
+                  the site. */}
               <div className="flex items-center gap-3 pt-2 text-[11px] text-muted-foreground">
                 {item.rating ? (
                   <span className="inline-flex items-center gap-1 text-gold">
                     <Star className="size-3 fill-gold text-gold" /> {item.rating}
-                  </span>
-                ) : null}
-                {item.duration ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="size-3 text-primary" /> {item.duration}m
                   </span>
                 ) : null}
               </div>
