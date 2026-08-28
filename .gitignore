@@ -16,6 +16,13 @@ dist-ssr
 .nitro
 *.local
 
+# Local environment. NEVER commit these: this repo is public, and a
+# service-role key or SCRAPER_INGEST_TOKEN landing here would be published.
+# See .env.example for what the file needs to contain.
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
