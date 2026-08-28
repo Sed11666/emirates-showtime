@@ -45,6 +45,27 @@ There is a second repo, **`Sed11666/ShowSouk`** (public) — an earlier standalo
 Reel scraper on GitHub Pages. It is **not used by the live site**. Ignore it
 unless you deliberately revisit it.
 
+### Files worth knowing before you change anything
+
+| File | Why it matters |
+|---|---|
+| `src/routes/api/public/hooks/scrape-aggregator.ts` | the scraper. All-or-nothing page writes, self-pacing, 3-day walk |
+| `src/routes/api/public/hooks/resolve-posters.ts` | TMDB artwork — posters *and* backdrops |
+| `src/lib/reel-films.ts` | Reel's own feed and the title matcher (§4b) |
+| `src/lib/cinemas.ts` | the read layer. `titleKey`/`filmSlug` live here |
+| `src/lib/venues.ts` | 64 screens with coordinates, `venueSlug`, `bookingTarget`, the UAE outline |
+| `src/lib/search.ts` | site search. Results carry their own route + params |
+| `src/components/venue-showtimes.tsx` | **the** showtime chip. Shared by five pages |
+| `src/components/filter-row.tsx` | **the** filter dropdown. Shared by /cinemas and /movie |
+| `src/components/theme-menu.tsx` | Appearance rows, shared by both header states |
+| `src/styles.css` | both palettes and every effect token (§10c) |
+| `scripts/*.mts` | read-only health checks (§12) |
+
+The three shared components are shared **because their copies drifted before**.
+A fix applied to one copy and not the others is how `/movie/$slug` ended up
+silently missing the dashed honesty marker and the film-level fallback. If you
+find yourself pasting a chip or a dropdown, import it instead.
+
 ### Important hosting history
 The site used to run on Lovable hosting. It was migrated to Vercel. The Lovable
 **published deployment is frozen on an old build** and cannot be updated (no
@@ -151,6 +172,53 @@ else.
 
 **Known risk:** they can change their markup or block us, and we'd lose all
 seven chains at once. Accepted knowingly.
+
+---
+
+## 4b. Reel comes from Reel (added 2026-08-28)
+
+Reel is the one chain not sourced from cinemauae. `src/lib/reel-films.ts` reads
+Reel's own public Vista feeds (§8.12) and the aggregator overrides Reel rows
+with them at the end of a run.
+
+**What it replaces:** showtimes, venues and screen types for a matched Reel row,
+plus a film-level `booking_url` of the form
+`reelcinemas.com/en-ae/movie-details/{filmId}/{slug}`. That URL shape is their
+own — read out of their bundle, where `generateMovieDetailUrl` builds exactly
+that.
+
+**Film-level is the ceiling.** Their route table has no per-session route and
+seat selection is in-app state. cinemaseats.net holds the session ids and still
+redirects to the same film page. Do not reopen this expecting a per-showtime
+deep link.
+
+**Title matching is deliberately conservative** — a wrong id opens *another
+film's* booking page, which is worse than the generic page we fall back to.
+Exact match, then one title being a prefix of the other (`Khalifa` /
+`Khalifa: The Bloodline`), then an edit or two for spelling drift (`Bethlahem` /
+`Bethlehem`). Every rule needs a single unambiguous candidate and languages that
+do not contradict — that last part is what keeps the three `Toxic` entries,
+which are three separate film ids, apart. 27 of 31 rows match; the rest keep the
+chain showtimes page.
+
+**Three guards that must stay:**
+- An empty or failed feed fetch changes nothing. A feed that cannot be read must
+  never blank a chain.
+- Showtimes are replaced only when the feed actually has screenings for that
+  film in the window.
+- Non-UAE Reel branches in the same feed (Granada Mall, Marassi Bahrain) are
+  excluded by venue id, or they surface under a UAE city.
+
+**Honest scoping:** at a 3-day window this is close to a wash on volume — the
+feed gave 197 and 200 screenings for the next two days where cinemauae gave 202
+and 201, the deficit being sessions Reel marks `AllowTicketSales:false`. The
+feed carries **16 days**; the upside is all in days 4–16, which the site does
+not show. What it does buy is a first-hand source, immediate removal of
+withdrawn sessions, and real screen names (it fixed a live data fault where
+`Platinum` and `Platinum Suites` were two labels for one product).
+
+`npx tsx scripts/check-reel-feed.mts` prints stored-vs-feed counts per day.
+`npx tsx scripts/check-reel-links.mts` prints deep-link coverage.
 
 ---
 
@@ -323,6 +391,83 @@ first, and check `net._http_response`.
 It exists in **three places** that must stay in sync: the aggregator, the
 cinemas scraper, and `src/lib/cinemas.ts`.
 
+**11. `jsonb_to_recordset` drops unknown keys silently. This has bitten twice.**
+`ingest_cinema_films` declares an explicit column list. A key the scraper sends
+that is not in that list is discarded with **no error anywhere** — the run
+reports `ok:true` and the upsert count is unchanged.
+
+- `imdb_id` was sent on every run for months and dropped every time. Only 13 of
+  46 titles had an id, which starved `resolve-posters` (it matches on that
+  column) down to ~3% of the catalogue. Nothing looked broken.
+- `director`/`cast_names` would have done the same had the function not been
+  updated in the same change.
+
+**Before adding a field to the ingest payload, add it to the function.** Dump the
+current definition first (`pg_get_functiondef`) and edit that — do not write one
+from memory. The same applies to `set_posters`.
+
+**12. Reel publishes its whole catalogue as public JSON. Do not trust the old
+"401" note.** An earlier version of this file recorded Reel deep links as
+impossible because `apiuae.reelcinemas.com` answers 401. That was the wrong
+host. The site is a Vista front end and its data sits unauthenticated in Google
+Cloud Storage:
+
+```
+https://storage.googleapis.com/eeg-prod-reelcinema-sb/web/vista/json/Films.json
+https://storage.googleapis.com/eeg-prod-reelcinema-sb/web/vista/json/Sessions.json
+https://storage.googleapis.com/eeg-prod-reelcinema-sb/web/vista/json/Cinemas.json
+```
+
+The generalisable lesson: **a note in this file is not evidence.** Re-check a
+claim before building on it, especially one that says something is impossible.
+This is the second time that has cost real work — the first was the Cine Royal
+screen-metadata no-op in §11.1.
+
+**13. A chain-filtered scrape must never write the page cache.**
+`?chains=reel` applies its filter *before* `pageKeys` is collected, so a filtered
+run would store the page's content hash next to only that chain's film keys. A
+later full run then matches the hash, treats the page as unchanged, skips the
+ingest and touches `last_seen_at` for one chain — leaving every other chain on
+that page unrefreshed and, after 48h, retired. Guarded now: a filtered run
+ignores the cache in both directions. Related to gotcha 2.
+
+**14. The scrape offset comes from the clock, not a stored cursor.**
+`autoOffset = floor(now / PACE_WINDOW_MS) * PAGES_PER_RUN`. Triggering the
+endpoint repeatedly inside one 15-minute window re-walks the **same pages** —
+hammering cinemauae for no extra coverage. Pass `?offset=` explicitly if you
+need to move, or wait for the next tick.
+
+**15. An alpha caps the contrast a colour can reach.**
+On a near-white surface, `text-muted-foreground/70` measured 2.35:1 — and
+darkening the token could not fix it, because *even pure black at 70% alpha
+plateaus at 2.84:1*. If small text on a light ground fails contrast and it
+carries an alpha, the alpha is the bug. Use a solid colour.
+
+**16. A location outside the UAE must not be used for distances.**
+`useUserLocation` only honours a granted fix if `withinServiceArea()` accepts it
+— including a cached one, or someone who allowed location abroad keeps being
+measured from there for the whole TTL. Outside, the visitor gets city-centre
+ordering and the label says which city.
+
+The test is **point-in-polygon against a coarse UAE outline**, and the two
+simpler rules that look sufficient both measurably fail — do not "simplify" it
+back:
+- *Distance from the nearest screen:* Sohar in Oman is 92 km from a UAE cinema
+  while Liwa, inside the UAE, is 153 km. No threshold separates them.
+- *Bounding box:* the UAE reaches ~51.58°E and Doha sits at 51.53°E. That is a
+  ~2 km margin of longitude — a rounding error away from calling Qatar local.
+
+Border towns on the Omani side can fall inside the outline. That is the right
+answer for what it decides: Buraimi is a few kilometres from Al Ain's screens and
+those visitors really do drive to them.
+
+**17. Posters are portrait; heroes are landscape.**
+The hero was rendering `poster_url`: a 310×459 image upscaled ~6× into a
+~1876×700 frame and cropped to a quarter of its height. The same file looks
+sharp on the Now Showing cards because there it is *downscaled* 0.54×. If hero
+artwork ever looks soft again, check which field it is reading before touching
+any CSS — `backdrop_url` is the 16:9 one.
+
 ---
 
 ## 9. Product rules
@@ -388,16 +533,22 @@ cinemas scraper, and `src/lib/cinemas.ts`.
 
 ## 10. Current state
 
-Measured against the live database on **2026-08-24**. These move daily; re-run
+Measured against the live database on **2026-08-28**. These move daily; re-run
 the queries in §12 rather than trusting the numbers.
 
 ```
 7 chains: vox, star, novo, roxy, reel, cineroyal, cinemacity
-435 active film rows · 58 distinct titles · 7,637 screenings · 6,768 with a link
-3 days: 24 Aug 2,892 · 25 Aug 2,694 · 26 Aug 1,917
+501 active film rows · 46 distinct titles · 9,548 screenings · 9,044 with a link
+3 days: 28 Aug 3,040 · 29 Aug 3,210 · 30 Aug 3,129
 8 cities · 63 distinct screen names (64 in the geo list)
-posters: 43 of 435 rows on image.tmdb.org; 147 rows carry an imdb_id
+artwork: 454 rows have a backdrop_url · 90 posters on image.tmdb.org
+metadata: 487 rows carry an imdb_id · 446 a director · 489 a cast
+reel: 27 of 31 rows deep-link to /movie-details
 ```
+
+The imdb_id figure moved from 147 to 487 on 2026-08-28. That was not scraping —
+the ids were already sitting in the poster filenames and nothing was reading
+them (§8.11).
 
 Screenings roughly doubled on 2026-08-24 when the scrape went from one day to
 three. Coverage was still filling in when these were taken — a full pass is
@@ -427,16 +578,17 @@ as a regression.
 screenings share a handful of URLs. The 4 counted "exact" are films with a single
 screening, where the film URL is unique by accident — not partial success.
 
-**Reel gets zero booking links, and that is the source's doing, not a parser
-bug.** cinemauae emits `booklink=0` — a literal placeholder for "no link" — on
-every Reel chip, and Reel is the **only** chain it does that for. Sampled across
-four pages: VOX 43 real links, Star 22, Cinemacity 14, Roxy 10, Cine Royal 8,
-Novo 1, and Reel 0 real against 10 zeros. `unwrapBooking` correctly rejects
-`"0"`, so every Reel screening falls through to the chain URL. That fallback is
-`reelcinemas.com/en-ae/showtime`, their showtimes chooser, not the marketing
-homepage (`35f0edb`). Reel's own film pages are `/movie-details/{internalId}/{slug}`
-and the id is unreachable — dropping it renders an empty page, their sitemap
-lists no film URLs, and `apiuae.reelcinemas.com` answers 401 on every path.
+**Reel no longer comes from cinemauae at all — see §4b.** cinemauae emits
+`booklink=0` on every Reel chip (the only chain it does that for), so Reel had
+zero per-screening links and fell through to the chain URL. Since 2026-08-28
+Reel's showtimes, venues, screen types and film-level booking links come from
+Reel's own public feed instead, and 27 of 31 rows deep-link to the film's own
+booking page.
+
+The claim that used to sit here — that Reel's `/movie-details/{id}/{slug}` id was
+unreachable because `apiuae.reelcinemas.com` answers 401 — **was wrong**, and it
+was wrong in the expensive direction: it read as settled and stopped anyone
+looking for months. That was the wrong host. See §8.12.
 
 **Poster caveat:** only rows carrying an `imdb_id` can be resolved, and most do
 not have one. Every eligible row gets resolved by `resolve-posters-daily`; the
@@ -562,6 +714,46 @@ icon is not an error**: the site has no AMP pages and never will.
 
 ---
 
+## 10c. Theming — light mode (added 2026-08-28)
+
+`:root` in `src/styles.css` is the dark palette and the default. `.light` holds
+the light one. `LIGHT_PALETTE_READY` in `useTheme.tsx` is the switch that hides
+Light and System if the palette ever needs pulling.
+
+**The one decision the palette turns on: gold changes job, not hue.** On the
+dark canvas `--gold` measures 10.6:1 and is an excellent ink. The identical
+colour on white is **1.9:1** — invisible, not weak — and has to fall to about
+L 0.55 before it carries body text. So light mode redefines `--gold` to a deeper
+antique gold and flips `--gold-foreground` to near-white. That is cheaper than a
+second token because the codebase has 54 `text-gold` and 29 `border-gold` uses
+needing it darker against only 16 that fill with it. No component changed.
+
+Three supporting rules, all of which will look wrong if undone:
+- **The page is warm ivory, never `#fff`.** White throws the gold grey.
+- **Glow is a dark-mode idiom.** `gold-glow` becomes a ring plus honest
+  elevation; shadows go warm-grey, because black shadows on ivory read as holes.
+- **Film grain is `multiply 0.035`, not `overlay 0.12`.** At the dark-mode value
+  it looks like dirt on paper.
+
+**`--primary-ink` is not the same as `--primary`.** `--primary` is a *fill*
+colour. Used as 10px text on a dark chip it measured 2.07:1 — 273 failures on
+`/cinemas` alone, long predating light mode. `--primary-ink` is the readable
+version (L 0.66 dark / 0.42 light). If you need emerald *text*, use the ink.
+
+**The hero scrim is theme-aware and directional.** `--hero-scrim` and
+`--hero-vignette` protect the left text column and fall away by 80% so the
+poster is visible. A full-frame wash makes the title readable and the image
+invisible — that was the first attempt. `0.88` alpha in the text column is set
+by the gold chip text, which needs more help than the title does.
+
+**Verifying a palette change:** contrast maths beats eyeballing, and the
+codebase has already shipped two colours that measured far worse than they
+looked. Sweep every text node against its composited background rather than
+trusting spot checks — the last sweep covered ~1,000 elements per page across
+both themes and found 273 pre-existing failures nobody had noticed.
+
+---
+
 ## 11. Outstanding work
 
 1. **Cine Royal deep links — CLOSED 2026-08-19: not possible. Do not reopen.**
@@ -670,9 +862,11 @@ icon is not an error**: the site has no AMP pages and never will.
    read at runtime from Supabase settings, so enabling phone auth with an SMS
    provider makes the Mobile tab appear with **no redeploy** (`3fe7866`).
 
-8. **Reel and Cine Royal will never get exact links.** Reel publishes none; Cine
-   Royal cannot (§11.1). Do not spend time here — the honesty markers from
-   `696fe64` are the answer, not a better parser.
+8. **Cine Royal will never get exact links; Reel now gets film-level ones.**
+   Cine Royal cannot (§11.1) — do not spend time there. Reel was in the same
+   bucket until 2026-08-28 and is not any more: it now deep-links to the film's
+   own booking page (§4b). Per-*screening* remains impossible for both, and the
+   honesty markers from `696fe64` are still the answer for that.
 
 9. **Revoke the old GitHub token** that was pasted into a previous chat.
 
@@ -689,22 +883,29 @@ icon is not an error**: the site has no AMP pages and never will.
     differing count. Data outcomes are correct; the number is not. Likely counts
     matched rather than modified rows. Unverifiable without service-role access.
 
-12. **`npm run build` does not typecheck, and `tsc` still fails.** The build
+12. **`npm run build` does not typecheck. `tsc` itself is now clean.** The build
     script is `vite build`, which strips types without checking them, so Vercel
-    deploys green while `npx tsc --noEmit` reports **3 errors**, all the same
-    cause: `routes/index.tsx` 80, 98 and 99, where `notify_subscribers` is
-    missing from the generated `src/integrations/supabase/types.ts` and so
-    resolves to `never`. The table exists in the live database; the types file
-    is stale and must be **regenerated, never hand-edited**.
+    deploys green regardless. The 3 `notify_subscribers` errors were cleared on
+    2026-08-27 when the other machine regenerated
+    `src/integrations/supabase/types.ts`; `npx tsc --noEmit` now reports zero.
 
-    A fourth error was a real bug rather than stale types — `/movie/$slug` passed
-    `requestPrecise` straight to `onClick`, handing a `MouseEvent` to an
-    `onSuccess` parameter — and is fixed in `f453d80`.
+    **Add `tsc --noEmit` to CI — this is still open and still worth doing.** The
+    `requestPrecise`/`MouseEvent` bug (`f453d80`) sat in a typed codebase, was
+    reported by the compiler the whole time, and shipped anyway because nothing
+    in the pipeline runs the check.
 
-    **Add `tsc --noEmit` to CI.** That bug sat in a typed codebase, was reported
-    by the compiler the whole time, and shipped anyway because nothing in the
-    pipeline runs the check. The strictness this repo relies on is not currently
-    being collected.
+    **`scripts/` is outside the tsconfig include**, so those files are only
+    checked by running them. Renaming `fetchReelFilms` → `fetchReelFeed` broke
+    `check-reel-links.mts` and `tsc` said nothing. Run a script after touching
+    what it imports.
+
+    Two notes on hand-editing the generated types file. It says "regenerate,
+    never hand-edit", and that is right in general — but `director`,
+    `cast_names` and `backdrop_url` were added by hand this session because
+    regenerating needs Supabase CLI auth that is not set up on this machine.
+    They are correct and `tsc` is clean, but the file is now part-generated and
+    part-hand-written, and a future regeneration will overwrite the hand edits.
+    If the columns vanish from the types after someone regenerates, that is why.
 
 13. **Vercel Web Analytics reads low by design.** It reports only from production
     and its `/_vercel/insights` request is blocked by ad blockers. Vercel's
@@ -786,6 +987,48 @@ icon is not an error**: the site has no AMP pages and never will.
 - ~~**Novo deep links**~~ — **done.** Novo now publishes real per-screening
   session URLs (`uae.novocinemas.com/seat-selection/cinema/9/session/342071`):
   189 screenings, 189 distinct URLs. Roxy gained them too.
+- ~~**No light palette**~~ — **done 2026-08-28.** See §10c.
+- ~~**Reel deep links impossible**~~ — **wrong twice over.** Film-level links
+  ship, and Reel's showtimes now come from Reel. See §4b and §8.12.
+
+### Opened 2026-08-28
+
+21. **Director and cast are stored but rendered nowhere.** `cinema_films.director`
+    (446 rows) and `.cast_names` (489) are populated and the scraper keeps them
+    fresh. They were pulled from the movie page because the presentation needed
+    more design work than the spec line got. Turning them back on is a render
+    change — but put them back in the `Movie` JSON-LD at the same time, not
+    before: Google asks that structured data describe what the page shows, and
+    `movieSchema` currently omits `director`/`actor` deliberately for that reason.
+
+22. **Four titles have no backdrop and one has no recoverable IMDb id.**
+    `Shark Attack` ships `SharkAttackIMDB.jpg`, so no id can be derived and it
+    keeps a hotlinked poster. `Harry Potter & The Philosopher's Stone`, `Aks Sir`
+    and `El Set Lamma` matched no TMDB record. All five fall back to the poster
+    in the hero, which is correct behaviour, not a bug to chase.
+
+23. **The Reel feed carries 16 days; the site shows 3.** ~214 sessions a day sit
+    unused for days 4–16. Surfacing them needs a UI answer for a date strip where
+    only one chain has results — days that would read as "the other chains have
+    closed" rather than "we do not have their data". Deliberately deferred.
+
+24. **`.env` is committed and the repo is public.** It currently holds only
+    publishable values (`SUPABASE_URL`, `SUPABASE_PROJECT_ID`,
+    `SUPABASE_PUBLISHABLE_KEY` and their `VITE_` twins) which already ship in the
+    browser bundle, so nothing is leaked today. But the pattern is a loaded gun:
+    if a service-role key or `SCRAPER_INGEST_TOKEN` ever lands in that file it
+    goes straight into a public repo. Those live in Vercel and must stay there.
+
+25. **`SCRAPER_INGEST_TOKEN` is unreachable from a dev machine.** It exists only
+    in Vercel and the CLI here is logged out, so the scraper cannot be run
+    locally against live data. Workaround used twice this session: change code,
+    push, then trigger the deployed endpoint — which means **waiting for the
+    deploy before triggering**, or the old code runs. Verify the deploy landed
+    (compare an asset hash) rather than assuming.
+
+26. **`set_posters` and `ingest_cinema_films` bodies still live only in the
+    database.** Extends item 10. Both were edited again this session; the current
+    definitions are in the live DB and in scratch SQL files, not in the repo.
 - ~~**TMDB posters**~~ — **done, with a ceiling.** Every row that has an
   `imdb_id` is resolved; the rest have none and never can be. See §10.
 - ~~**`resolve-posters` unscheduled**~~ — **scheduled 2026-08-22** as
@@ -802,6 +1045,21 @@ icon is not an error**: the site has no AMP pages and never will.
 ---
 
 ## 12. How to verify things are healthy
+
+Three checked-in scripts, all read-only. Run them from the repo root:
+
+```bash
+npx tsx scripts/check-service-area.mts   # UAE outline vs 26 known places + every venue
+npx tsx scripts/check-reel-feed.mts      # stored vs Reel's own feed, per day
+npx tsx scripts/check-reel-links.mts     # Reel deep-link coverage and every URL
+```
+
+`check-service-area` is the one to run **after adding a venue**. The outline
+decides whether a visitor's own position is used for distances, and a screen
+outside it would quietly report everyone as being abroad — a silent failure with
+no error anywhere. The first outline drawn traced the coastline *through* the
+seafront cinemas and put thirteen real screens out at sea; the venue sweep at
+the bottom of that script is what caught it.
 
 ```sql
 -- real HTTP outcomes (cron only reports dispatch, not result)
