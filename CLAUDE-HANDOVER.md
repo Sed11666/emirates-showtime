@@ -227,7 +227,9 @@ withdrawn sessions, and real screen names (it fixed a live data fault where
 Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 
 ### Tables
-- **`cinema_films`** — one row per `(cinema, title_key, city)`. That triple is a
+- **`cinema_films`** — one row per `(cinema, title_key, city)`. **Its only
+  SELECT policy is `USING (is_active = true)`, so the publishable key can never
+  see a retired row** — see gotcha 17 before concluding rows have vanished. That triple is a
   UNIQUE constraint and the upsert conflict target. `showtimes` is JSONB:
   `[{date, time, venue, format, booking_url}]`. `is_active` marks currently
   showing. Also `poster_url`, `genre`, `language`, `rating`, `duration_mins`,
@@ -461,7 +463,26 @@ Border towns on the Omani side can fall inside the outline. That is the right
 answer for what it decides: Buraimi is a few kilometres from Al Ain's screens and
 those visitors really do drive to them.
 
-**17. Posters are portrait; heroes are landscape.**
+**17. The publishable key cannot see retired rows, and that looks like data loss.**
+`cinema_films` has exactly one SELECT policy:
+
+```sql
+CREATE POLICY "Active cinema films are publicly viewable"
+ON public.cinema_films FOR SELECT USING (is_active = true);
+```
+
+So with the anon key, `?is_active=eq.false` returns **0** and an unfiltered count
+returns only the active rows — whichever way you ask. Retirement is working
+normally and the rows are still there; they are filtered out before your query
+runs. This was misread once already as "retired rows are being deleted rather
+than flagged", from exactly those two queries.
+
+Auditing retirement needs service-role access, which is not available on a dev
+machine. Until then, judge it by whether the *active* count and the stalest
+rows look sane — and remember that a film whose last screening was yesterday
+*should* be retired. That is the feature working.
+
+**18. Posters are portrait; heroes are landscape.**
 The hero was rendering `poster_url`: a 310×459 image upscaled ~6× into a
 ~1876×700 frame and cropped to a quarter of its height. The same file looks
 sharp on the Now Showing cards because there it is *downscaled* 0.54×. If hero
