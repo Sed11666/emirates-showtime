@@ -265,8 +265,14 @@ function MovieShowtimesPage() {
                 {/* Specs carry no visible label: "Action" is self-evidently a
                     genre and "95 mins" a runtime, so printing the word doubles
                     the text for nothing and makes the label compete with the
-                    value. The names stay for screen readers. */}
-                <dl className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.8125rem] text-muted-foreground">
+                    value. The names stay for screen readers.
+
+                    Set apart from the synopsis directly above, which is the
+                    same muted colour: at 0.8125rem against the synopsis's
+                    0.875rem the facts were literally quieter than the prose
+                    summarising them. Now a touch larger, semibold and in full
+                    foreground — three small moves rather than one loud one. */}
+                <dl className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm font-semibold text-foreground sm:text-[0.9375rem]">
                   {(
                     [
                       ["Genre", primary.genre],
@@ -277,8 +283,13 @@ function MovieShowtimesPage() {
                     .filter((entry): entry is [string, string] => Boolean(entry[1]))
                     .map(([label, value], index) => (
                       <div key={label} className="flex items-center gap-2.5">
+                        {/* Separator stays muted and unweighted: it should not
+                            gain the emphasis the values just did. */}
                         {index > 0 ? (
-                          <span aria-hidden="true" className="text-muted-foreground/35">
+                          <span
+                            aria-hidden="true"
+                            className="font-normal text-muted-foreground/50"
+                          >
                             &middot;
                           </span>
                         ) : null}
