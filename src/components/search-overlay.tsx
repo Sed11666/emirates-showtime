@@ -41,22 +41,11 @@ export const CATEGORY_META = {
 } as const;
 
 export function ResultRow({ result, onNavigate }: { result: SearchResult; onNavigate?: () => void }) {
-  const linkProps =
-    result.to === "/listing/$id"
-      ? ({ to: "/listing/$id", params: result.params as { id: string } } as const)
-      : result.to === "/movie/$slug"
-        ? ({ to: "/movie/$slug", params: result.params as { slug: string } } as const)
-        : result.to === "/cinemas"
-          ? ({ to: "/cinemas" } as const)
-          : ({ to: "/events" } as const);
+  const rowClass =
+    "flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition-colors hover:border-gold/40 hover:bg-accent/50";
 
-
-  return (
-    <Link
-      {...linkProps}
-      onClick={onNavigate}
-      className="flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition-colors hover:border-gold/40 hover:bg-accent/50"
-    >
+  const body = (
+    <>
       <div className="h-16 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
         {result.imageUrl ? (
           <img
@@ -78,6 +67,62 @@ export function ResultRow({ result, onNavigate }: { result: SearchResult; onNavi
           <p className="truncate text-xs text-muted-foreground">{result.meta}</p>
         ) : null}
       </div>
+    </>
+  );
+
+  /**
+   * One Link per route rather than a spread union.
+   *
+   * The union form could not survive exactOptionalPropertyTypes once routes
+   * with params and routes without were mixed — and it was also where the bug
+   * lived: the cinema branch returned a bare { to: "/cinemas" } and silently
+   * discarded params identifying the exact screen, so every cinema result
+   * opened the unfiltered board. Written out, a branch cannot forget them.
+   */
+  const shared = { onClick: onNavigate, className: rowClass };
+
+  if (result.to === "/listing/$id") {
+    return (
+      <Link to="/listing/$id" params={result.params as { id: string }} {...shared}>
+        {body}
+      </Link>
+    );
+  }
+  if (result.to === "/movie/$slug") {
+    return (
+      <Link to="/movie/$slug" params={result.params as { slug: string }} {...shared}>
+        {body}
+      </Link>
+    );
+  }
+  if (result.to === "/cinemas/$chain") {
+    return (
+      <Link to="/cinemas/$chain" params={result.params as { chain: string }} {...shared}>
+        {body}
+      </Link>
+    );
+  }
+  if (result.to === "/cinemas/$chain/$venue") {
+    return (
+      <Link
+        to="/cinemas/$chain/$venue"
+        params={result.params as { chain: string; venue: string }}
+        {...shared}
+      >
+        {body}
+      </Link>
+    );
+  }
+  if (result.to === "/cinemas") {
+    return (
+      <Link to="/cinemas" {...shared}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <Link to="/events" {...shared}>
+      {body}
     </Link>
   );
 }

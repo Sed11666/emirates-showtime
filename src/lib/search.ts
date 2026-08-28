@@ -10,8 +10,8 @@
  * routes/search.tsx (full /search?q= page).
  */
 import { supabase } from "@/integrations/supabase/client";
-import { CINEMA_LABELS, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
-import { VENUES } from "@/lib/venues";
+import { CINEMAS, CINEMA_LABELS, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
+import { VENUES, venueSlug } from "@/lib/venues";
 
 export type SearchCategory = "movies" | "events" | "cinemas";
 
@@ -22,10 +22,22 @@ export type SearchResult = {
   subtitle: string;
   meta: string;
   imageUrl: string | null;
-  /** Route to open when the result is clicked. */
-  to: "/cinemas" | "/events" | "/listing/$id" | "/movie/$slug";
-  params?: { id: string } | { slug: string };
-
+  /**
+   * Route to open when the result is clicked.
+   *
+   * Cinema results used to be a bare "/cinemas" with no params, so searching a
+   * chain returned twenty rows that all opened the same unfiltered board — the
+   * result told you the cinema existed and then refused to take you to it.
+   * They now carry the chain, and a venue result its screen too.
+   */
+  to:
+    | "/cinemas"
+    | "/cinemas/$chain"
+    | "/cinemas/$chain/$venue"
+    | "/events"
+    | "/listing/$id"
+    | "/movie/$slug";
+  params?: { id: string } | { slug: string } | { chain: string } | { chain: string; venue: string };
 };
 
 export type SearchResults = {
@@ -138,13 +150,38 @@ export async function searchShowSouk(rawQuery: string): Promise<SearchResults> {
     }
   }
 
-  const cinemas: SearchResult[] = VENUES.filter((venue) => {
+  /**
+   * Chains first, then individual screens.
+   *
+   * Typing "vox" used to return twenty VOX venues and nothing that meant "VOX",
+   * which is almost certainly what was being asked for. A matching chain now
+   * leads with one row that opens its whole board; the screens follow for
+   * anyone who wanted a particular one.
+   */
+  const chainMatches = CINEMAS.filter(
+    (c) => c.label.toLowerCase().includes(term) || c.key.includes(term),
+  );
+
+  const chainResults: SearchResult[] = chainMatches.map((chain) => ({
+    id: `chain-${chain.key}`,
+    category: "cinemas" as const,
+    title: chain.label,
+    subtitle: "All showtimes",
+    meta: `${VENUES.filter((v) => v.cinema === chain.key).length} screens`,
+    imageUrl: null,
+    to: "/cinemas/$chain" as const,
+    params: { chain: chain.key },
+  }));
+
+  const venueResults: SearchResult[] = VENUES.filter((venue) => {
     const haystack = `${venue.name} ${venue.city} ${venue.cinema} ${
       CINEMA_LABELS[venue.cinema] ?? ""
     }`.toLowerCase();
     return haystack.includes(term);
   })
-    .slice(0, 20)
+    // Fewer per chain when the chain itself matched: the row above already
+    // covers all of them, so twenty near-identical rows would bury the movies.
+    .slice(0, chainMatches.length > 0 ? 6 : 20)
     .map((venue) => ({
       id: `${venue.cinema}-${venue.name}`,
       category: "cinemas" as const,
@@ -152,8 +189,11 @@ export async function searchShowSouk(rawQuery: string): Promise<SearchResults> {
       subtitle: venue.city,
       meta: "Cinema",
       imageUrl: null,
-      to: "/cinemas" as const,
+      to: "/cinemas/$chain/$venue" as const,
+      params: { chain: venue.cinema, venue: venueSlug(venue.name) },
     }));
+
+  const cinemas: SearchResult[] = [...chainResults, ...venueResults];
 
   return {
     movies,
