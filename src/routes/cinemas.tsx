@@ -331,7 +331,7 @@ function CinemasPage() {
         {/* Says what the visitor gets, not how we get it. How often our scraper
             runs and when it last succeeded are our concerns, not theirs. */}
         <header className="mb-6">
-          <p className="text-sm uppercase tracking-[0.2em] text-primary">UAE cinemas</p>
+          <p className="text-sm uppercase tracking-[0.2em] text-primary-ink">UAE cinemas</p>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">UAE Cinema Showtimes</h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
             {view === "upcoming"
@@ -687,8 +687,8 @@ function CinemasPage() {
                                   }`}
                                   className={`flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-colors ${
                                     exact
-                                      ? "border border-border/70 bg-background/60 hover:border-primary/70 hover:bg-primary/5"
-                                      : "border border-dashed border-border/60 bg-transparent hover:border-border hover:bg-muted/30"
+                                      ? "border border-chip-border bg-background/60 hover:border-primary/70 hover:bg-primary/5"
+                                      : "border border-dashed border-chip-border bg-transparent hover:border-foreground/40 hover:bg-muted/30"
                                   }`}
                                 >
                                   <span
@@ -706,7 +706,9 @@ function CinemasPage() {
                                       turn "Samsung ONYX" into "SAMSUNG ONYX". */}
                                   <span
                                     className={`text-[10px] font-medium leading-none tracking-wide ${
-                                      exact ? "text-primary" : "text-muted-foreground/70"
+                                      // See venue-showtimes.tsx: an alpha caps
+                                      // achievable contrast on a light ground.
+                                      exact ? "text-primary-ink" : "text-muted-foreground"
                                     }`}
                                   >
                                     {screening.format ?? "Standard"}

@@ -12,7 +12,7 @@
  */
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Check, LogOut, Monitor, Moon, PlusCircle, Sun } from "lucide-react";
+import { LogOut, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,14 +27,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { useTheme, type Theme } from "@/hooks/useTheme";
+import { ThemeOptions } from "@/components/theme-menu";
 import { supabase } from "@/integrations/supabase/client";
-
-const THEME_OPTIONS: Array<{ value: Theme; label: string; icon: typeof Sun }> = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
-];
 
 /** "syed.ebaad@gmail.com" → "S". Falls back rather than rendering an empty circle. */
 function initialFor(email: string | undefined): string {
@@ -45,7 +39,6 @@ function initialFor(email: string | undefined): string {
 export function AccountMenu() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
-  const { theme, setTheme, lightAvailable } = useTheme();
   const [signingOut, setSigningOut] = useState(false);
 
   if (!user) return null;
@@ -95,35 +88,7 @@ export function AccountMenu() {
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
           Appearance
         </DropdownMenuLabel>
-        {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
-          const unavailable = value === "light" && !lightAvailable;
-          return (
-            <DropdownMenuItem
-              key={value}
-              // Keep the row closed to selection rather than hiding it: people
-              // look for Light, and "not yet" is a clearer answer than absence.
-              disabled={unavailable}
-              onSelect={(event) => {
-                if (unavailable) {
-                  event.preventDefault();
-                  return;
-                }
-                setTheme(value);
-              }}
-              className="gap-2"
-            >
-              <Icon className="size-4" />
-              <span className="flex-1">{label}</span>
-              {unavailable ? (
-                <span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
-                  Soon
-                </span>
-              ) : theme === value ? (
-                <Check className="size-4 text-gold" />
-              ) : null}
-            </DropdownMenuItem>
-          );
-        })}
+        <ThemeOptions />
 
         {isAdmin ? (
           <>

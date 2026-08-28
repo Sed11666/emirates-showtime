@@ -25,6 +25,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-ink: var(--primary-ink);
+  --color-chip-border: var(--chip-border);
+  --color-hero-title: var(--hero-title);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -68,6 +71,10 @@
   /* Primary emerald accent */
   --primary: oklch(0.38 0.085 165);
   --primary-foreground: oklch(0.99 0.004 80);
+  /* Emerald as INK on the dark ground. --primary is a fill colour: as 10px
+     text on a chip it measures 2.0:1, which is unreadable. Lifted until it
+     carries small text (6.5:1) while staying the same emerald. */
+  --primary-ink: oklch(0.66 0.110 165);
   --secondary: oklch(0.25 0.03 170);
   --secondary-foreground: oklch(0.97 0.005 80);
   --muted: oklch(0.245 0.02 170);
@@ -77,7 +84,8 @@
   /* Marquee gold — warmer and less saturated than before */
   --gold: oklch(0.80 0.132 85);
   --gold-foreground: oklch(0.2 0.03 60);
-  --destructive: oklch(0.55 0.22 25);
+  /* Error text, not a fill: at L 0.55 it read 3.4:1 on a card. */
+  --destructive: oklch(0.65 0.200 25);
   --destructive-foreground: oklch(0.99 0.004 80);
   --border: oklch(0.3 0.025 170);
   --input: oklch(0.28 0.022 170);
@@ -95,6 +103,17 @@
   --sidebar-accent-foreground: oklch(0.98 0.004 80);
   --sidebar-border: oklch(0.3 0.025 170);
   --sidebar-ring: oklch(0.80 0.132 85);
+
+  /* Capsule outline. The chips are the most-clicked thing on the site and
+     their border sat at 1.3:1, which reads as a suggestion of an edge. */
+  --chip-border: oklch(0.42 0.025 170);
+  /* Hero title, over the poster scrim rather than over the page. */
+  --hero-title: oklch(0.98 0.004 80);
+  /* The scrim is part of the image treatment, so it follows the theme: dark
+     mode sinks the poster into the canvas, light mode washes it toward ivory.
+     Hardcoded dark, it left a dark-green title on a dark photograph. */
+  --hero-scrim: linear-gradient(180deg, oklch(0.13 0.02 170 / 0.55) 0%, oklch(0.15 0.02 170 / 0.82) 45%, oklch(0.155 0.015 170) 100%);
+  --hero-vignette: radial-gradient(85% 75% at 20% 30%, oklch(0.13 0.015 170 / 0.75) 0%, transparent 75%);
 
   /* Theatre lighting: emerald ambient wash, gold marquee flare */
   --gradient-hero: radial-gradient(
@@ -123,14 +142,142 @@
  * theme script puts the class on <html>. Previously the class was never applied
  * at all, so every dark: utility in the codebase was silently inert.
  *
- * .light is where the light palette goes and is currently EMPTY, which is why
- * useTheme.tsx ships LIGHT_PALETTE_READY = false and the menu shows Light as
- * disabled. Authoring it means every token in :root plus a decision about the
- * effects that assume a near-black ground — film-grain, gold-glow,
- * marquee-lights, shadow-glow, bg-hero-gradient and text-gold-gradient. Gold on
- * white goes muddy and the glows read as smudges, so this is a design pass, not
- * a find-and-replace. Flip the flag in the same commit that fills this in.
+ * .light now carries the light palette, immediately below, together with
+ * overrides for the four effects that hardcode dark-ground colours.
  */
+/*
+ * LIGHT PALETTE
+ *
+ * The one decision everything else follows from: gold changes job.
+ *
+ * On the dark canvas, --gold reaches 10.6:1 and is a superb ink. The identical
+ * colour on white measures 1.9:1 — not weak, invisible. Measured, it has to
+ * fall to about L 0.55 before it carries body text at all. So light mode
+ * redefines --gold to a deeper antique gold rather than inventing a second
+ * token: 54 `text-gold` and 29 `border-gold` uses need it darker against only
+ * 16 that fill with it, and flipping --gold-foreground to near-white keeps
+ * those fills legible too. No component changes, and the brand stays gold —
+ * deeper, the way gold leaf actually reads on paper rather than on velvet.
+ *
+ * Second decision: the page is warm ivory, never #fff. Pure white throws the
+ * gold grey and strips the theatre warmth the dark side is built on.
+ *
+ * Third: glow is a dark-mode idiom. A bloom on a light ground reads as a
+ * smudge, so every glow below becomes a crisp ring plus honest elevation, and
+ * the film grain switches from `overlay` to a much fainter `multiply` — at
+ * 0.12 overlay it looks like dirt on paper.
+ *
+ * Contrast, measured against the ground each is used on:
+ *   body text 15.2   muted 5.9   gold text 5.2   gold border 5.2
+ *   white on gold fill 5.4   white on primary 7.9   primary text 7.5
+ * All AA or better, all inside sRGB.
+ */
+.light {
+  --background: oklch(0.975 0.008 85);
+  --foreground: oklch(0.24 0.025 170);
+  --card: oklch(0.995 0.003 85);
+  --card-foreground: oklch(0.24 0.025 170);
+  --popover: oklch(0.995 0.003 85);
+  --popover-foreground: oklch(0.24 0.025 170);
+  /* C capped at the sRGB limit for this lightness; 0.09 clips. */
+  --primary: oklch(0.42 0.088 165);
+  --primary-foreground: oklch(0.99 0.004 80);
+  /* On ivory the fill colour is already a strong ink (8.0:1), so it stands. */
+  --primary-ink: oklch(0.42 0.088 165);
+  --secondary: oklch(0.93 0.012 170);
+  --secondary-foreground: oklch(0.28 0.025 170);
+  --muted: oklch(0.945 0.010 170);
+  --muted-foreground: oklch(0.50 0.020 170);
+  --accent: oklch(0.92 0.018 168);
+  --accent-foreground: oklch(0.26 0.030 170);
+  /* Antique gold. Same hue family as the dark marquee gold, lowered until it
+     is readable as text and as a border on ivory. */
+  --gold: oklch(0.52 0.108 80);
+  --gold-foreground: oklch(0.99 0.004 80);
+  --destructive: oklch(0.50 0.200 25);
+  --destructive-foreground: oklch(0.99 0.004 80);
+  --border: oklch(0.90 0.012 170);
+  --input: oklch(0.88 0.014 170);
+  --ring: oklch(0.42 0.088 165);
+  --chart-1: oklch(0.42 0.088 165);
+  --chart-2: oklch(0.52 0.108 80);
+  --chart-3: oklch(0.55 0.180 35);
+  --chart-4: oklch(0.58 0.130 70);
+  --chart-5: oklch(0.70 0.020 170);
+  --sidebar: oklch(0.965 0.010 85);
+  --sidebar-foreground: oklch(0.24 0.025 170);
+  --sidebar-primary: oklch(0.42 0.088 165);
+  --sidebar-primary-foreground: oklch(0.99 0.004 80);
+  --sidebar-accent: oklch(0.92 0.018 168);
+  --sidebar-accent-foreground: oklch(0.26 0.030 170);
+  --sidebar-border: oklch(0.90 0.012 170);
+  --sidebar-ring: oklch(0.52 0.108 80);
+
+  --chip-border: oklch(0.82 0.014 170);
+  /* Dark green, and actually green: the page foreground is near-black at
+     C 0.025, which on a poster reads as a smudge. 7.2:1 even where the scrim
+     sits over a black region of the image. */
+  --hero-title: oklch(0.38 0.082 163);
+  /* Directional, not a flat wash. A full-frame ivory wash made the title
+     readable and the photograph invisible. This protects only the left text
+     column and falls away by 80%, so the right of the frame is the poster.
+     0.88 is set by the gold chip text, which needs more help than the title:
+     over a black region of a poster the title clears 7.4:1 at that alpha and
+     the chips 4.6:1. The vertical layer now only blends the bottom edge into
+     the page, where it used to dim the whole image as well. */
+  --hero-scrim: linear-gradient(100deg, oklch(0.975 0.008 85) 0%, oklch(0.975 0.008 85 / 0.88) 34%, oklch(0.975 0.008 85 / 0.30) 60%, transparent 80%);
+  --hero-vignette: linear-gradient(180deg, transparent 0%, transparent 45%, oklch(0.975 0.008 85 / 0.55) 80%, oklch(0.975 0.008 85) 100%);
+
+  /* Same two lights on the wall, turned right down: on ivory these are a warm
+     tint, where at dark-mode alphas they would be stains. */
+  --gradient-hero: radial-gradient(
+      70% 60% at 15% 0%,
+      oklch(0.42 0.088 165 / 0.10) 0%,
+      transparent 65%
+    ),
+    radial-gradient(60% 55% at 88% 8%, oklch(0.80 0.132 85 / 0.14) 0%, transparent 70%),
+    linear-gradient(170deg, oklch(0.985 0.008 85) 0%, oklch(0.955 0.012 85) 100%);
+  /* Darkened so text-gold-gradient stays readable; the dark-mode pair sits at
+     L 0.86–0.74 and vanishes on ivory. */
+  --gradient-gold: linear-gradient(100deg, oklch(0.58 0.110 84), oklch(0.46 0.100 78));
+  /* Warm grey rather than black: black shadows on ivory look like holes. */
+  --shadow-poster: 0 18px 40px -20px oklch(0.30 0.020 170 / 0.22);
+  --shadow-glow: 0 0 0 1px oklch(0.52 0.108 80 / 0.35), 0 18px 44px -24px oklch(0.30 0.020 170 / 0.30);
+}
+
+/*
+ * Effects that hardcode dark-ground colours. These are utilities rather than
+ * tokens, so they are overridden here instead of being re-declared above.
+ */
+.light .film-grain::after {
+  /* overlay at 0.12 reads as dirt on a light ground. */
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+}
+
+.light .gold-glow {
+  /* A ring and a real shadow. The emerald bloom underneath only works when
+     there is darkness for it to bloom into. */
+  box-shadow:
+    0 0 0 1px oklch(0.52 0.108 80 / 0.45),
+    0 14px 34px -18px oklch(0.30 0.020 170 / 0.28);
+}
+
+.light .marquee-lights {
+  background-image:
+    radial-gradient(60% 120% at 12% 50%, oklch(0.42 0.088 165 / 0.07) 0%, transparent 70%),
+    radial-gradient(55% 120% at 88% 50%, oklch(0.80 0.132 85 / 0.10) 0%, transparent 72%);
+}
+
+.light .gold-rule {
+  background-image: linear-gradient(
+    to right,
+    oklch(0.42 0.088 165 / 0.75),
+    oklch(0.52 0.108 80 / 0.55),
+    transparent
+  );
+}
+
 .dark {
   /* Intentionally empty — :root already carries the dark palette. */
 }

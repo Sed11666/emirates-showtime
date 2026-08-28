@@ -19,16 +19,14 @@ export type ResolvedTheme = "light" | "dark";
 export const THEME_STORAGE_KEY = "showsouk-theme";
 
 /**
- * The light palette does not exist yet. `:root` in styles.css *is* the dark
- * theme — roughly fifty tokens authored once, plus film-grain, gold-glow and
- * the marquee gradients, which are all built for gold on near-black.
+ * The light palette now exists — `.light` in styles.css, alongside overrides
+ * for the four effects that hardcode dark-ground colours (film-grain,
+ * gold-glow, marquee-lights, gold-rule).
  *
- * Until a light palette is designed, offering the option would hand people a
- * control that visibly does nothing, so the UI shows it disabled. Flip this to
- * true in the same commit that lands the palette and the option becomes live
- * everywhere at once — nothing else needs changing.
+ * Kept as a flag rather than deleted because it is the one switch that hides
+ * the Light and System options again, should the palette ever need pulling.
  */
-export const LIGHT_PALETTE_READY = false;
+export const LIGHT_PALETTE_READY = true;
 
 function systemPrefersLight(): boolean {
   if (typeof window === "undefined" || !window.matchMedia) return false;

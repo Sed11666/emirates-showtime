@@ -309,15 +309,19 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
         {films.map((film, i) => (
           <img
             key={film.id}
-            src={film.poster_url ?? ""}
+            // Backdrop when we have one. A poster here is a 2:3 portrait in a
+            // ~2.7:1 frame: object-cover upscales it ~6x and shows a quarter of
+            // its height, which is the soft, over-zoomed hero. Falls back to the
+            // poster so a film TMDB has no still for still gets artwork.
+            src={film.backdrop_url ?? film.poster_url ?? ""}
             alt=""
             className={`absolute inset-0 size-full object-cover transition-opacity duration-1000 ${
               i === index ? "opacity-100" : "opacity-0"
             }`}
           />
         ))}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.13_0.02_170/0.55)_0%,oklch(0.15_0.02_170/0.82)_45%,oklch(0.155_0.015_170)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(85%_75%_at_20%_30%,oklch(0.13_0.015_170/0.75)_0%,transparent_75%)]" />
+        <div className="absolute inset-0 bg-[image:var(--hero-scrim)]" />
+        <div className="absolute inset-0 bg-[image:var(--hero-vignette)]" />
         {films.length === 0 ? <div className="absolute inset-0 bg-hero-gradient" /> : null}
       </div>
 
@@ -341,7 +345,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
                 ))}
             </div>
 
-            <h1 className="mt-4 max-w-4xl font-display text-4xl font-extrabold uppercase leading-[0.95] tracking-tight sm:mt-5 sm:text-7xl">
+            <h1 className="mt-4 max-w-4xl font-display text-4xl font-extrabold uppercase leading-[0.95] tracking-tight text-[color:var(--hero-title)] sm:mt-5 sm:text-7xl">
               {active.title}
             </h1>
 

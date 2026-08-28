@@ -25,6 +25,7 @@ import {
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AccountMenu } from "@/components/account-menu";
+import { ThemeMenu } from "@/components/theme-menu";
 import { SearchOverlay } from "@/components/search-overlay";
 import {
   DropdownMenu,
@@ -167,6 +168,7 @@ export function SiteHeader() {
             <AccountMenu />
           ) : (
             <>
+              <ThemeMenu />
               <Button asChild variant="hero" size="sm" className="hidden sm:inline-flex">
                 <Link to="/auth">
                   <UserRound /> Sign in

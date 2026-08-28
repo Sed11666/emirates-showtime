@@ -122,8 +122,8 @@ export function VenueShowtimesBlock({
               }, ${screening.time}${screening.format ? `, ${screening.format}` : ""}`}
               className={`flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-colors ${
                 exact
-                  ? "border border-border/70 bg-background/60 hover:border-primary/70 hover:bg-primary/5"
-                  : "border border-dashed border-border/60 bg-transparent hover:border-border hover:bg-muted/30"
+                  ? "border border-chip-border bg-background/60 hover:border-primary/70 hover:bg-primary/5"
+                  : "border border-dashed border-chip-border bg-transparent hover:border-foreground/40 hover:bg-muted/30"
               }`}
             >
               <span
@@ -139,7 +139,12 @@ export function VenueShowtimesBlock({
                   "Samsung ONYX" into "SAMSUNG ONYX". */}
               <span
                 className={`text-[10px] font-medium leading-none tracking-wide ${
-                  exact ? "text-primary" : "text-muted-foreground/70"
+                  // No alpha on the muted branch. On a light ground an alpha
+                  // caps the contrast a colour can reach: even pure black at
+                  // 70% tops out near 2.8:1 on white, so no token value could
+                  // have fixed it. The dashed border already says "not exact";
+                  // the fade was doing that job twice.
+                  exact ? "text-primary-ink" : "text-muted-foreground"
                 }`}
               >
                 {screening.format ?? "Standard"}

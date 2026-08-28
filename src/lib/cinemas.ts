@@ -59,6 +59,9 @@ export type CinemaFilm = {
   rating: string | null;
   duration_mins: number | null;
   poster_url: string | null;
+  /** 16:9 still from TMDB, for the hero. Posters are portrait and go soft
+      when a landscape frame upscales them. */
+  backdrop_url: string | null;
   synopsis: string | null;
   director: string | null;
   /** Billed leads only — the scraper keeps the first four. */
@@ -74,7 +77,7 @@ export async function fetchCinemaFilms(): Promise<CinemaFilm[]> {
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
-      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, synopsis, director, cast_names, formats, showtimes, booking_url, source_url, last_seen_at",
+      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, formats, showtimes, booking_url, source_url, last_seen_at",
     )
     .eq("is_active", true)
     .order("title", { ascending: true });
@@ -99,7 +102,7 @@ export async function fetchCinemaFilmsForDay(dayKey: string): Promise<CinemaFilm
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
-      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
+      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, backdrop_url, formats, showtimes, booking_url, source_url, last_seen_at",
     )
     .eq("is_active", true)
     .order("title", { ascending: true });
@@ -196,7 +199,7 @@ export async function fetchFilmBySlug(slug: string): Promise<CinemaFilm[]> {
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
-      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, synopsis, director, cast_names, formats, showtimes, booking_url, source_url, last_seen_at",
+      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, formats, showtimes, booking_url, source_url, last_seen_at",
     )
     .eq("is_active", true)
     .order("title", { ascending: true });
@@ -576,6 +579,7 @@ export function mergeFilmsByTitle(films: CinemaFilm[]): MergedFilm[] {
     );
     existing.venues = [...new Set([...existing.venues, ...film.venues])];
     if (!existing.poster_url && film.poster_url) existing.poster_url = film.poster_url;
+    if (!existing.backdrop_url && film.backdrop_url) existing.backdrop_url = film.backdrop_url;
     if (!existing.synopsis && film.synopsis) existing.synopsis = film.synopsis;
     if (!existing.director && film.director) existing.director = film.director;
     if (!existing.cast_names?.length && film.cast_names?.length)

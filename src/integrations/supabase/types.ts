@@ -31,6 +31,7 @@ export type Database = {
       }
       cinema_films: {
         Row: {
+          backdrop_url: string | null
           booking_url: string | null
           cast_names: string[] | null
           cinema: string
@@ -57,6 +58,7 @@ export type Database = {
           venues: string[]
         }
         Insert: {
+          backdrop_url?: string | null
           booking_url?: string | null
           cast_names?: string[] | null
           cinema: string
@@ -83,6 +85,7 @@ export type Database = {
           venues?: string[]
         }
         Update: {
+          backdrop_url?: string | null
           booking_url?: string | null
           cast_names?: string[] | null
           cinema?: string
