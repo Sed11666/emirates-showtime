@@ -686,6 +686,14 @@ layout wrapped around them.
 **Unknown chain, venue, city or film throws `notFound`.** A soft 200 on a
 nonsense URL is how a site teaches Google it is thin.
 
+That sentence was in this file before it was true of `/movie/$slug`, which
+returned 200 with an empty shell for any unmatched slug until 2026-08-29. It
+mattered: source titles change — "El Gawahergy (Arabic)" became "El Gawahergy"
+— and the old slug stays in Google's index. `/movie/el-gawahergy-arabic` was
+serving the raw slug as its `<h1>` with no showtimes and had earned 14
+impressions in that state. **If you add a tier, check the 404 rather than
+assuming it, and check the status code, not the rendered page.**
+
 ### Internal linking is deliberate
 home → chain tiles → chains → venues; footer → all eight cities → venues; every
 listing → film pages. No tier depends on the sitemap alone: a page a crawler has
@@ -726,6 +734,72 @@ partner feed, not open markup. It is still correct and is what AI crawlers read.
 Absolute on every page, never relative. `og:url` likewise, since a relative
 `og:url` is meaningless to a social crawler. The apex 308s to `www`, and every
 canonical points at `www`.
+
+### What the numbers actually say — measured 2026-08-29
+
+Filtered to **Country = United Arab Emirates**, which is the only segment that
+means anything here:
+
+```
+28 days (really ~3 — the property has data from 24 Aug)
+  impressions 40   clicks 0   CTR 0%   average position 10.7
+  impressions trending up, ~5/day to ~24/day
+```
+
+**Always segment by country before drawing a conclusion.** The unfiltered view
+read 6 clicks, 161 impressions, 3.7% CTR, position 11 — and every one of those
+clicks was the owner's family in India searching the brand name. Blended, the
+CTR looked above par for the position and the listing looked healthy. Split by
+country, the real market is 0% CTR, and the position average was being propped
+up by branded searches that rank #1 because nothing else is called ShowSouk.
+
+The queries are the right ones — no junk, all high-intent and local:
+
+```
+khalifa movie in dubai                      4
+toy story 5 dubai                           2
+toy story 5 sharjah                         1
+toy story showtime                          1
+where is toy story 5 playing near me        1
+the end of oak street showtimes near dubai  1
+toy story 5 novo cinemas                    1
+```
+
+Two things follow. **Indexing is not the problem** — a page cannot take an
+impression unless it is indexed, and impressions land on venue *and* film *and*
+home URLs, so all three tiers are in. Use that rather than waiting on the Page
+Indexing report, which takes days to compute on a new property. **Position is
+the whole problem**, and at 10.7 the site sits on the page-1 boundary rather
+than buried, so relevance work is worth doing rather than hopeless.
+
+### Titles and descriptions are generated, not fixed
+
+Five of seven ranking queries name a city. The film page title said "in the
+UAE" and named none, so the strongest term in the query appeared nowhere in the
+tag. `titleTag()` and `descriptionTag()` in `movie.$slug.tsx` now build both
+from the film's own rows.
+
+Rules encoded there, each for a reason:
+
+- **Cities ranked by screen count, capped at two** in the title. More reads as
+  stuffing and pushes the film name out of the visible tag.
+- **~60 character budget**, and when it does not fit **the brand is dropped
+  before the city**. `| ShowSouk` earns nothing for a domain nobody searches
+  for yet; the city is the term doing the work.
+- **Only chains that actually have the film.** The description used to hardcode
+  all seven, so Toy Story 5's page told Google it played at Roxy and Cine
+  Royal. It does not.
+- **158 character budget on the description.** The old text ran to 194 where
+  Google renders ~155, so a fifth of it was never shown.
+
+### Rejected: film x city pages
+
+`[film] [city]` is the dominant query and `/movie/toy-story-5/dubai` is the
+obvious response. **Do not build it.** 46 films across 8 emirates is 368
+near-identical URLs funnelling to one showtime list, which is Google's own
+definition of a doorway page; many would be thin (two showtimes in Ajman); and
+it splits link equity a domain with no backlinks cannot spare. The single film
+page already ranks 10.7 for those queries. Strengthen it, do not shard it.
 
 ### Search Console
 Verified via a meta tag in `__root.tsx`. The property is a **domain property**
@@ -954,14 +1028,19 @@ both themes and found 273 pre-existing failures nobody had noticed.
     signals, and the account menu deliberately omits the links rather than
     pointing at nothing.
 
-18. **No backlinks.** A new domain with none ranks slowly however clean the
-    markup is, and this is the ceiling everything else now sits under. UAE
-    listings sites, local communities, a Google Business Profile. Nothing
-    technical will substitute for it.
+18. **No backlinks — and this is now measured, not asserted.** UAE position
+    10.7 with the technical work finished and the tags matching the queries.
+    That is the page-1 boundary, and what stands between the site and page 1 is
+    that nothing links to it. UAE listings sites, local communities, a Google
+    Business Profile. **Nothing technical will substitute for it** — see §10b
+    for the numbers this conclusion rests on.
 
 19. **Nothing on the site can earn a link.** Schedules do not get linked to;
     guides do. "Best cinemas in Dubai", IMAX vs Dolby, that sort of thing. This
     is the gap between a site that is technically correct and one that ranks.
+    The Reel feed carries screen names for every session, so a genuinely
+    accurate "which UAE screens are Dolby / IMAX / 4DX" page is a small amount
+    of work away and is the sort of thing that gets cited.
 
 20. **The trim banner over-counts.** "Showing 4 of N screens" reported totals
     that included days other than the one selected — 4 of 34 at a moment when
@@ -1050,6 +1129,20 @@ both themes and found 273 pre-existing failures nobody had noticed.
 26. **`set_posters` and `ingest_cinema_films` bodies still live only in the
     database.** Extends item 10. Both were edited again this session; the current
     definitions are in the live DB and in scratch SQL files, not in the repo.
+
+27. **Stale film slugs are still in Google's index.** Source titles change, so
+    `/movie/{old-slug}` accumulates. Those now 404 correctly (they used to
+    serve an empty 200), but Google will keep requesting them for weeks and
+    they are still earning impressions in the meantime. Nothing to do beyond
+    letting the 404s drop them — do **not** redirect them to the new slug
+    unless the title genuinely renamed the same film, and never redirect them
+    all to `/cinemas`, which is a soft-404 pattern of its own.
+
+28. **`/cinemas` has no JSON-LD.** Every other page type carries it. It is the
+    main browse page and the only structural gap left in the markup. Small.
+
+### Closed
+
 - ~~**TMDB posters**~~ — **done, with a ceiling.** Every row that has an
   `imdb_id` is resolved; the rest have none and never can be. See §10.
 - ~~**`resolve-posters` unscheduled**~~ — **scheduled 2026-08-22** as
@@ -1062,6 +1155,7 @@ both themes and found 273 pre-existing failures nobody had noticed.
   was rewritten for visitors rather than for us (`3559c4c`).
 - ~~**Poster `alt` attributes empty**~~ — already fixed before it was noticed.
 - ~~**165 screenings dated 11 Aug**~~ — cleared by retirement as expected.
+
 
 ---
 
