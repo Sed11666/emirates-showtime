@@ -252,6 +252,11 @@ export function SiteFooter() {
                 Sign in
               </Link>
             </li>
+            <li>
+              <Link to="/privacy" className="hover:text-foreground">
+                Privacy Policy
+              </Link>
+            </li>
           </ul>
           <p className="mt-6 text-xs text-muted-foreground">
             © {new Date().getFullYear()} ShowSouk. All rights reserved.
