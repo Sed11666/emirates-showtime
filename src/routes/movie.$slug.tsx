@@ -9,7 +9,7 @@
  * between. No format filter either: the screen type is on every chip already.
  * Each time chip deep-links to that exact screening on the chain's own site.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   breadcrumbSchema,
@@ -38,11 +38,98 @@ import {
 import { venueBlocks } from "@/lib/showtimes";
 import { useUserLocation } from "@/hooks/useUserLocation";
 
+/**
+ * Cities this film actually plays in, busiest first.
+ *
+ * Ranked by how many rows name each city, which stands in for screen count —
+ * so Dubai leads for most films, which is also where the search volume is.
+ */
+function citiesFor(films: Array<{ city: string | null }> | undefined): string[] {
+  const counts = new Map<string, number>();
+  for (const film of films ?? []) {
+    if (film.city) counts.set(film.city, (counts.get(film.city) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([city]) => city);
+}
+
+/**
+ * The <title>, built to match how people actually search.
+ *
+ * Search Console, UAE, at position 10.7: "khalifa movie in dubai", "toy story 5
+ * dubai", "toy story 5 sharjah", "the end of oak street showtimes near dubai".
+ * Five of seven queries named a city; the old title said "in the UAE" and named
+ * none, so the strongest term in the query appeared nowhere in the title.
+ *
+ * Budgeted to ~60 characters because that is roughly what Google renders. When
+ * it does not fit, the brand is dropped before the city is: "| ShowSouk" earns
+ * nothing for a domain nobody is searching for yet, and the city is the term
+ * doing the work.
+ *
+ * Two cities, not five. Listing every emirate a film plays in reads as keyword
+ * stuffing and pushes the film's own name out of the visible part of the tag.
+ */
+function titleTag(name: string, cities: string[]): string {
+  const BRAND = " | ShowSouk";
+  const BUDGET = 60;
+  for (const count of [2, 1]) {
+    if (cities.length < count) continue;
+    const where = count === 2 ? `${cities[0]} & ${cities[1]}` : cities[0]!;
+    const base = `${name} Showtimes in ${where}`;
+    if (base.length + BRAND.length <= BUDGET) return base + BRAND;
+    if (base.length <= BUDGET) return base;
+  }
+  const fallback = `${name} Showtimes & Tickets in the UAE`;
+  return fallback.length + BRAND.length <= BUDGET ? fallback + BRAND : fallback;
+}
+
+/**
+ * The meta description, naming the chains that actually have the film.
+ *
+ * This used to hardcode all seven — so Toy Story 5's page told Google it played
+ * at Roxy and Cine Royal, which it does not. Chains are worth naming because
+ * "toy story 5 novo cinemas" is a real query this page already surfaces for;
+ * naming ones that are wrong is just a claim we cannot support.
+ */
+function descriptionTag(name: string, cities: string[], chains: string[]): string {
+  const BUDGET = 158; // Google renders ~155-160; past that is invisible.
+  const where = cities.length > 0 ? cities.slice(0, 3).join(", ") : "the UAE";
+  const tail = "Book direct — nearest cinemas first.";
+  // Drop chains until it fits. Cities go first and are never trimmed here:
+  // they are what the ranking queries name, where the chain list is a bonus.
+  for (const count of [4, 3, 2, 1, 0]) {
+    const named = chains.slice(0, count).map((key) => CINEMA_LABELS[key] ?? key);
+    const rest = chains.length > named.length ? " and more" : "";
+    const who = named.length > 0 ? ` at ${named.join(", ")}${rest}` : "";
+    const text = `${name} showtimes in ${where}${who}. ${tail}`;
+    if (text.length <= BUDGET) return text;
+  }
+  return `${name} showtimes in ${where}. ${tail}`;
+}
+
 export const Route = createFileRoute("/movie/$slug")({
   // Server-rendered: without this the page shipped an empty shell, the <h1>
   // fell back to the raw lowercase slug, and a crawler saw a title tag over no
   // content. Only this film's rows are serialised, so the payload is a few KB.
-  loader: async ({ params }) => ({ films: await fetchFilmBySlug(params.slug) }),
+  /**
+   * A slug with no film 404s rather than rendering an empty shell.
+   *
+   * Titles change at the source — "El Gawahergy (Arabic)" became "El
+   * Gawahergy" — and the old slug stays in Google's index long after it stops
+   * matching anything. It was answering 200 with the raw slug as its <h1>, no
+   * showtimes and no content: a soft 404, which Google treats as a quality
+   * problem rather than a dead link. /movie/el-gawahergy-arabic had earned 14
+   * impressions in that state, so the cost is real — an empty page ranking is
+   * worse than no page at all.
+   *
+   * Safe to 404 on an empty result: rows are upserted rather than deleted, so a
+   * film that is genuinely showing is always present. An unmatched slug means
+   * the title changed or the film retired, and both should be a 404.
+   */
+  loader: async ({ params }) => {
+    const films = await fetchFilmBySlug(params.slug);
+    if (films.length === 0) throw notFound();
+    return { films };
+  },
   head: ({ params, loaderData }) => {
     // Prefer the real title over a title-cased slug: the slug turns "Above and
     // Below" into "Above And Below", and a <title> that disagrees with the <h1>
@@ -55,14 +142,14 @@ export const Route = createFileRoute("/movie/$slug")({
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
     const canonical = `https://www.showsouk.com/movie/${params.slug}`;
+    const cities = citiesFor(loaderData?.films);
+    const chains = [...new Set((loaderData?.films ?? []).map((film) => film.cinema))];
+    const where = cities.length > 0 ? cities.slice(0, 2).join(" & ") : "the UAE";
     return {
       meta: [
-        { title: `${name} Showtimes & Tickets in the UAE | ShowSouk` },
-        {
-          name: "description",
-          content: `Cinema showtimes for ${name} across VOX, Star, Novo, Roxy, Reel, Cinema City and Cine Royal in the UAE, with the nearest screens to you listed first.`,
-        },
-        { property: "og:title", content: `${name} — Showtimes in the UAE` },
+        { title: titleTag(name, cities) },
+        { name: "description", content: descriptionTag(name, cities, chains) },
+        { property: "og:title", content: `${name} — Showtimes in ${where}` },
         {
           property: "og:description",
           content: `Pick a date and book ${name} at the cinema closest to you.`,
