@@ -53,6 +53,7 @@ async function build(): Promise<string> {
     // Rarely changes and is not a landing page, but a policy Google cannot
     // find is a trust signal wasted. Low priority, yearly.
     urlEntry("/privacy", now, "yearly", "0.3"),
+    urlEntry("/terms", now, "yearly", "0.3"),
     // Chain landing pages. Static in number and always meaningful, so they go
     // in unconditionally rather than depending on a database read.
     ...CINEMAS.map((c) => urlEntry(`/cinemas/${c.key}`, now, "hourly", "0.9")),
