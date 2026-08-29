@@ -119,7 +119,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * The Dubai day N days from now. Safe as plain millisecond arithmetic because
  * Dubai is UTC+4 all year and never observes DST.
  */
-function dubaiDayPlus(days: number) {
+export function dubaiDayPlus(days: number) {
   return dubaiDayOf(new Date(Date.now() + days * 86_400_000));
 }
 
@@ -140,7 +140,7 @@ function dubaiToday() {
 const TITLE_SUFFIX =
   /\s*[([]\s*(arabic|english|hindi|malayalam|tamil|telugu|kannada|urdu|filipino|tagalog|russian|french|german|spanish|chinese|korean|japanese|dubbed|subtitled|sub(?:titles)?|live[\s-]?action|re[\s-]?release|imax|4dx|3d|2d|roxy ladies|ladies(?: night)?|kids|gold|premium)\b[^)\]]*[)\]]\s*$/i;
 
-function titleKey(title: string) {
+export function titleKey(title: string) {
   let value = title.trim();
   for (let i = 0; i < 3 && TITLE_SUFFIX.test(value); i += 1) {
     value = value.replace(TITLE_SUFFIX, "").trim();
@@ -488,7 +488,7 @@ async function sha256(text: string): Promise<string> {
     .join("");
 }
 
-async function fetchText(url: string, timeoutMs = 20_000): Promise<string> {
+export async function fetchText(url: string, timeoutMs = 20_000): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -503,7 +503,7 @@ async function fetchText(url: string, timeoutMs = 20_000): Promise<string> {
   }
 }
 
-async function movieUrls(): Promise<string[]> {
+export async function movieUrls(): Promise<string[]> {
   const xml = await fetchText(SITEMAP);
   return [
     ...new Set(

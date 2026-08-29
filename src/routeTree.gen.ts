@@ -26,6 +26,7 @@ import { Route as MovieSlugRouteImport } from './routes/movie.$slug'
 import { Route as MoviesInCityRouteImport } from './routes/movies-in.$city'
 import { Route as ApiPublicComingSoonRouteImport } from './routes/api/public/coming-soon'
 import { Route as CinemasChainVenueRouteImport } from './routes/cinemas_.$chain_.$venue'
+import { Route as ApiPublicHooksCoverageCheckRouteImport } from './routes/api/public/hooks/coverage-check'
 import { Route as ApiPublicHooksResolvePostersRouteImport } from './routes/api/public/hooks/resolve-posters'
 import { Route as ApiPublicHooksScrapeAggregatorRouteImport } from './routes/api/public/hooks/scrape-aggregator'
 import { Route as ApiPublicHooksScrapeCinemasRouteImport } from './routes/api/public/hooks/scrape-cinemas'
@@ -116,6 +117,12 @@ const CinemasChainVenueRoute = CinemasChainVenueRouteImport.update({
   path: '/cinemas/$chain/$venue',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksCoverageCheckRoute =
+  ApiPublicHooksCoverageCheckRouteImport.update({
+    id: '/api/public/hooks/coverage-check',
+    path: '/api/public/hooks/coverage-check',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksResolvePostersRoute =
   ApiPublicHooksResolvePostersRouteImport.update({
     id: '/api/public/hooks/resolve-posters',
@@ -159,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/movies-in/$city': typeof MoviesInCityRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
   '/cinemas/$chain/$venue': typeof CinemasChainVenueRoute
+  '/api/public/hooks/coverage-check': typeof ApiPublicHooksCoverageCheckRoute
   '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
@@ -182,6 +190,7 @@ export interface FileRoutesByTo {
   '/movies-in/$city': typeof MoviesInCityRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
   '/cinemas/$chain/$venue': typeof CinemasChainVenueRoute
+  '/api/public/hooks/coverage-check': typeof ApiPublicHooksCoverageCheckRoute
   '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
@@ -206,6 +215,7 @@ export interface FileRoutesById {
   '/movies-in/$city': typeof MoviesInCityRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
   '/cinemas_/$chain_/$venue': typeof CinemasChainVenueRoute
+  '/api/public/hooks/coverage-check': typeof ApiPublicHooksCoverageCheckRoute
   '/api/public/hooks/resolve-posters': typeof ApiPublicHooksResolvePostersRoute
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
@@ -231,6 +241,7 @@ export interface FileRouteTypes {
     | '/movies-in/$city'
     | '/api/public/coming-soon'
     | '/cinemas/$chain/$venue'
+    | '/api/public/hooks/coverage-check'
     | '/api/public/hooks/resolve-posters'
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/movies-in/$city'
     | '/api/public/coming-soon'
     | '/cinemas/$chain/$venue'
+    | '/api/public/hooks/coverage-check'
     | '/api/public/hooks/resolve-posters'
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
@@ -277,6 +289,7 @@ export interface FileRouteTypes {
     | '/movies-in/$city'
     | '/api/public/coming-soon'
     | '/cinemas_/$chain_/$venue'
+    | '/api/public/hooks/coverage-check'
     | '/api/public/hooks/resolve-posters'
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
@@ -301,6 +314,7 @@ export interface RootRouteChildren {
   MoviesInCityRoute: typeof MoviesInCityRoute
   ApiPublicComingSoonRoute: typeof ApiPublicComingSoonRoute
   CinemasChainVenueRoute: typeof CinemasChainVenueRoute
+  ApiPublicHooksCoverageCheckRoute: typeof ApiPublicHooksCoverageCheckRoute
   ApiPublicHooksResolvePostersRoute: typeof ApiPublicHooksResolvePostersRoute
   ApiPublicHooksScrapeAggregatorRoute: typeof ApiPublicHooksScrapeAggregatorRoute
   ApiPublicHooksScrapeCinemasRoute: typeof ApiPublicHooksScrapeCinemasRoute
@@ -428,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CinemasChainVenueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/coverage-check': {
+      id: '/api/public/hooks/coverage-check'
+      path: '/api/public/hooks/coverage-check'
+      fullPath: '/api/public/hooks/coverage-check'
+      preLoaderRoute: typeof ApiPublicHooksCoverageCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/resolve-posters': {
       id: '/api/public/hooks/resolve-posters'
       path: '/api/public/hooks/resolve-posters'
@@ -477,6 +498,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoviesInCityRoute: MoviesInCityRoute,
   ApiPublicComingSoonRoute: ApiPublicComingSoonRoute,
   CinemasChainVenueRoute: CinemasChainVenueRoute,
+  ApiPublicHooksCoverageCheckRoute: ApiPublicHooksCoverageCheckRoute,
   ApiPublicHooksResolvePostersRoute: ApiPublicHooksResolvePostersRoute,
   ApiPublicHooksScrapeAggregatorRoute: ApiPublicHooksScrapeAggregatorRoute,
   ApiPublicHooksScrapeCinemasRoute: ApiPublicHooksScrapeCinemasRoute,
