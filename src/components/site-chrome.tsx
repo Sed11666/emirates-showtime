@@ -264,11 +264,6 @@ export function SiteFooter() {
             </li>
           </ul>
           <p className="mt-6 text-xs text-muted-foreground">
-            {/* Required by TMDB’s API terms, which ask for a visible
-                acknowledgement wherever their data is used. */}
-            This product uses the TMDB API but is not endorsed or certified by TMDB.
-          </p>
-          <p className="mt-3 text-xs text-muted-foreground">
             © {new Date().getFullYear()} ShowSouk. All rights reserved.
           </p>
         </div>

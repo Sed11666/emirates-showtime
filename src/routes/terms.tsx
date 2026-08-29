@@ -13,8 +13,12 @@
  *                 plainly rather than buried.
  *   No booking    we hold no seat, take no payment and receive no order. The
  *                 hand-off is a link; the contract is with the cinema.
- *   TMDB          their API terms require this acknowledgement. It is also in
- *                 the footer, because that is where it is actually visible.
+ *   TMDB          section 6 carries the acknowledgement their API terms
+ *                 require. It lives here and nowhere else — it was briefly
+ *                 in the site footer too and was taken out deliberately, so
+ *                 do not "restore" it there. If this page is ever removed or
+ *                 the TMDB integration moves, that line has to land somewhere
+ *                 else rather than simply disappear.
  *
  * NOT reviewed by a lawyer. It is an accurate description of how the service
  * works, which is the prerequisite for a lawyer to review it cheaply.
