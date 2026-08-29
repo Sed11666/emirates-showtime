@@ -23,6 +23,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { THEME_INIT_SCRIPT } from "@/hooks/useTheme";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -178,6 +179,12 @@ function RootShell({ children }: { children: ReactNode }) {
           truth for "did anyone visit"; this is the readable dashboard on top.
         */}
         <Analytics />
+        {/*
+          Vercel Speed Insights. Tracks Core Web Vitals and performance metrics
+          to help monitor and improve site speed. Works alongside Analytics to
+          provide comprehensive performance monitoring.
+        */}
+        <SpeedInsights />
         <Scripts />
       </body>
     </html>
