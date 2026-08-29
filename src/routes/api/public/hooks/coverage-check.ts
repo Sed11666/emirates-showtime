@@ -67,6 +67,124 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Alert = { level: "alert" | "warn"; kind: string; detail: string };
 
+type Summary = {
+  severity: "ok" | "warn" | "alert";
+  day: string;
+  sampled: number;
+  titlesPct: number;
+  screeningsPct: number;
+  activeTitles: number;
+  screeningsToday: number;
+  alerts: Alert[];
+  perFilm: Array<{ title: string; theirs: number; ours: number }>;
+};
+
+const esc = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * The subject line carries the verdict.
+ *
+ * This arrives five times a day, so it has to be triageable from the inbox
+ * list without opening it. A subject that reads the same whether coverage is
+ * perfect or collapsed is how a recurring report gets filtered to a folder and
+ * never read again — which is worse than not sending it.
+ */
+function subjectFor(s: Summary): string {
+  const stat = `${s.screeningsPct}% screenings, ${s.sampled} films`;
+  if (s.severity === "ok") return `[ShowSouk] Coverage OK — ${stat}`;
+  const n = s.alerts.length;
+  const word = n === 1 ? "issue" : "issues";
+  const tag = s.severity === "alert" ? "ALERT" : "warning";
+  return `[ShowSouk] Coverage ${tag}: ${n} ${word} — ${stat}`;
+}
+
+function bodyFor(s: Summary): string {
+  const colour =
+    s.severity === "alert" ? "#b42318" : s.severity === "warn" ? "#b54708" : "#067647";
+  const alertRows =
+    s.alerts.length === 0
+      ? `<p style="margin:0;color:#475467">No discrepancies found.</p>`
+      : s.alerts
+          .map(
+            (a) =>
+              `<li style="margin-bottom:8px"><strong style="color:${
+                a.level === "alert" ? "#b42318" : "#b54708"
+              }">${a.level.toUpperCase()}</strong> · <code>${esc(a.kind)}</code><br>${esc(
+                a.detail,
+              )}</li>`,
+          )
+          .join("");
+  const films = s.perFilm
+    .slice(0, 8)
+    .map(
+      (f) =>
+        `<tr><td style="padding:3px 12px 3px 0">${esc(f.title)}</td><td style="padding:3px 0;color:#475467">${f.ours} / ${f.theirs}</td></tr>`,
+    )
+    .join("");
+
+  return `<div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:640px;color:#101828">
+  <h2 style="margin:0 0 4px">ShowSouk coverage check</h2>
+  <p style="margin:0 0 16px;color:#475467">${s.day} · compared against cinemauae.com</p>
+  <p style="margin:0 0 20px;font-size:18px;font-weight:600;color:${colour}">${s.severity.toUpperCase()}</p>
+  <table style="border-collapse:collapse;margin-bottom:20px">
+    <tr><td style="padding:3px 16px 3px 0;color:#475467">Upcoming screenings held</td><td><strong>${s.screeningsPct}%</strong></td></tr>
+    <tr><td style="padding:3px 16px 3px 0;color:#475467">Titles vs their sitemap</td><td>${s.titlesPct}%</td></tr>
+    <tr><td style="padding:3px 16px 3px 0;color:#475467">Films sampled</td><td>${s.sampled}</td></tr>
+    <tr><td style="padding:3px 16px 3px 0;color:#475467">Our upcoming screenings today</td><td>${s.screeningsToday}</td></tr>
+  </table>
+  <h3 style="margin:0 0 8px;font-size:15px">Findings</h3>
+  <ul style="margin:0 0 20px;padding-left:18px;color:#101828">${alertRows}</ul>
+  <h3 style="margin:0 0 8px;font-size:15px">Sampled films (ours / theirs)</h3>
+  <table style="border-collapse:collapse;font-size:14px">${films}</table>
+  <p style="margin:24px 0 0;font-size:12px;color:#98a2b3">
+    Sent by the coverage-check route. Titles sit near 72% normally — their sitemap
+    includes coming-soon films with no screenings.
+  </p>
+</div>`;
+}
+
+/**
+ * Send via Resend's REST API.
+ *
+ * Called directly with fetch rather than through their SDK so nothing is added
+ * to package.json — this repo carries two lockfiles that must move together,
+ * and a dependency for one HTTP POST is not worth that.
+ *
+ * Absent configuration this is a no-op that says so, matching how
+ * resolve-posters treats a missing TMDB key: the check still runs and still
+ * reports, it just does not email.
+ */
+async function emailReport(summary: Summary): Promise<{ sent: boolean; note: string }> {
+  const key = process.env["RESEND_API_KEY"];
+  const to = process.env["COVERAGE_ALERT_TO"];
+  const from = process.env["COVERAGE_ALERT_FROM"] ?? "ShowSouk <onboarding@resend.dev>";
+  if (!key) return { sent: false, note: "RESEND_API_KEY not set" };
+  if (!to) return { sent: false, note: "COVERAGE_ALERT_TO not set" };
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to: to.split(",").map((a) => a.trim()).filter(Boolean),
+        subject: subjectFor(summary),
+        html: bodyFor(summary),
+      }),
+    });
+    if (!res.ok) {
+      const text = (await res.text()).slice(0, 200);
+      return { sent: false, note: `Resend ${res.status}: ${text}` };
+    }
+    return { sent: true, note: "sent" };
+  } catch (err) {
+    // Never fail the check because the mail failed. The report is the product;
+    // the email is delivery.
+    return { sent: false, note: `send failed: ${(err as Error).message}` };
+  }
+}
+
 /**
  * Thresholds. Set deliberately loose: a monitor that cries wolf gets muted,
  * and then it is worse than not having one.
@@ -323,6 +441,41 @@ async function run(request: Request) {
       ? "warn"
       : "ok";
 
+  const perFilmSorted = perFilm.sort(
+    (a, b) => a.ours / (a.theirs || 1) - b.ours / (b.theirs || 1),
+  );
+
+  /**
+   * Every run mails by default, which is what was asked for.
+   *
+   * `?alertsOnly=1` on the cron (or COVERAGE_ALERT_ONLY=1) switches to sending
+   * only when something is wrong. Worth knowing it is there: this fires five
+   * times a day, and a report that always says the same thing is the kind that
+   * gets filtered into a folder and stops being read — at which point the one
+   * that matters is missed too. The subject line carries the verdict so a
+   * healthy run is a two-second glance, but if it does start feeling like
+   * noise, flip this rather than muting the sender.
+   */
+  const alertsOnly =
+    url.searchParams.get("alertsOnly") === "1" || process.env["COVERAGE_ALERT_ONLY"] === "1";
+
+  const summary: Summary = {
+    severity,
+    day: today,
+    sampled,
+    titlesPct: Math.round(titleCoverage * 100),
+    screeningsPct: Math.round(sampleCoverage * 100),
+    activeTitles: ourTitles.size,
+    screeningsToday: ourTodayTotal,
+    alerts,
+    perFilm: perFilmSorted,
+  };
+
+  const email =
+    alertsOnly && severity === "ok"
+      ? { sent: false, note: "suppressed: alertsOnly and nothing to report" }
+      : await emailReport(summary);
+
   return Response.json({
     // ok means the check ran, not that coverage is good. Read `severity`.
     ok: true,
@@ -337,7 +490,10 @@ async function run(request: Request) {
     },
     alerts,
     // Worst-covered first, so the interesting rows are at the top of the log.
-    perFilm: perFilm.sort((a, b) => a.ours / (a.theirs || 1) - b.ours / (b.theirs || 1)).slice(0, 15),
+    perFilm: perFilmSorted.slice(0, 15),
+    // Delivery is reported separately from the check itself: a failed send
+    // must be visible without making the run look like the check failed.
+    email,
     tookMs: Date.now() - started,
   });
 }
