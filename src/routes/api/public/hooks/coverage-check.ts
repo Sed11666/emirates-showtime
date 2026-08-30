@@ -210,6 +210,30 @@ const TITLE_COVERAGE_WARN = 0.5;
 const FILM_SCREENING_WARN = 0.6;
 const SAMPLE_SCREENING_ALERT = 0.7;
 
+/**
+ * How many screenings a chain must hold at the source before its absence here
+ * is worth an alert.
+ *
+ * missing_chain exists to catch a chain-level failure — we stopped scraping
+ * Reel — not a one-screening discrepancy, and without a floor the second
+ * drowns the first. Measured against cinemauae at 13:29 Dubai over 24 films
+ * and 120 (film, chain) pairs: 11% of pairs are a chain contributing exactly
+ * one screening, worth 1–6% of that film's day. One screening is below the
+ * noise floor for a claim about a whole chain.
+ *
+ * Deliberately a count and not a share. A share threshold reads better on the
+ * aggregate — 10% suppresses a comparable slice of pairs — but it measures the
+ * wrong thing: Reel is a small premium chain, structurally a thin slice of
+ * every film it plays, so a 10% rule cut its alertable appearances from 19/23
+ * to 6/23 while leaving VOX untouched at 24/24. That blinds the alert to the
+ * chain most likely to fail silently, Reel being the one chain we ingest from
+ * its own feed rather than from cinemauae. A flat count of two treats the
+ * chains alike and suppresses only the single-screening tail (13 of 120 pairs).
+ *
+ * Re-measure with scripts/check-chain-shares.mts before changing this.
+ */
+const CHAIN_ALERT_MIN_SCREENINGS = 2;
+
 async function run(request: Request) {
   const started = Date.now();
   const SUPABASE_URL =
@@ -276,16 +300,48 @@ async function run(request: Request) {
 
   /** Our screenings for `today`, per title_key, with the chains they sit on. */
   const oursByKey = new Map<string, { count: number; chains: Set<string> }>();
+  /**
+   * Chains we list for a film anywhere in today, started or not.
+   *
+   * Screening *counts* are rightly compared on what is still ahead — that is
+   * what a visitor can act on. Chain *presence* must not be, and conflating the
+   * two produced the "Off the Grid" false positive on 2026-08-29, a film where
+   * we in fact held 11 of their 12 screenings.
+   *
+   * The mechanism is simply that the day ages. Once a chain's last screening
+   * for a film has started, it vanishes from an upcoming-only view of our data
+   * while cinemauae goes on listing it, so the comparison reports a missing
+   * chain when nothing is missing. Counted against live data at 13:36 Dubai —
+   * mid-afternoon, not even the worst of it — 19 (film, chain) pairs were
+   * already in that state: star 10, vox 5, cinemacity 3, novo 1. The population
+   * grows all evening, which is why the alert fired on the 00:37 Dubai run.
+   *
+   * Reel aggravates this, because its feed also drops a session the moment it
+   * starts, but Reel is not the cause and was not among those 19. Any chain
+   * reaches the same state eventually.
+   *
+   * Asking whether we list the chain at all today answers the question the
+   * alert is actually for — did we stop scraping this chain — and is immune to
+   * the time of day.
+   */
+  const ourChainsAllDay = new Map<string, Set<string>>();
   let ourTodayTotal = 0;
   for (const row of ours) {
     const times = Array.isArray(row.showtimes) ? row.showtimes : [];
     let n = 0;
+    let anyToday = false;
     for (const entry of times) {
       if (!entry || typeof entry !== "object") continue;
       const e = entry as Record<string, unknown>;
       if (e["date"] !== today) continue;
+      anyToday = true;
       if (!stillUpcoming(typeof e["time"] === "string" ? e["time"] : undefined)) continue;
       n += 1;
+    }
+    if (anyToday) {
+      const seen = ourChainsAllDay.get(row.title_key) ?? new Set<string>();
+      seen.add(row.cinema);
+      ourChainsAllDay.set(row.title_key, seen);
     }
     if (n === 0) continue;
     ourTodayTotal += n;
@@ -348,6 +404,8 @@ async function run(request: Request) {
     // ones still ahead so both sides are counted on the same basis.
     const upcoming = parsed.screenings.filter((s) => stillUpcoming(s.time));
     const theirChains = new Set(upcoming.map((s) => s.chainKey));
+    const theirByChain = new Map<string, number>();
+    for (const s of upcoming) theirByChain.set(s.chainKey, (theirByChain.get(s.chainKey) ?? 0) + 1);
     // Venue discovery uses every screening: a venue we do not know is worth
     // reporting whether or not its next show has started.
     for (const s of parsed.screenings) {
@@ -361,7 +419,13 @@ async function run(request: Request) {
     theirTotal += theirs;
     ourSampledTotal += mineCount;
 
-    const missingChains = [...theirChains].filter((c) => !(mine?.chains.has(c) ?? false));
+    const listedByUs = ourChainsAllDay.get(key) ?? new Set<string>();
+    const missingChains = [...theirChains].filter((c) => !listedByUs.has(c));
+    // Every missing chain stays in the report body. Only the alert is gated, so
+    // a thin one is still visible to anyone reading the run rather than erased.
+    const materialMissing = missingChains.filter(
+      (c) => (theirByChain.get(c) ?? 0) >= CHAIN_ALERT_MIN_SCREENINGS,
+    );
     perFilm.push({ title: parsed.title, theirs, ours: mineCount, missingChains });
 
     if (!ourTitles.has(key)) {
@@ -384,11 +448,14 @@ async function run(request: Request) {
       });
     }
 
-    if (missingChains.length > 0 && mineCount > 0) {
+    if (materialMissing.length > 0 && mineCount > 0) {
+      const detail = materialMissing
+        .map((c) => `${c} (${theirByChain.get(c)} of their ${theirs})`)
+        .join(", ");
       alerts.push({
         level: "warn",
         kind: "missing_chain",
-        detail: `"${parsed.title}" is listed at ${missingChains.join(", ")} by the source but not by us.`,
+        detail: `"${parsed.title}" is listed at ${detail} by the source but not by us.`,
       });
     }
   }
