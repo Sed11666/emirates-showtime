@@ -7,7 +7,7 @@
  * for the date pickers; parseDayKey() reads keys back out of scraped payloads.
  */
 export type DayOption = {
-  value: string; // "any" or ISO date (yyyy-mm-dd)
+  value: string; // ISO date (yyyy-mm-dd)
   label: string;
   sublabel: string;
 };
@@ -31,9 +31,18 @@ export function toDayKey(date: Date): string {
  */
 export const DAY_COUNT = 3;
 
+/**
+ * The day chips: today, tomorrow, then weekday names.
+ *
+ * There is deliberately no "Any day" option. It offered a merged list of every
+ * day's times with nothing to say which time belonged to which day, so the one
+ * question it could answer — when can I see this — it answered ambiguously.
+ * The film page had already been filtering it out of this list by hand rather
+ * than show it.
+ */
 export function buildDayOptions(count = DAY_COUNT): DayOption[] {
   const now = new Date();
-  const options: DayOption[] = [{ value: "any", label: "Any", sublabel: "day" }];
+  const options: DayOption[] = [];
   for (let i = 0; i < count; i += 1) {
     const date = new Date(now.getTime() + i * 86_400_000);
     const key = toDayKey(date);

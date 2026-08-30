@@ -435,10 +435,14 @@ function CinemasPage() {
                       }}
                       className="group w-full rounded-2xl border border-border/60 bg-card/50 px-5 py-6 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:gold-glow"
                     >
-                      <p className="truncate font-display text-sm font-bold uppercase tracking-wide">
+                      {/* Not truncated. Two columns on a 375px phone leaves
+                          each card ~145px, which cut every real venue down to
+                          "FOUNTAIN VI…" and "MERCATO M…" — the name is the only
+                          reason to look at the card, so it wraps instead. */}
+                      <p className="font-display text-sm font-bold uppercase leading-snug tracking-wide">
                         {venue.name}
                       </p>
-                      <p className="mt-1.5 truncate text-xs text-muted-foreground">
+                      <p className="mt-1.5 text-xs leading-snug text-muted-foreground">
                         {CINEMA_LABELS[venue.cinema]} · {venue.city}
                       </p>
                       {/* "away" only when the fix is the visitor's own. These
@@ -585,10 +589,15 @@ function CinemasPage() {
                   key={film.id}
                   className="overflow-hidden rounded-2xl border border-border/60 bg-card/40"
                 >
-                  <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
-                    <div className="flex min-w-0 items-center gap-2.5">
+                  {/* Stacks on a phone. As one row the title was the only
+                      flexible item, so it absorbed every pixel the badges and
+                      the "All times" link needed and truncated to "BETHLAHE…"
+                      — hiding the one piece of information the block is about.
+                      Wrapping costs a line; truncating costs the title. */}
+                  <div className="flex flex-col gap-2 border-b border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
                       <Film className="size-4 shrink-0 text-gold" />
-                      <p className="truncate font-display text-base font-bold uppercase tracking-wide">
+                      <p className="min-w-0 font-display text-base font-bold uppercase leading-snug tracking-wide">
                         {film.title}
                       </p>
                       {film.rating ? (

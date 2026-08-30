@@ -413,7 +413,6 @@ function MovieShowtimesPage() {
               watch and is now choosing when, so the date leads the filters. */}
           <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
             {buildDayOptions(DAY_COUNT)
-              .filter((option) => option.value !== "any")
               .map((option) => {
                 const active = option.value === day;
                 const weekday = new Intl.DateTimeFormat("en-AE", {
