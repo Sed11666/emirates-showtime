@@ -13,6 +13,7 @@
  * Server-rendered, like the rest: the point is that a crawler sees the times.
  */
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
 import { Clapperboard, MapPin } from "lucide-react";
 
 import {
@@ -20,13 +21,14 @@ import {
   CINEMA_LABELS,
   fetchChainFilms,
   filmSlug,
-  hasUpcomingScreenings,
+  hasUpcomingScreeningsOn,
   mergeFilmsByTitle,
   rankByTrending,
   showtimesByVenue,
   type CinemaKey,
 } from "@/lib/cinemas";
-import { toDayKey } from "@/lib/days";
+import { DAY_COUNT, dayKeys } from "@/lib/days";
+import { DaySelector } from "@/components/day-selector";
 import { VENUES, venueSlug } from "@/lib/venues";
 import {
   VenueShowtimesBlock,
@@ -46,8 +48,11 @@ export const Route = createFileRoute("/cinemas_/$chain")({
     // Unknown chains 404 rather than rendering an empty page. A soft 200 on a
     // nonsense URL is how a site accumulates thin pages in the index.
     if (!isChain(params.chain)) throw notFound();
-    const day = toDayKey(new Date());
-    return { films: await fetchChainFilms(params.chain, day), day };
+    // All three days up front. The read is the same either way — the day
+    // filter has always run in JS — and this page has no client query to fetch
+    // the rest later, so anything the picker can reach has to be here.
+    const days = dayKeys();
+    return { films: await fetchChainFilms(params.chain, days), days };
   },
   head: ({ params }) => {
     const label = CINEMA_LABELS[params.chain] ?? params.chain;
@@ -80,7 +85,12 @@ export const Route = createFileRoute("/cinemas_/$chain")({
 
 function ChainPage() {
   const { chain } = Route.useParams();
-  const { films, day } = Route.useLoaderData();
+  const { films, days } = Route.useLoaderData();
+  // Defaulted from the loader rather than a fresh new Date(): the HTML can come
+  // from the page cache, and a client that disagreed with it about what "today"
+  // is would select a tab the server never rendered.
+  const [day, setDay] = useState(days[0]);
+  const isToday = day === days[0];
 
   const label = CINEMA_LABELS[chain] ?? chain;
   const screens = VENUES.filter((v) => v.cinema === chain);
@@ -93,7 +103,7 @@ function ChainPage() {
   // was `order by title`, so every listing on the site opened on whichever film
   // happened to start with "A".
   const showing = rankByTrending(
-    mergeFilmsByTitle(films).filter((film) => hasUpcomingScreenings(film.showtimes)),
+    mergeFilmsByTitle(films).filter((film) => hasUpcomingScreeningsOn(film.showtimes, day)),
     { dayKey: day },
   );
 
@@ -108,7 +118,9 @@ function ChainPage() {
     },
     {
       "@type": "ItemList",
-      name: `Films showing at ${label} today`,
+      // Day-aware so the markup never contradicts the list beneath it. A
+      // crawler only ever sees the server render, which is today.
+      name: isToday ? `Films showing at ${label} today` : `Films showing at ${label} on ${day}`,
       numberOfItems: showing.length,
       itemListElement: showing.slice(0, 40).map((film, i) => ({
         "@type": "ListItem",
@@ -137,12 +149,17 @@ function ChainPage() {
             {label} Showtimes in the UAE
           </h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            {showing.length} {showing.length === 1 ? "film" : "films"} playing today across{" "}
-            {screens.length} {label} {screens.length === 1 ? "screen" : "screens"} in{" "}
+            {showing.length} {showing.length === 1 ? "film" : "films"} playing{" "}
+            {isToday ? "today" : "that day"} across {screens.length} {label}{" "}
+            {screens.length === 1 ? "screen" : "screens"} in{" "}
             {cities.length === 1 ? cities[0] : `${cities.length} emirates`}. Pick a time to book
             with {label} directly — we never sell the ticket.
           </p>
         </header>
+
+        {/* Same picker as /cinemas, so the three days behave the same wherever
+            you meet them. */}
+        <DaySelector value={day} onChange={setDay} days={DAY_COUNT} className="mb-8" />
 
         {/* Every screen, named. This is the text that makes the page findable
             for "vox mall of the emirates showtimes" and its many cousins. */}
@@ -168,7 +185,9 @@ function ChainPage() {
 
         {showing.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-            No {label} screenings left today.{" "}
+            {isToday
+              ? `No ${label} screenings left today.`
+              : `No ${label} screenings listed for that day yet.`}{" "}
             <Link to="/cinemas" className="text-gold underline-offset-4 hover:underline">
               See what else is on
             </Link>

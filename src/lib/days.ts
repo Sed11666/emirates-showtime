@@ -64,6 +64,20 @@ export function buildDayOptions(count = DAY_COUNT): DayOption[] {
   return options;
 }
 
+/**
+ * Just the day keys the pickers offer, for loaders that fetch every day up
+ * front and let the component choose between them.
+ *
+ * Typed as never-empty because it is not: buildDayOptions always yields today
+ * first. That lets callers treat days[0] as "today" without a non-null
+ * assertion at every use, which is the sort of assertion that stops being true
+ * quietly.
+ */
+export function dayKeys(count = DAY_COUNT): [string, ...string[]] {
+  const [first, ...rest] = buildDayOptions(count).map((option) => option.value);
+  return [first ?? toDayKey(new Date()), ...rest];
+}
+
 /** Extract a yyyy-mm-dd key from a loose date string, if possible. */
 export function parseDayKey(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;

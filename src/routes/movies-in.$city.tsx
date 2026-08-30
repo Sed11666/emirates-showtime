@@ -12,18 +12,20 @@
  * ones.
  */
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
 import { MapPin } from "lucide-react";
 
 import {
   CINEMA_LABELS,
   fetchCityFilms,
   filmSlug,
-  hasUpcomingScreenings,
+  hasUpcomingScreeningsOn,
   mergeFilmsByTitle,
   rankByTrending,
   showtimesByVenue,
 } from "@/lib/cinemas";
-import { toDayKey } from "@/lib/days";
+import { DAY_COUNT, dayKeys } from "@/lib/days";
+import { DaySelector } from "@/components/day-selector";
 import { CITY_BY_SLUG, VENUES, citySlug, venueSlug } from "@/lib/venues";
 import {
   VenueShowtimesBlock,
@@ -38,8 +40,8 @@ export const Route = createFileRoute("/movies-in/$city")({
   loader: async ({ params }) => {
     const city = CITY_BY_SLUG[params.city];
     if (!city) throw notFound();
-    const day = toDayKey(new Date());
-    return { films: await fetchCityFilms(city, day), day, city };
+    const days = dayKeys();
+    return { films: await fetchCityFilms(city, days), days, city };
   },
   head: ({ params, loaderData }) => {
     const city = loaderData?.city ?? CITY_BY_SLUG[params.city] ?? params.city;
@@ -72,7 +74,12 @@ export const Route = createFileRoute("/movies-in/$city")({
 
 function CityPage() {
   const { city: cityParam } = Route.useParams();
-  const { films, day, city } = Route.useLoaderData();
+  const { films, days, city } = Route.useLoaderData();
+  // Defaulted from the loader rather than a fresh new Date(): the HTML can come
+  // from the page cache, and a client that disagreed with it about what "today"
+  // is would select a tab the server never rendered.
+  const [day, setDay] = useState(days[0]);
+  const isToday = day === days[0];
 
   const screens = VENUES.filter((v) => v.city === city);
   const chains = [...new Set(screens.map((v) => v.cinema))];
@@ -83,7 +90,7 @@ function CityPage() {
   // was `order by title`, so every listing on the site opened on whichever film
   // happened to start with "A".
   const showing = rankByTrending(
-    mergeFilmsByTitle(films).filter((film) => hasUpcomingScreenings(film.showtimes)),
+    mergeFilmsByTitle(films).filter((film) => hasUpcomingScreeningsOn(film.showtimes, day)),
     { dayKey: day },
   );
   const others = Object.entries(CITY_BY_SLUG).filter(([, name]) => name !== city);
@@ -104,7 +111,9 @@ function CityPage() {
     },
     {
       "@type": "ItemList",
-      name: `Films showing in ${city} today`,
+      // Day-aware so the markup never contradicts the list beneath it. A
+      // crawler only ever sees the server render, which is today.
+      name: isToday ? `Films showing in ${city} today` : `Films showing in ${city} on ${day}`,
       numberOfItems: showing.length,
       itemListElement: showing.slice(0, 40).map((film, i) => ({
         "@type": "ListItem",
@@ -128,7 +137,9 @@ function CityPage() {
         </nav>
 
         <header className="mb-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-primary">Today</p>
+          <p className="text-sm uppercase tracking-[0.2em] text-primary">
+            {isToday ? "Today" : "Showtimes"}
+          </p>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">Movies in {city}</h1>
           <p className="mt-2 max-w-2xl text-muted-foreground">
             {showing.length} {showing.length === 1 ? "film" : "films"} showing across{" "}
@@ -137,6 +148,10 @@ function CityPage() {
             cinema directly.
           </p>
         </header>
+
+        {/* Same picker as /cinemas, so the three days behave the same wherever
+            you meet them. */}
+        <DaySelector value={day} onChange={setDay} days={DAY_COUNT} className="mb-8" />
 
         {/* Named screens, each linking to its own page — the internal links that
             make the venue tier reachable from a city query. */}
@@ -164,7 +179,9 @@ function CityPage() {
 
         {showing.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-            No screenings left today in {city}.{" "}
+            {isToday
+              ? `No screenings left today in ${city}.`
+              : `No screenings listed for that day yet in ${city}.`}{" "}
             <Link to="/cinemas" className="text-gold underline-offset-4 hover:underline">
               See what else is on
             </Link>

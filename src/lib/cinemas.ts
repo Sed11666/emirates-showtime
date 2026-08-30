@@ -167,10 +167,18 @@ export async function fetchCinemaFilmsForDay(dayKey: string): Promise<CinemaFilm
  * One chain's films for one day, for the chain landing page's loader.
  *
  * Filtered in SQL on cinema, so unlike the film-page loader this reads only
- * what it needs. Showtimes are narrowed to the day here rather than in the
- * component so the payload serialised into the HTML stays small.
+ * what it needs. Showtimes are narrowed to the requested days here rather than
+ * in the component so the payload serialised into the HTML stays small.
+ *
+ * Takes the days as a list because these pages carry a date picker like the
+ * rest of the site. The SQL is unchanged either way — the day filter has always
+ * been applied in JS — so asking for three days costs nothing at the database
+ * and only widens the HTML.
  */
-export async function fetchChainFilms(chain: string, dayKey: string): Promise<CinemaFilm[]> {
+export async function fetchChainFilms(
+  chain: string,
+  dayKeys: string[],
+): Promise<CinemaFilm[]> {
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
@@ -181,27 +189,39 @@ export async function fetchChainFilms(chain: string, dayKey: string): Promise<Ci
     .order("title", { ascending: true });
   if (error) throw new Error(error.message);
 
-  return ((data ?? []) as CinemaFilm[]).map((film) => {
+  return keepDays((data ?? []) as CinemaFilm[], dayKeys);
+}
+
+/**
+ * Drop every screening outside `dayKeys`, keeping undated ones.
+ *
+ * Undated entries survive on purpose: they are ones we could not parse a date
+ * out of, and dropping a screening because our own parser failed is worse than
+ * showing one on the wrong tab.
+ */
+function keepDays(films: CinemaFilm[], dayKeys: string[]): CinemaFilm[] {
+  const wanted = new Set(dayKeys);
+  return films.map((film) => {
     const times = Array.isArray(film.showtimes) ? film.showtimes : [];
     return {
       ...film,
       showtimes: times.filter((entry) => {
         if (!entry || typeof entry !== "object") return true;
         const date = (entry as Record<string, unknown>)["date"];
-        return typeof date !== "string" || date === dayKey;
+        return typeof date !== "string" || wanted.has(date);
       }),
     };
   });
 }
 
 /**
- * One emirate's films for one day, for the city landing page's loader.
+ * One emirate's films, for the city landing page's loader.
  *
  * cinema_films carries a city per row, so this filters in SQL and reads only
- * what it needs. Showtimes are narrowed to the day here so the payload
- * serialised into the HTML stays small.
+ * what it needs. Showtimes are narrowed to the requested days here so the
+ * payload serialised into the HTML stays small.
  */
-export async function fetchCityFilms(city: string, dayKey: string): Promise<CinemaFilm[]> {
+export async function fetchCityFilms(city: string, dayKeys: string[]): Promise<CinemaFilm[]> {
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
@@ -212,17 +232,7 @@ export async function fetchCityFilms(city: string, dayKey: string): Promise<Cine
     .order("title", { ascending: true });
   if (error) throw new Error(error.message);
 
-  return ((data ?? []) as CinemaFilm[]).map((film) => {
-    const times = Array.isArray(film.showtimes) ? film.showtimes : [];
-    return {
-      ...film,
-      showtimes: times.filter((entry) => {
-        if (!entry || typeof entry !== "object") return true;
-        const date = (entry as Record<string, unknown>)["date"];
-        return typeof date !== "string" || date === dayKey;
-      }),
-    };
-  });
+  return keepDays((data ?? []) as CinemaFilm[], dayKeys);
 }
 
 /**
@@ -369,6 +379,29 @@ export function hasDatedShowtimes(value: unknown): boolean {
 export function hasUpcomingScreenings(value: unknown, now: Date = new Date()): boolean {
   const today = toDayKey(now);
   return parseShowtimes(value).some((e) => !isScreeningOver(e.time, e.date ?? null, today, now));
+}
+
+/**
+ * The same question asked of one specific day.
+ *
+ * hasUpcomingScreenings() looks across every day we hold, which is what the
+ * home grid wants — one card per film, shown if it is watchable at all. A
+ * surface with a date picker needs the narrower question, or picking "Tomorrow"
+ * would keep listing a film that only plays today.
+ *
+ * "Not started yet" still applies on the chosen day, so today's tab sheds a
+ * film as its last showing passes exactly as it did before, while a future day
+ * simply lists everything on it.
+ */
+export function hasUpcomingScreeningsOn(
+  value: unknown,
+  dayKey: string,
+  now: Date = new Date(),
+): boolean {
+  return parseShowtimes(value).some(
+    (e) =>
+      (!e.date || e.date === dayKey) && !isScreeningOver(e.time, e.date ?? null, dayKey, now),
+  );
 }
 
 /**

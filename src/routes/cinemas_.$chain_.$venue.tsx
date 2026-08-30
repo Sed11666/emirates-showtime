@@ -13,18 +13,20 @@
  * of invented ones is a liability.
  */
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
 import { MapPin } from "lucide-react";
 
 import {
   CINEMA_LABELS,
   fetchChainFilms,
   filmSlug,
-  hasUpcomingScreenings,
+  hasUpcomingScreeningsOn,
   mergeFilmsByTitle,
   rankByTrending,
   showtimesByVenue,
 } from "@/lib/cinemas";
-import { toDayKey } from "@/lib/days";
+import { DAY_COUNT, dayKeys } from "@/lib/days";
+import { DaySelector } from "@/components/day-selector";
 import { VENUES, venueSlug } from "@/lib/venues";
 import {
   VenueShowtimesBlock,
@@ -49,8 +51,8 @@ export const Route = createFileRoute("/cinemas_/$chain_/$venue")({
     const venue = findVenue(params.chain, params.venue);
     if (!venue) throw notFound();
 
-    const day = toDayKey(new Date());
-    const films = await fetchChainFilms(params.chain, day);
+    const days = dayKeys();
+    const films = await fetchChainFilms(params.chain, days);
 
     // Narrow to this screen here rather than in the component, so the payload
     // serialised into the HTML is one venue's times and not the whole chain's.
@@ -64,7 +66,7 @@ export const Route = createFileRoute("/cinemas_/$chain_/$venue")({
       }))
       .filter((film) => film.showtimes.length > 0);
 
-    return { films: atVenue, day, venueName: venue.name, city: venue.city };
+    return { films: atVenue, days, venueName: venue.name, city: venue.city };
   },
   head: ({ params, loaderData }) => {
     const chainLabel = CINEMA_LABELS[params.chain] ?? params.chain;
@@ -100,7 +102,12 @@ export const Route = createFileRoute("/cinemas_/$chain_/$venue")({
 
 function VenuePage() {
   const { chain, venue: venueParam } = Route.useParams();
-  const { films, day, venueName, city } = Route.useLoaderData();
+  const { films, days, venueName, city } = Route.useLoaderData();
+  // Defaulted from the loader rather than a fresh new Date(): the HTML can come
+  // from the page cache, and a client that disagreed with it about what "today"
+  // is would select a tab the server never rendered.
+  const [day, setDay] = useState(days[0]);
+  const isToday = day === days[0];
 
   const chainLabel = CINEMA_LABELS[chain] ?? chain;
   const name = shortName(venueName);
@@ -111,7 +118,7 @@ function VenuePage() {
   // was `order by title`, so every listing on the site opened on whichever film
   // happened to start with "A".
   const showing = rankByTrending(
-    mergeFilmsByTitle(films).filter((film) => hasUpcomingScreenings(film.showtimes)),
+    mergeFilmsByTitle(films).filter((film) => hasUpcomingScreeningsOn(film.showtimes, day)),
     { dayKey: day },
   );
   const siblings = VENUES.filter((v) => v.cinema === chain && v.name !== venueName);
@@ -162,7 +169,9 @@ function VenuePage() {
         </nav>
 
         <header className="mb-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-primary">Today&rsquo;s showtimes</p>
+          <p className="text-sm uppercase tracking-[0.2em] text-primary">
+            {isToday ? "Today’s showtimes" : "Showtimes"}
+          </p>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">
             {chainLabel} {name}
           </h1>
@@ -174,9 +183,15 @@ function VenuePage() {
           </p>
         </header>
 
+        {/* Same picker as /cinemas, so the three days behave the same wherever
+            you meet them. */}
+        <DaySelector value={day} onChange={setDay} days={DAY_COUNT} className="mb-8" />
+
         {showing.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
-            No screenings left today at {chainLabel} {name}.{" "}
+            {isToday
+              ? `No screenings left today at ${chainLabel} ${name}.`
+              : `No screenings listed for that day yet at ${chainLabel} ${name}.`}{" "}
             <Link
               to="/cinemas/$chain"
               params={{ chain }}
