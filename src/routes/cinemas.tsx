@@ -8,11 +8,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Film, Locate, MapPin, Navigation, Search } from "lucide-react";
+import { ChevronRight, Locate, MapPin, Navigation, Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DaySelector } from "@/components/day-selector";
+import { FilmBlockHeader } from "@/components/film-block-header";
 import { FilterRow } from "@/components/filter-row";
 import { UpcomingReleases } from "@/components/upcoming-releases";
 
@@ -589,42 +590,31 @@ function CinemasPage() {
                   key={film.id}
                   className="overflow-hidden rounded-2xl border border-border/60 bg-card/40"
                 >
-                  {/* Stacks on a phone. As one row the title was the only
-                      flexible item, so it absorbed every pixel the badges and
-                      the "All times" link needed and truncated to "BETHLAHE…"
-                      — hiding the one piece of information the block is about.
-                      Wrapping costs a line; truncating costs the title. */}
-                  <div className="flex flex-col gap-2 border-b border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                      <Film className="size-4 shrink-0 text-gold" />
-                      <p className="min-w-0 font-display text-base font-bold uppercase leading-snug tracking-wide">
-                        {film.title}
-                      </p>
-                      {film.rating ? (
-                        <span className="shrink-0 rounded-md border border-gold/50 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
-                          {film.rating}
-                        </span>
-                      ) : null}
-                      {distance !== null ? (
-                        <span className="shrink-0 rounded-md border border-gold/40 px-1.5 py-0.5 text-[10px] font-medium text-gold">
-                          {distance < 1
-                            ? `${Math.round(distance * 1000)} m`
-                            : `${distance.toFixed(1)} km`}
-                        </span>
-                      ) : null}
-                    </div>
-                    {/* Stays inside Cinemas: scoping this page to the film shows
-                        every screen, which is what the old movie page was for. */}
-                    {!movieSlug ? (
-                      <Link
-                        to="/cinemas"
-                        search={{ movie: filmSlug(film.title) }}
-                        className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
-                      >
-                        All times <ChevronRight className="size-3.5" />
-                      </Link>
-                    ) : null}
-                  </div>
+                  <FilmBlockHeader
+                    title={film.title}
+                    badges={[
+                      film.rating,
+                      distance === null
+                        ? null
+                        : distance < 1
+                          ? `${Math.round(distance * 1000)} m`
+                          : `${distance.toFixed(1)} km`,
+                    ]}
+                    trailing={
+                      /* Stays inside Cinemas: scoping this page to the film
+                         shows every screen, which is what the old movie page
+                         was for. */
+                      movieSlug ? null : (
+                        <Link
+                          to="/cinemas"
+                          search={{ movie: filmSlug(film.title) }}
+                          className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:brightness-125"
+                        >
+                          All times <ChevronRight className="size-3.5" />
+                        </Link>
+                      )
+                    }
+                  />
 
                   {venues.length > 0 ? (
                     /* Each screen is its own panel rather than a hairline-divided

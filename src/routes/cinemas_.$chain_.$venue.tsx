@@ -27,6 +27,7 @@ import {
 } from "@/lib/cinemas";
 import { DAY_COUNT, dayKeys } from "@/lib/days";
 import { DaySelector } from "@/components/day-selector";
+import { FilmBlockHeader } from "@/components/film-block-header";
 import { VENUES, venueSlug } from "@/lib/venues";
 import {
   VenueShowtimesBlock,
@@ -211,24 +212,19 @@ function VenuePage() {
               return (
                 <article
                   key={film.title}
-                  className="rounded-xl border border-border/60 bg-card/40 p-5"
+                  className="overflow-hidden rounded-xl border border-border/60 bg-card/40"
                 >
-                  <div className="mb-3 flex items-baseline justify-between gap-3">
-                    <h2 className="min-w-0 truncate font-display text-lg font-semibold">
-                      <Link
-                        to="/movie/$slug"
-                        params={{ slug: filmSlug(film.title) }}
-                        className="hover:text-gold"
-                      >
-                        {film.title}
-                      </Link>
-                    </h2>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {/* Genre and certificate only, matching /movie/$slug. */}
-                      {[film.genre, film.rating].filter(Boolean).join(" · ")}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+                  {/* Genre and certificate only, as on every other header. The
+                      card gained a bordered header strip here so it matches the
+                      chain and browse cards — it was the odd one out, a padded
+                      box with the title floated inside it. */}
+                  <FilmBlockHeader
+                    heading
+                    title={film.title}
+                    slug={filmSlug(film.title)}
+                    badges={[film.genre, film.rating]}
+                  />
+                  <div className="flex flex-wrap gap-2 p-5">
                     {board.venues.map((venue) => (
                       <VenueShowtimesBlock
                         key={venue.venue}
