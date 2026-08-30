@@ -257,8 +257,11 @@ const FILM_COLUMNS =
  * cases under-match: "&" becomes "and", which is in no title, and an accented
  * word survives only as its ASCII fragments. The caller therefore treats an
  * empty narrow result as inconclusive and rescans, so a bad guess costs a round
- * trip and never a wrong 404. Verified against all 40 live slugs: no mismatches,
- * two falling back to the full scan.
+ * trip and never a wrong 404.
+ *
+ * scripts/check-film-slugs.mts proves the equivalence against live data and is
+ * the thing to re-run if this is ever tightened; at the time of writing it
+ * reported 42 slugs, no mismatches, two falling back.
  */
 function slugPrefilter(slug: string): string | null {
   const token = slug.split("-").reduce((a, b) => (b.length > a.length ? b : a), "");
