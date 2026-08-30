@@ -47,6 +47,30 @@ function shortName(name: string): string {
   return name.replace(/\s+Cinema$/i, "");
 }
 
+/**
+ * The <title>, budgeted to what Google actually renders.
+ *
+ * Venue names are the long ones — "VOX Cinemas City Center Fujairah Showtimes
+ * — Fujairah | ShowSouk" was 64 characters, so the tail was cut off in the
+ * SERP for the tier we have the most pages of.
+ *
+ * Things are dropped in the order they earn least, matching titleTag() on the
+ * film page. The brand goes first: "| ShowSouk" earns nothing for a domain
+ * nobody searches for yet. The city goes second, and only when it has to,
+ * because "vox mall of the emirates showtimes dubai" is the shape of the query
+ * this page is for. The chain and the venue are never dropped — between them
+ * they are the query.
+ */
+function venueTitle(chainLabel: string, name: string, city: string): string {
+  const BRAND = " | ShowSouk";
+  const BUDGET = 60;
+  const withCity = `${chainLabel} ${name} Showtimes — ${city}`;
+  if (withCity.length + BRAND.length <= BUDGET) return withCity + BRAND;
+  if (withCity.length <= BUDGET) return withCity;
+  const bare = `${chainLabel} ${name} Showtimes`;
+  return bare.length + BRAND.length <= BUDGET ? bare + BRAND : bare;
+}
+
 export const Route = createFileRoute("/cinemas_/$chain_/$venue")({
   loader: async ({ params }) => {
     const venue = findVenue(params.chain, params.venue);
@@ -76,10 +100,17 @@ export const Route = createFileRoute("/cinemas_/$chain_/$venue")({
       : params.venue.replace(/-/g, " ");
     const city = loaderData?.city ?? "the UAE";
     const canonical = `${ORIGIN}/cinemas/${params.chain}/${params.venue}`;
-    const description = `Today's showtimes at ${chainLabel} ${name}, ${city}. Every film and time on screen now, with a direct link to book on ${chainLabel}'s own site.`;
+    // Budgeted the same way as the title. The long form sits at ~160 for the
+    // longest venue names, which is exactly where it gets cut, so the short
+    // form drops the closing clause rather than let Google choose the cut.
+    const full = `Today's showtimes at ${chainLabel} ${name}, ${city}. Every film and time on screen now, with a direct link to book on the cinema's own site.`;
+    const description =
+      full.length <= 158
+        ? full
+        : `Today's showtimes at ${chainLabel} ${name}, ${city}. Every film and time on screen now, with a direct booking link.`;
     return {
       meta: [
-        { title: `${chainLabel} ${name} Showtimes — ${city} | ShowSouk` },
+        { title: venueTitle(chainLabel, name, city) },
         { name: "description", content: description },
         { property: "og:title", content: `${chainLabel} ${name} Showtimes` },
         { property: "og:description", content: description },

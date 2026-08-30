@@ -58,8 +58,12 @@ export const Route = createFileRoute("/")({
       { title: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },
       {
         name: "description",
+        // 150 characters. The previous one was 174 and lost its last clause in
+        // the SERP. Every chain name survives the trim on purpose — "vox
+        // cinemas showtimes" and its cousins are the queries this page has any
+        // chance at — so the words cut are the connective ones, not the nouns.
         content:
-          "What's on across VOX, Star, Novo, Roxy, Reel, Cinema City and Cine Royal in Dubai, Abu Dhabi and the Emirates — now showing, today's showtimes and booking links in one place.",
+          "What's on at VOX, Star, Novo, Roxy, Reel, Cinema City and Cine Royal — today's showtimes across Dubai, Abu Dhabi and the Emirates, with booking links.",
       },
       { property: "og:title", content: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },
       {

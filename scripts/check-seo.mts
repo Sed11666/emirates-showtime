@@ -139,9 +139,22 @@ for (const r of reports) {
   if (r.status !== 200) problems.push(`${r.path}: HTTP ${r.status}`);
   if (r.noindex) problems.push(`${r.path}: noindex`);
   if (r.h1.length !== 1) problems.push(`${r.path}: ${r.h1.length} h1 (want exactly 1)`);
+  // Compared on path, not on the whole URL. A canonical always names the
+  // production origin, which is correct even when this script is pointed at a
+  // dev server — checking the origin too made every page report a canonical
+  // problem the moment SITE was overridden, which is how a checker teaches you
+  // to ignore it.
   if (!r.canonical) problems.push(`${r.path}: no canonical`);
-  else if (r.canonical !== `${SITE}${r.path === "/" ? "/" : r.path}`)
-    problems.push(`${r.path}: canonical -> ${r.canonical}`);
+  else {
+    let canonicalPath: string | null = null;
+    try {
+      canonicalPath = new URL(r.canonical).pathname;
+    } catch {
+      problems.push(`${r.path}: canonical is not a URL -> ${r.canonical}`);
+    }
+    if (canonicalPath !== null && canonicalPath !== r.path)
+      problems.push(`${r.path}: canonical points at ${canonicalPath}`);
+  }
   if (!r.title) problems.push(`${r.path}: no title`);
   else if (r.titleLen > 60) problems.push(`${r.path}: title ${r.titleLen} chars (>60, will truncate)`);
   if (!r.description) problems.push(`${r.path}: no description`);

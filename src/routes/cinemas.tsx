@@ -40,9 +40,12 @@ import {
   type NearbyVenue,
   bookingTarget,
 } from "@/lib/venues";
+import { jsonLdDocument } from "@/lib/structured-data";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
 import { DAY_COUNT, toDayKey } from "@/lib/days";
+
+const ORIGIN = "https://www.showsouk.com";
 
 export const Route = createFileRoute("/cinemas")({
   /**
@@ -322,11 +325,45 @@ function CinemasPage() {
     return movieSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }, [films, movieSlug]);
 
-
-
+  /**
+   * Structured data, which this page was the only listing tier to be missing.
+   *
+   * The chain, venue and city pages all carried a BreadcrumbList and an
+   * ItemList; /cinemas — the page they all sit under, and the one with the most
+   * films on it — carried none, so the tier's own hub was the one page Google
+   * had no machine-readable summary of.
+   *
+   * Built from what is actually rendered, which on the server render is today
+   * with no filters applied. That is the state the canonical URL describes, and
+   * it is the only state a crawler sees.
+   */
+  const jsonLd = useMemo(() => {
+    const listed = filtered.slice(0, 40);
+    return jsonLdDocument([
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${ORIGIN}/` },
+          { "@type": "ListItem", position: 2, name: "Cinemas", item: `${ORIGIN}/cinemas` },
+        ],
+      },
+      {
+        "@type": "ItemList",
+        name: "Films now showing in UAE cinemas",
+        numberOfItems: listed.length,
+        itemListElement: listed.map(({ film }, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          url: `${ORIGIN}/movie/${filmSlug(film.title)}`,
+          name: film.title,
+        })),
+      },
+    ]);
+  }, [filtered]);
 
   return (
     <div className="flex min-h-screen flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
 
         {/* Says what the visitor gets, not how we get it. How often our scraper
