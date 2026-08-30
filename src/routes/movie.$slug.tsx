@@ -29,7 +29,6 @@ import {
 } from "@/components/venue-showtimes";
 import {
   CINEMA_LABELS,
-  fetchCinemaFilms,
   fetchFilmBySlug,
   filmSlug,
   titleKey,
@@ -189,13 +188,23 @@ function MovieShowtimesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Seeded from the loader so the server render already has the film. The
-  // shared cinema-films query then supplies the full catalogue for everything
-  // else on the page.
+  // Seeded from the loader so the server render already has the film, then
+  // refetched for this slug alone.
+  //
+  // This used to share the whole-catalogue "cinema-films" query, which was
+  // waste twice over: `matches` immediately filters the catalogue back down
+  // to the rows the loader had already fetched, and seeding a key named for
+  // the whole catalogue with one film's rows meant a later visit to the home
+  // page rendered off that one film until its own refetch landed.
+  //
+  // initialDataUpdatedAt stays 0 deliberately: the HTML can come from the
+  // page cache, so the seeded showtimes may be minutes old, and forcing the
+  // refetch is what keeps a cached page honest. It now costs a few KB rather
+  // than the entire catalogue.
   const { films: ssrFilms } = Route.useLoaderData();
   const { data, isLoading } = useQuery({
-    queryKey: ["cinema-films"],
-    queryFn: fetchCinemaFilms,
+    queryKey: ["film", slug],
+    queryFn: () => fetchFilmBySlug(slug),
     initialData: ssrFilms,
     initialDataUpdatedAt: 0,
   });

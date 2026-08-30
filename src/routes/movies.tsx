@@ -10,7 +10,7 @@ import { Film } from "lucide-react";
 import { ListingCard } from "@/components/listing-card";
 import { PosterReel } from "@/components/poster-reel";
 import { fetchListings } from "@/lib/listings";
-import { fetchCinemaFilms } from "@/lib/cinemas";
+import { fetchBrowseFilms } from "@/lib/cinemas";
 
 
 export const Route = createFileRoute("/movies")({
@@ -38,8 +38,8 @@ function MoviesPage() {
     queryFn: () => fetchListings("movie"),
   });
   const { data: cinemaFilms } = useQuery({
-    queryKey: ["cinema-films"],
-    queryFn: fetchCinemaFilms,
+    queryKey: ["cinema-films", "browse"],
+    queryFn: fetchBrowseFilms,
   });
 
   const posters = useMemo(() => {

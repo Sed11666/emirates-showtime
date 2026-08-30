@@ -20,7 +20,7 @@ import {
   CINEMAS,
   CINEMA_LABELS,
   type CinemaKey,
-  fetchCinemaFilms,
+  fetchBrowseFilms,
   fetchCinemaFilmsForDay,
   filmSlug,
   hasDatedShowtimes,
@@ -222,8 +222,8 @@ function CinemasPage() {
   // set in the background, which is what day switching and film scoping need.
   const { films: ssrFilms } = Route.useLoaderData();
   const { data, isLoading, error } = useQuery({
-    queryKey: ["cinema-films"],
-    queryFn: fetchCinemaFilms,
+    queryKey: ["cinema-films", "browse"],
+    queryFn: fetchBrowseFilms,
     initialData: ssrFilms,
     // initialData is today-only, so treat it as already stale and let the full
     // fetch start at once rather than sitting on a partial set.

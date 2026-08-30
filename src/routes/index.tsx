@@ -31,7 +31,7 @@ import { useAuthPrompt } from "@/components/auth-prompt";
 import { supabase } from "@/integrations/supabase/client";
 import { Reveal } from "@/components/reveal";
 import {
-  fetchCinemaFilms,
+  fetchBrowseFilms,
   fetchCinemaFilmsForDay,
   filmFormats,
   filmSlug,
@@ -165,8 +165,8 @@ const HERO_COUNT = 4;
 function Home() {
   const { films: ssrFilms } = Route.useLoaderData();
   const { data: films } = useQuery({
-    queryKey: ["cinema-films"],
-    queryFn: fetchCinemaFilms,
+    queryKey: ["cinema-films", "browse"],
+    queryFn: fetchBrowseFilms,
     initialData: ssrFilms,
     initialDataUpdatedAt: 0,
   });
