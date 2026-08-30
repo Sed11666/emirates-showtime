@@ -55,16 +55,20 @@ unless you deliberately revisit it.
 | `src/lib/cinemas.ts` | the read layer. `titleKey`/`filmSlug` live here |
 | `src/lib/venues.ts` | 64 screens with coordinates, `venueSlug`, `bookingTarget`, the UAE outline |
 | `src/lib/search.ts` | site search. Results carry their own route + params |
+| `src/routes/api/public/hooks/coverage-check.ts` | monitoring: us vs the source, emailed (§5b) |
 | `src/components/venue-showtimes.tsx` | **the** showtime chip. Shared by five pages |
 | `src/components/filter-row.tsx` | **the** filter dropdown. Shared by /cinemas and /movie |
+| `src/components/film-block-header.tsx` | **the** film header. Shared by four pages (§10d) |
+| `src/components/legal-page.tsx` | shared shell for /privacy and /terms |
 | `src/components/theme-menu.tsx` | Appearance rows, shared by both header states |
 | `src/styles.css` | both palettes and every effect token (§10c) |
 | `scripts/*.mts` | read-only health checks (§12) |
 
-The three shared components are shared **because their copies drifted before**.
+The four shared components are shared **because their copies drifted before**.
 A fix applied to one copy and not the others is how `/movie/$slug` ended up
-silently missing the dashed honesty marker and the film-level fallback. If you
-find yourself pasting a chip or a dropdown, import it instead.
+silently missing the dashed honesty marker and the film-level fallback, and how
+the film header ended up with two designs across four pages. If you find yourself
+pasting a chip, a dropdown or a header, import it instead.
 
 ### Important hosting history
 The site used to run on Lovable hosting. It was migrated to Vercel. The Lovable
@@ -270,6 +274,7 @@ Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 scrape-aggregator-15m   */15 * * * *   → showsouk.com (Vercel)   cinemas
 scrape-events-6h        15 */6 * * *   → lovable.app (frozen)    events
 resolve-posters-daily   17 4 * * *     → showsouk.com (Vercel)   posters
+coverage-check-5h       37 */5 * * *   → showsouk.com (Vercel)   monitoring
 ```
 The cinemas job is a plain `net.http_post` with **no query string**. It must not
 pass `?offset=` and must not touch `scraper_cursor` — the route paces itself
@@ -282,6 +287,75 @@ stays clear of all four.
 Note `pg_cron` reports "succeeded" when `pg_net` *dispatches* the request — it
 never sees the HTTP result. **To check real outcomes, query `net._http_response`.**
 
+`coverage-check-5h` fires at `:37` for the same reason `resolve-posters` fires at
+`:17` — it stays clear of the aggregator's four slots. In Dubai that is 04:37,
+09:37, 14:37, 19:37 and 00:37. See §5b.
+
+---
+
+## 5b. The coverage check (added 2026-08-29)
+
+`src/routes/api/public/hooks/coverage-check.ts` samples cinemauae and compares it
+against what we hold, then emails the result. It is **read-only**: no token, no
+RPC, no writes. Registered as `coverage-check-5h` (jobid 16). The SQL that
+created it, plus the queries for reading results out of `net._http_response`,
+is in the scratch file `coverage-cron.sql` — not in the repo (§11.26 applies).
+
+Mail goes through the **Resend REST API** directly — no SDK, so no lockfile
+change. Three Vercel env vars: `RESEND_API_KEY`, `COVERAGE_ALERT_TO`,
+`COVERAGE_ALERT_FROM`. Absent the key it degrades to `{"sent": false, "note":
+"RESEND_API_KEY not set"}` and still returns the report, which is what makes it
+safe to run locally. `?alertsOnly=1` suppresses mail on a healthy run — **use it
+when testing by hand**, or you post to the owner's inbox.
+
+The verdict is in the subject line, so the inbox is scannable without opening
+anything.
+
+**The thresholds are calibrated, not guessed. Do not "tidy" them.**
+
+- `TITLE_COVERAGE_WARN = 0.5`, `ALERT = 0.35`. ~66–72% is *normal*: their sitemap
+  carries coming-soon films that have no screenings at all. A tighter number
+  fires every time they add a trailer page.
+- `SAMPLE_SCREENING_ALERT = 0.7`, `FILM_SCREENING_WARN = 0.6`.
+- `CHAIN_ALERT_MIN_SCREENINGS = 2` — see below.
+
+**`sampledScreeningsPct` can exceed 100 and that is not a bug.** We routinely
+hold *more* upcoming screenings than they list for the sampled films, because
+Reel comes from Reel's own feed (§4b). 102%, 107%, 108% are all normal readings.
+
+**Both sides are compared on screenings that have not started yet**, because the
+two sources age differently: Reel's feed drops a session the moment it starts,
+cinemauae lists the whole day regardless. Without that filter the check reported
+a difference every evening for Reel and none of them were real.
+
+**Chain presence is compared across the whole day, and that is a different rule
+on purpose.** Screening *counts* use "not started yet" — that is what a visitor
+can act on. Chain *presence* must not, because once a chain's last screening for
+a film begins it vanishes from an upcoming-only view of our data while cinemauae
+goes on listing it, and the check calls that a missing chain when nothing is
+missing. That fired on 2026-08-29 for "Off the Grid" at Reel, a film where we
+held 11 of their 12 screenings. Measured at 13:36 Dubai — mid-afternoon, not even
+the bad part of the day — **19 (film, chain) pairs were already in that state:
+star 10, vox 5, cinemacity 3, novo 1, and no reel at all.** Reel's pruning makes
+it worse; it is not the cause. Every chain gets there eventually.
+
+**The floor is a count, not a share, and that distinction cost a wrong answer
+first.** A 10% share threshold suppresses a similar slice in aggregate but
+measures the wrong thing: Reel is a small premium chain, structurally a thin
+slice of every film it plays, so the share rule cut its alertable appearances
+from **19/23 to 6/23** while leaving VOX untouched at 24/24 — blinding the alert
+to the one chain we ingest from its own feed, and therefore the one most likely
+to fail silently. A flat count of two treats the chains alike and suppresses only
+the single-screening tail (13 of 120 pairs).
+
+Two scripts back this up, both read-only:
+`scripts/check-chain-shares.mts` measures the distribution the floor is set from,
+and `scripts/check-chain-alert.mts` proves the alert still fires — **a gate that
+silently disables an alert looks exactly like a healthy system**, so that second
+one is the one that matters. Measured 2026-08-30: 0 alerts live, and with a
+chain deleted from our side it fired on 15/20 films for reel, 20/20 vox, 18/20
+star.
+
 ---
 
 ## 6. Secrets — where they live, what you need
@@ -292,6 +366,8 @@ URL and the **publishable** key, which ship in the browser bundle by design.
 | Secret | Lives in | How to get it |
 |---|---|---|
 | `SCRAPER_INGEST_TOKEN` | Vercel env var | `select token from scraper_auth;` in Lovable Cloud → SQL editor |
+| `RESEND_API_KEY` | Vercel env var | Resend dashboard. Only the coverage check uses it (§5b) |
+| `COVERAGE_ALERT_TO` / `_FROM` | Vercel env var | plain addresses, not secret, but they live with the key |
 | GitHub PAT | your machine only | create a fine-grained token, repo `emirates-showtime`, **Contents: Read and write** |
 | Supabase service_role | **not available** | Lovable Cloud hides it — that's why the RPC pattern exists |
 | `FIRECRAWL_API_KEY`, `LOVABLE_API_KEY` | Lovable secrets | legacy, no longer used by the live pipeline |
@@ -489,6 +565,36 @@ sharp on the Now Showing cards because there it is *downscaled* 0.54×. If hero
 artwork ever looks soft again, check which field it is reading before touching
 any CSS — `backdrop_url` is the 16:9 one.
 
+**19. Do not detect a deploy by comparing asset hashes.**
+Vercel's build produces different chunk hashes than a local `npm run build` for
+identical source — local `index-LIhW7VmV.js` against deployed `index-DV21GLTQ.js`
+for the same commit. Fifteen minutes were spent watching a hash "fail to change"
+on a deploy that had already landed. **Grep the deployed chunk for a string only
+the new code contains**, or check rendered HTML for the change. Cache headers are
+no help either: `X-Vercel-Cache: MISS` with `Age: 0` confirms a fresh render from
+whatever build is live, not that the build is current.
+
+**20. `grep -c` counts matching *lines*, not occurrences.**
+Server-rendered HTML is one enormous line, so `grep -c 'aria-pressed'` returns
+`1` no matter what the page contains. That produced twelve identical polling
+results and a false conclusion that a deploy had not landed. Parse the HTML in
+node — `(html.match(/re/g) || []).length` — for anything you intend to count.
+Related: `grep` treats that HTML as a binary file and prints "Binary file
+matches" instead of the match, which silently breaks pipelines built on it.
+
+**21. Mirroring a pure function in a script is a trap.**
+`scripts/check-film-slugs.mts` first reimplemented `titleKey()` by hand, got the
+suffix rule wrong — it stripped any trailing "- word word" rather than only
+bracketed language and format suffixes — and spent its run testing seven slugs
+the site never generates, then reported them as 404 regressions. **Import the
+real function.** The scripts can reach app code; there is no reason to copy it.
+
+**22. Watch what a "read-only" check costs someone's inbox.**
+`coverage-check` emails on every run. Testing it by hand without `?alertsOnly=1`
+posts to the owner's real inbox. Same class of mistake as running a scrape by
+hand and corrupting the page cache (§8.13) — the endpoint being read-only against
+the *database* does not make it free of side effects.
+
 ---
 
 ## 9. Product rules
@@ -554,31 +660,36 @@ any CSS — `backdrop_url` is the 16:9 one.
 
 ## 10. Current state
 
-Measured against the live database on **2026-08-28**. These move daily; re-run
+Measured against the live database on **2026-08-31**. These move daily; re-run
 the queries in §12 rather than trusting the numbers.
 
 ```
-7 chains: vox, star, novo, roxy, reel, cineroyal, cinemacity
-501 active film rows · 46 distinct titles · 9,548 screenings · 9,044 with a link
-3 days: 28 Aug 3,040 · 29 Aug 3,210 · 30 Aug 3,129
+7 chains: vox 146 · star 116 · cinemacity 58 · novo 50 · cineroyal 28 · reel 27 · roxy 17
+442 active film rows · 42 distinct titles · 8,290 screenings · 7,845 with a link
+3 days: 30 Aug 2,970 · 31 Aug 2,695 · 1 Sep 2,544  (+41 on 27 Aug, 39 on 2 Sep — edges of a pass)
 8 cities · 63 distinct screen names (64 in the geo list)
-artwork: 454 rows have a backdrop_url · 90 posters on image.tmdb.org
-metadata: 487 rows carry an imdb_id · 446 a director · 489 a cast
+artwork: 401 rows have a backdrop_url · 401 posters on image.tmdb.org
+metadata: 397 rows carry a director · 440 a cast
 reel: 27 of 31 rows deep-link to /movie-details
 ```
 
-The imdb_id figure moved from 147 to 487 on 2026-08-28. That was not scraping —
+The stray day counts at either end are normal: a full pass takes ~4 hours, so a
+snapshot catches rows written against the previous window and rows already
+reaching into the next one.
+
+The `imdb_id` count moved from 147 to 487 on 2026-08-28. That was not scraping —
 the ids were already sitting in the poster filenames and nothing was reading
-them (§8.11).
+them (§8.11). That is what made the artwork numbers below possible.
 
 Screenings roughly doubled on 2026-08-24 when the scrape went from one day to
 three. Coverage was still filling in when these were taken — a full pass is
 about four hours — so the per-chain counts below are a floor, not a total.
 
-**Posters read low here and that is expected mid-rotation.** Only rows carrying
-an `imdb_id` can be resolved, and `resolve-posters-daily` runs once a day, so
-after a large rescrape the ratio dips until the next run. A number that keeps
-falling day over day means the cron has stopped; a dip after a rescrape does not.
+**Artwork now sits at 401 of 442 rows, up from 90 TMDB posters on 2026-08-28.**
+Only rows carrying an `imdb_id` can be resolved and `resolve-posters-daily` runs
+once a day, so the ratio dips after a large rescrape and recovers on the next
+run. A number that keeps falling day over day means the cron has stopped; a dip
+straight after a rescrape does not.
 
 **Per-screening booking links work for five of seven chains.** The "exact" column
 counts URLs used by exactly one screening of that film, so it fell relative to
@@ -619,16 +730,21 @@ a poster and misleading about *owning* it.
 
 Latest commits:
 ```
-487172c Let the scraper pace itself instead of trusting a cursor
-4288dfd Write a page's three days all at once, or not at all
-e12e661 Scrape three days, and show them
-9dd945f Add Coming Soon, so next week has an answer
-8be6eef Stop offering days we have no schedule for
-05e88aa Actually install Vercel Web Analytics
-35f0edb Send Reel clicks to its showtimes page, not its front door
-f9c5c9c Scope Cinemas near you to the chain being filtered
-70e9d9a Carry the chain through when a home page tile opens Cinemas
-321297e Give signed-in visitors an account menu, and a working theme mechanism
+d4d40df Fix three SEO findings: two long titles, a cut description, no schema on /cinemas
+b1b36f1 Add scripts/check-seo.mts
+b18081c Give every film header one design instead of two
+2a76dc8 Give the chain, venue and city pages the same three days as the rest
+2e6b39f Drop the "Any day" chip and stop hiding long names on phones
+eff982a Stop missing_chain firing on chains whose day has simply ended
+26bf357 Add scripts/check-film-slugs.mts
+634fbaa Narrow the catalogue reads: 92% less egress on a film page
+5ba055d Redeploy to pick up RESEND_API_KEY and COVERAGE_ALERT_TO
+12628a9 Email the coverage report
+b6c0055 Add a coverage check that compares us against the source
+4a33745 Keep the TMDB attribution in the terms, not the footer
+a948876 Add terms of service, and the TMDB attribution we owed
+a3e9cba Use the support address in the privacy policy
+00cf64b Add a privacy policy, linked from the footer
 ```
 
 Venue coordinates are now taken from each screen's own page on cinemauae, the
@@ -648,7 +764,8 @@ progress` — those are Lovable editor syncs, not deliberate checkpoints.
 Added 2026-08-25/26. Before it, the site had **8 pages, none of which
 contained a film name or a showtime in the HTML**, no sitemap, and no
 structured data. Everything was fetched after hydration, so search engines saw
-an empty shell. It is now 116 URLs, all server-rendered.
+an empty shell. It is now **123 URLs** — 64 venue, 40 film, 8 city, 7 chain,
+plus home, `/cinemas`, `/privacy`, `/terms` — all server-rendered.
 
 ### Everything is server-rendered. Keep it that way.
 Each route loads its data in a TanStack **route loader**, not a client-only
@@ -717,8 +834,13 @@ path separator, so `sitemap.xml.ts` would serve `/sitemap/xml`.
 `lib/structured-data.ts`. One `@graph` per page so nodes reference each other by
 `@id` — every `ScreeningEvent` points at the one `Movie` rather than restating
 it. Film pages carry Movie + up to 80 ScreeningEvent + BreadcrumbList; venue
-pages MovieTheater + BreadcrumbList; chain and city pages BreadcrumbList +
-ItemList; the homepage Organization + WebSite.
+pages MovieTheater + BreadcrumbList; chain, city **and `/cinemas`** pages
+BreadcrumbList + ItemList; the homepage Organization + WebSite.
+
+`/cinemas` was the last gap and was filled 2026-08-31. Its ItemList is built in
+the component from what is actually rendered, which on the server render is today
+with no filters — the state the canonical describes and the only one a crawler
+sees.
 
 **Only ever describe what the page renders.** The events use the same day filter
 as the UI. Google treats markup for absent content as spam, and tying the two
@@ -792,6 +914,25 @@ Rules encoded there, each for a reason:
 - **158 character budget on the description.** The old text ran to 194 where
   Google renders ~155, so a fifth of it was never shown.
 
+The venue pages got the same treatment on 2026-08-31 (`venueTitle()` in
+`cinemas_.$chain_.$venue.tsx`). Venue names are the long ones — "VOX Cinemas City
+Center Fujairah Showtimes — Fujairah | ShowSouk" was 64 characters, so the tail
+was cut off across the tier we have the most pages of. Same drop order: brand
+first, city second and only when it must, chain and venue never — between them
+they *are* the query. Both offenders now fit with the city intact, at 50 and 53.
+
+**Measure budgets against decoded text.** Counting raw source reads `&amp;` as
+five characters where a SERP shows one, which invents length problems that are
+not there — it flagged two perfectly fine titles the first time `check-seo.mts`
+ran, before the decode was added.
+
+**Leave "Today's Times" in the chain and venue titles.** Those pages now hold
+three days (§10d) and it is tempting to say so. Do not: "vox showtimes today" is
+a real query and "3 days of showtimes" is not, freshness is what earns the click
+on a listings result, and — decisively — **only day one renders in the DOM**, so
+"today" describes exactly what Google indexes. Advertising three days would be
+the less accurate tag, not the more complete one.
+
 ### Rejected: film x city pages
 
 `[film] [city]` is the dominant query and `/movie/toy-story-5/dubai` is the
@@ -846,6 +987,117 @@ codebase has already shipped two colours that measured far worse than they
 looked. Sweep every text node against its composited background rather than
 trusting spot checks — the last sweep covered ~1,000 elements per page across
 both themes and found 273 pre-existing failures nobody had noticed.
+
+---
+
+## 10d. The landing pages carry three days (added 2026-08-31)
+
+`/cinemas/{chain}`, `/cinemas/{chain}/{venue}` and `/movies-in/{city}` were
+today-only, so clicking through from `/cinemas` silently dropped two of the three
+days the site had just offered. They now carry the same `DaySelector`.
+
+**The database read did not change.** `fetchChainFilms` and `fetchCityFilms`
+already pulled every row and narrowed to a day in JS, so asking for three days
+costs nothing at Supabase and only widens the serialised HTML.
+
+`hasUpcomingScreeningsOn()` exists because `hasUpcomingScreenings()` asks whether
+a film is watchable on *any* day we hold — right for the home grid, wrong for a
+surface with a date picker, where it would keep a film on the Tomorrow tab
+because it plays today. The new one keeps the "not started yet" rule scoped to
+the chosen day.
+
+`dayKeys()` returns `[string, ...string[]]`, not `string[]`. It is never empty and
+saying so beats a non-null assertion at each of the four call sites — the kind
+that stops being true without anyone noticing.
+
+**Day is component state, not a URL param**, so there are no new URLs and no
+duplicate-content risk. The component defaults from the loader's `days[0]` rather
+than a fresh `new Date()`: the HTML can come from the page cache, and a client
+that disagreed with it about what "today" is would select a tab the server never
+rendered.
+
+**Know what this bought and what it did not.** Only the selected day renders;
+the other two sit in the serialised loader payload, which is now **81% of the
+bytes** on the chain and city pages. So a crawler sees the same one day it saw
+before, on a page that grew from 38.7 KB to 62.9 KB gzipped. It is a UX win with
+a Core Web Vitals cost and **zero indexable content gained**. Not a reason to
+undo it, but do not count it as SEO work. For scale, `/cinemas` is 89 KB and home
+86 KB, both already three days, so these are still the lighter pages.
+
+### One film header, not four
+
+`components/film-block-header.tsx`. The block had drifted into two looks — the
+`/cinemas` board had the gold film icon, uppercase display title and gold pills,
+while the three landing pages had a plain semibold title with "Action · 15+" in
+muted grey. All four now share the component, so it cannot drift again.
+
+`heading` is a prop because the difference is semantic, not cosmetic: the landing
+pages are one-heading-per-film documents a crawler reads as an outline, so their
+titles are `h2`; the board is a filtered list where 40 `h2`s would be noise, so it
+stays a `p`.
+
+**The uppercase is CSS `text-transform`, not baked into the string.** The DOM
+still says `Bethlahem Kudumba Unit`. Bake the capitals in and Google indexes
+shouty titles.
+
+### The "Any day" chip is gone, deliberately
+
+It merged three days of times into one list with no date against any time, so the
+one question it could answer — when can I see this — it answered ambiguously. The
+film page had already been filtering it out of `buildDayOptions()` by hand rather
+than show it. Removed at the source. The `"any"` guards still in `lib/cinemas`,
+`lib/showtimes` and `lib/days` are now unreachable, since day is component state
+and nothing can supply it; they were left rather than widen the change into the
+ranking path.
+
+---
+
+## 10e. Capacity — what actually limits how many people can use this
+
+Measured 2026-08-30. **Supabase egress on the free tier is the binding
+constraint, not Vercel.** Vercel's 100 GB would carry ~1.1M visits a month;
+Supabase's 5 GB ran out around 20,500.
+
+Every visit pays Supabase twice: once server-side when the loader runs, and again
+client-side when the query refetches after hydration. Gzipped, per visit, before
+and after the narrowing work:
+
+```
+home     250.3 KB  ->  236.8 KB    -5%
+movie    260.2 KB  ->   20.2 KB   -92%
+ceiling  ~20,500   ->  ~40,800 visits/month on the 5 GB free tier
+```
+
+**The film page was the win, and it was double-paying.** Its loader read all 442
+rows and filtered to one slug in JS, then the client refetched the *entire*
+catalogue under the shared `"cinema-films"` key — only for `matches` to filter it
+straight back down to the rows the loader already had. Both now read one film.
+
+`fetchFilmBySlug` narrows in SQL with a coarse `ilike` on the slug's **longest**
+token, with the exact `filmSlug()` comparison still deciding. Longest, not first:
+measured over every live slug that is 10 KB average against 21 KB for the first
+token and 130 KB for a full scan, because short leading words like "the" match
+most of the catalogue. **An empty narrow result falls back to a full scan rather
+than 404 a real film** — a false 404 on an indexed page is a de-indexing signal,
+so a bad guess must cost a round trip and never a wrong answer.
+`scripts/check-film-slugs.mts` proves the equivalence. Re-run it if film pages
+ever start dropping out of the index.
+
+Scoping that query to `["film", slug]` also fixed a cache collision: seeding a key
+named for the whole catalogue with one film's rows meant a later visit to the home
+page rendered off that single film until its own refetch landed.
+
+**Column narrowing was worth much less than the raw bytes suggested.** Dropping
+`synopsis`, `director`, `cast_names` and `duration_mins` from the browse read
+looks like 160 KB of raw JSON and is 11.5 KB gzipped — 42 synopses repeated
+across 442 rows compress to almost nothing. Measure gzipped or you will chase the
+wrong thing. It still earns its place: it takes ~29 KB of never-rendered prose out
+of the home page's HTML, which is a Core Web Vitals number as much as a bandwidth
+one.
+
+**The home client refetch stays eager on purpose.** Deferring it would save
+another ~118 KB a visit, but the home grid needs all three days late in the
+evening and day switching has to stay instant. That is a fluidity cost, not a win.
 
 ---
 
@@ -1138,8 +1390,41 @@ both themes and found 273 pre-existing failures nobody had noticed.
     unless the title genuinely renamed the same film, and never redirect them
     all to `/cinemas`, which is a soft-404 pattern of its own.
 
-28. **`/cinemas` has no JSON-LD.** Every other page type carries it. It is the
-    main browse page and the only structural gap left in the markup. Small.
+28. ~~**`/cinemas` has no JSON-LD.**~~ — **done 2026-08-31.** BreadcrumbList +
+    ItemList, built from the rendered list. See §10b.
+
+### Opened 2026-08-31
+
+29. **Legal pages are accurate but not lawyer-reviewed.** `/privacy` and `/terms`
+    describe how the service actually behaves, which is the prerequisite for a
+    lawyer to review them cheaply — not a substitute for it. Two things in them
+    are promises the code does not yet keep: the 30-day deletion commitment has
+    **no tooling behind it**, and account deletion is handled by asking at
+    `Helpshowsouk@gmail.com`. Build the deletion path before the first request
+    arrives, not after.
+
+    The TMDB attribution their API terms require lives in **terms §6 and nowhere
+    else**. It was briefly in the site footer too and was taken out deliberately
+    — do not "restore" it there. If that page is ever removed, the line has to
+    land somewhere else rather than simply disappear.
+
+30. **The three-day landing pages ship two days a crawler never sees.** ~24 KB
+    gzipped per page of serialised payload, 81% of the bytes, for content only a
+    client-side tab switch reveals (§10d). Two ways to close it, neither
+    obviously right: render the other days hidden in the DOM (Google indexes
+    `display:none` content but discounts it, and it adds DOM weight), or give the
+    days real URLs (new rankable pages, but thin/duplicate risk on a domain with
+    no backlinks — and §11's rejected film×city reasoning largely applies). **Do
+    neither until the current pages actually rank.**
+
+31. **`/movie/$slug` has no `h2` at all.** The film page is the highest-intent
+    tier and its outline is a lone `h1`. Pre-existing, not caused by the header
+    work, and small — the venue blocks are the obvious candidates.
+
+32. **`coverage-check` samples 12 films per run on a rotating window.** Full
+    coverage of ~64 sitemap URLs therefore takes several runs, so a single
+    healthy report is weaker evidence than it looks. Read a run as one sample,
+    not as a clean bill of health.
 
 ### Closed
 
@@ -1161,13 +1446,26 @@ both themes and found 273 pre-existing failures nobody had noticed.
 
 ## 12. How to verify things are healthy
 
-Three checked-in scripts, all read-only. Run them from the repo root:
+Seven checked-in scripts, all read-only. Run them from the repo root:
 
 ```bash
 npx tsx scripts/check-service-area.mts   # UAE outline vs 26 known places + every venue
 npx tsx scripts/check-reel-feed.mts      # stored vs Reel's own feed, per day
 npx tsx scripts/check-reel-links.mts     # Reel deep-link coverage and every URL
+npx tsx scripts/check-film-slugs.mts     # ilike prefilter == full scan; every film page 200
+npx tsx scripts/check-seo.mts            # titles, descriptions, h1, canonicals, JSON-LD
+npx tsx scripts/check-chain-shares.mts   # per-chain screening distribution (sets the alert floor)
+npx tsx scripts/check-chain-alert.mts    # proves missing_chain still fires
 ```
+
+`check-seo.mts` and `check-film-slugs.mts` hit **production** by default; pass
+`SITE=http://localhost:5173` to point them at a dev server. The other five read
+Supabase or the upstream sources directly.
+
+The two chain scripts answer different questions and both are needed: shares
+measures what the threshold should be, alert proves the threshold has not
+silently disabled the thing it guards. Run the second one after touching
+`CHAIN_ALERT_MIN_SCREENINGS` (§5b).
 
 `check-service-area` is the one to run **after adding a venue**. The outline
 decides whether a visitor's own position is used for distances, and a screen
