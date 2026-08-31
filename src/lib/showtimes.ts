@@ -138,7 +138,38 @@ export function venueBlocks(films: CinemaFilm[], dayKey: string, coords: Coords 
   });
 }
 
+/**
+ * A straight-line distance, rendered at the precision the input actually has.
+ *
+ * Two things this deliberately does not do.
+ *
+ * It does not say "away". The number is a great-circle distance and nobody
+ * travels in a great circle. Deira to Burjuman is 2.0 km straight and a far
+ * longer drive because the Creek is between them with few crossings; Dubai
+ * Marina to Palm Jumeirah Mall is 3.8 km straight with exactly one road on and
+ * off the Palm. "2.0 km away" is a claim about a journey we have never
+ * measured, and two visitors reported the number not matching what they drove.
+ *
+ * It does not print metres to the metre. Venue coordinates are mall centroids,
+ * accurate to a few hundred metres by their own definition in lib/venues, so
+ * "805 m" asserts three digits of precision from data that has one. Rounding to
+ * the nearest 100 m says what we know and stops there, and the leading ~ marks
+ * it as an estimate at a glance.
+ *
+ * Real driving distance would need a routing call per venue per page load,
+ * which this site cannot afford and does not need: the number exists to rank
+ * cinemas against each other, and for ordering a straight line is exact.
+ */
 export function formatDistance(km: number | null): string | null {
   if (km === null) return null;
-  return km < 1 ? `${Math.round(km * 1000)} m away` : `${km.toFixed(1)} km away`;
+  // Round first, then choose the unit. Choosing the unit from the raw value
+  // instead printed "~1000 m" for 0.96 km, because the rounding tipped it over
+  // a kilometre after the branch had already been taken.
+  //
+  // Floored at 100 m: rounding below that gives "0 m", which reads as broken
+  // rather than as very close.
+  const metres = Math.max(100, Math.round(km * 10) * 100);
+  if (metres < 1000) return `~${metres} m`;
+  const rounded = metres / 1000;
+  return rounded < 10 ? `~${rounded.toFixed(1)} km` : `~${Math.round(rounded)} km`;
 }

@@ -552,7 +552,7 @@ function MovieShowtimesPage() {
               // Names the city actually being measured from, not a hardcoded
               // Dubai: with the picker set to Sharjah, "4.8 km from Dubai" was
               // both wrong and contradicted the header.
-              distanceSuffix={precise ? " away" : ` from ${city}`}
+              distanceSuffix={precise ? "" : ` from ${city}`}
             />
           ))}
         </div>

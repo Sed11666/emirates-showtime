@@ -40,6 +40,7 @@ import {
   type NearbyVenue,
   bookingTarget,
 } from "@/lib/venues";
+import { formatDistance } from "@/lib/showtimes";
 import { jsonLdDocument } from "@/lib/structured-data";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
@@ -424,12 +425,12 @@ function CinemasPage() {
                       have six screens — Reel has three. The heading already names
                       the chain, so this line does not repeat it. */}
                   {precise
-                    ? `The ${nearby?.length ?? 0} closest screens to your current location.`
+                    ? `The ${nearby?.length ?? 0} closest screens to you, in a straight line — allow more by road.`
                     : outsideServiceArea
                       ? // Their location was granted and is simply too far away, so
                         // inviting them to share it again would be a dead end.
                         `You appear to be outside the UAE, so these are the closest screens to ${userCity} city centre.`
-                      : "The closest screens to your selected city — share your location for exact distances."}
+                      : "The closest screens to your selected city — share your location to sort from where you actually are."}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -483,15 +484,15 @@ function CinemasPage() {
                       <p className="mt-1.5 text-xs leading-snug text-muted-foreground">
                         {CINEMA_LABELS[venue.cinema]} · {venue.city}
                       </p>
-                      {/* "away" only when the fix is the visitor's own. These
-                          read "847 m away" for anyone on a city-centre
-                          fallback, which is a claim about a position we do not
-                          have — most visibly for someone abroad. */}
+                      {/* The city name is appended only on the city-centre
+                          fallback, where the distance is measured from a place
+                          the visitor is not — most visibly for someone abroad.
+                          On a real fix no suffix is needed: formatDistance
+                          already marks the number an estimate, and the panel
+                          heading says these are straight-line. */}
                       <p className="mt-1 text-xs text-gold">
-                        {venue.distanceKm < 1
-                          ? `${Math.round(venue.distanceKm * 1000)} m`
-                          : `${venue.distanceKm.toFixed(1)} km`}
-                        {precise ? " away" : ` from ${userCity}`}
+                        {formatDistance(venue.distanceKm)}
+                        {precise ? "" : ` from ${userCity}`}
                       </p>
                     </button>
                   </li>
@@ -631,11 +632,7 @@ function CinemasPage() {
                     title={film.title}
                     badges={[
                       film.rating,
-                      distance === null
-                        ? null
-                        : distance < 1
-                          ? `${Math.round(distance * 1000)} m`
-                          : `${distance.toFixed(1)} km`,
+                      formatDistance(distance),
                     ]}
                     trailing={
                       /* Stays inside Cinemas: scoping this page to the film
@@ -676,10 +673,8 @@ function CinemasPage() {
                                 which it is rather than implying precision. */}
                             {venue.km !== null ? (
                               <span className="text-xs text-muted-foreground">
-                                {venue.km < 1
-                                  ? `${Math.round(venue.km * 1000)} m`
-                                  : `${venue.km.toFixed(1)} km`}
-                                {precise ? " away" : ` from ${userCity}`}
+                                {formatDistance(venue.km)}
+                                {precise ? "" : ` from ${userCity}`}
                               </span>
                             ) : null}
                             <span className="ml-auto text-xs text-muted-foreground">

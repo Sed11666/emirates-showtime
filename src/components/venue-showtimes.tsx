@@ -17,6 +17,7 @@ import { MapPin } from "lucide-react";
 
 import type { VenueShowtimes } from "@/lib/cinemas";
 import { bookingTarget } from "@/lib/venues";
+import { formatDistance } from "@/lib/showtimes";
 
 /**
  * How many screenings share each URL, across every venue of one film.
@@ -57,7 +58,11 @@ export type VenueShowtimesBlockProps = {
   filmUrl: string | null;
   chainUrl?: string | null;
   uses: Map<string, number>;
-  /** " away" when the position is precise, " from Dubai" when it is a city centre. */
+  /**
+   * "" when the position is the visitor's own, " from Dubai" when it is a city
+   * centre. Never " away": formatDistance explains why the number is not a
+   * travel distance.
+   */
   distanceSuffix?: string;
 };
 
@@ -85,7 +90,7 @@ export function VenueShowtimesBlock({
         </p>
         {typeof venue.km === "number" ? (
           <span className="text-xs text-muted-foreground">
-            {venue.km < 1 ? `${Math.round(venue.km * 1000)} m` : `${venue.km.toFixed(1)} km`}
+            {formatDistance(venue.km)}
             {distanceSuffix}
           </span>
         ) : null}
