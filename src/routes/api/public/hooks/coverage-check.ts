@@ -270,14 +270,29 @@ async function run(request: Request) {
    * Comparing what a visitor could still book is also the question actually
    * worth asking, and it is the same rule the UI uses to decide what to show.
    */
+  /**
+   * There is deliberately no small-hours exception here.
+   *
+   * This used to return true for anything before 06:00, on the premise that a
+   * 01:10 chip was the tail of the previous evening. 20bcb8d disproved that
+   * against the source itself: each ?d=N tab is one plain calendar day, and a
+   * Roxy chip on the 27 Aug tab links to .../27+Aug+2026/00:00. A small-hours
+   * show is the first show of its own day, not the last of the day before.
+   *
+   * Keeping the exception made the check disagree with the site it monitors.
+   * lib/days has no such rule, so at 20:18 the board correctly treats this
+   * morning's 01:10 as finished while the check counted it as still ahead —
+   * and counted it on cinemauae's side only, because Reel's feed prunes a
+   * session once it starts. That asymmetry was the whole of the "missing"
+   * 3%: 14 of the 31 absent screenings in an 8-film sample were Reel
+   * small-hours shows we hold under the correct date, and the rest were
+   * cinemauae listing this morning's early shows on today's tab.
+   */
   const nowMins = dubaiNowMinutes();
   const stillUpcoming = (time: string | undefined) => {
     if (!time) return false;
     const mins = timeToMinutes(time);
     if (Number.isNaN(mins)) return false;
-    // Past midnight a late show belongs to the previous evening, so treat the
-    // small hours as still ahead rather than long gone.
-    if (mins < 6 * 60) return true;
     return mins >= nowMins - SHOWTIME_GRACE_MINUTES;
   };
 

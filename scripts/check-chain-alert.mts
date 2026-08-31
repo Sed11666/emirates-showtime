@@ -62,7 +62,8 @@ const stillUpcoming = (t) => {
   const m = /^(\d{1,2}):(\d{2})/.exec(String(t ?? "").trim());
   if (!m) return false;
   const mins = Number(m[1]) * 60 + Number(m[2]);
-  if (mins < 6 * 60) return true;
+  // No small-hours exception — see the note in coverage-check.ts. A 01:10 show
+  // is the first of its own calendar day, so by evening it has long finished.
   return mins >= nowMins - GRACE;
 };
 

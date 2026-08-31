@@ -325,7 +325,29 @@ Reel comes from Reel's own feed (§4b). 102%, 107%, 108% are all normal readings
 
 **Both sides are compared on screenings that have not started yet**, because the
 two sources age differently: Reel's feed drops a session the moment it starts,
-cinemauae lists the whole day regardless. Without that filter the check reported
+cinemauae lists the whole day regardless.
+
+**There is no small-hours exception, and do not add one back.** `stillUpcoming`
+used to return true for anything before 06:00, on the premise that a 01:10 chip
+was the tail of the previous evening. §8 records why that premise is false: each
+`?d=N` tab is one plain calendar day, and a Roxy chip on the 27 Aug tab links to
+`.../27+Aug+2026/00:00`. A small-hours show is the *first* show of its own day.
+
+Keeping it made the check disagree with the site it monitors — `lib/days` has no
+such rule, so by evening the board correctly treated this morning's 01:10 as
+finished while the check still counted it. Worse, it only inflated cinemauae's
+side, because Reel's feed prunes a started session. That asymmetry was the
+entire reported shortfall: investigated 2026-08-31, 14 of 31 "missing"
+screenings in an 8-film sample were Reel small-hours shows we hold under the
+correct date. Removing it took the sample from 97% to 98% with three films
+exact.
+
+**The residual ~2% is not missing data either.** cinemauae lists one screening
+per screen, so a film on two screens at 20:00 counts twice; we store one entry
+per (venue, time). Mostly right — rendering "20:00" twice reads as a bug — but
+at Mall of The Emirates those two were `Theatre` and `Premier`, different rooms
+at different prices, so collapsing them drops a real choice. Open question, not
+a defect; see §11. Without that filter the check reported
 a difference every evening for Reel and none of them were real.
 
 **Chain presence is compared across the whole day, and that is a different rule
