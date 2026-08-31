@@ -23,6 +23,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { THEME_INIT_SCRIPT } from "@/hooks/useTheme";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -178,6 +179,17 @@ function RootShell({ children }: { children: ReactNode }) {
           truth for "did anyone visit"; this is the readable dashboard on top.
         */}
         <Analytics />
+        {/*
+          Vercel Speed Insights — real Core Web Vitals from real visits.
+
+          Vercel serves /_vercel/speed-insights/script.js for this project
+          whether or not anything asks for it, so the dashboard looked enabled
+          while collecting nothing: no build ever shipped this component, and a
+          panel with no data point is indistinguishable from a panel with a
+          broken beacon. Both this and <Analytics /> report only from production
+          and are blocked by ad blockers, so treat their counts as a floor.
+        */}
+        <SpeedInsights />
         <Scripts />
       </body>
     </html>

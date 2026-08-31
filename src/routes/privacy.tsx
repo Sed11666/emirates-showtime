@@ -110,8 +110,9 @@ function PrivacyPage() {
 
       <Section title="Analytics">
         <p>
-          We use Vercel Web Analytics to count page views and see which pages are used. It is
-          cookie-free, reports in aggregate, and does not follow you to other websites or build a
+          We use Vercel Web Analytics to count page views and see which pages are used, and Vercel
+          Speed Insights to measure how quickly pages load and respond for real visitors. Both are
+          cookie-free, report in aggregate, and do not follow you to other websites or build a
           profile of you.
         </p>
       </Section>
