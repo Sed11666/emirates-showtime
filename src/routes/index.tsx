@@ -21,7 +21,7 @@
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ChevronRight, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -295,20 +295,71 @@ function Home() {
   );
 }
 
+/**
+ * How far a finger must travel horizontally before it counts as a swipe.
+ * Below this a tap that wobbles would change the slide.
+ */
+const SWIPE_MIN_PX = 40;
+
 /** Full-bleed hero: the top 4 popular movies slide through automatically. */
 function HeroSlider({ films }: { films: MergedFilm[] }) {
   const [index, setIndex] = useState(0);
 
+  /** Move by `delta`, wrapping both ways so neither end is a dead stop. */
+  const go = (delta: number) =>
+    setIndex((i) => (i + delta + films.length) % Math.max(films.length, 1));
+
+  /**
+   * A timeout re-armed on every change, not one long-lived interval.
+   *
+   * `index` is in the deps on purpose: a swipe or a dot press restarts the six
+   * seconds. With a plain interval the auto-advance kept its original schedule,
+   * so a swipe landing just before a tick read as the gesture jumping two.
+   */
   useEffect(() => {
     if (films.length < 2) return;
-    const id = window.setInterval(() => setIndex((i) => (i + 1) % films.length), 6000);
-    return () => window.clearInterval(id);
-  }, [films.length]);
+    const id = window.setTimeout(() => setIndex((i) => (i + 1) % films.length), 6000);
+    return () => window.clearTimeout(id);
+  }, [films.length, index]);
+
+  /**
+   * Where the current drag began. A ref, not state: it changes on every pointer
+   * down and nothing renders from it.
+   */
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+
+  const onPointerDown = (event: React.PointerEvent) => {
+    dragStart.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const onPointerEnd = (event: React.PointerEvent) => {
+    const start = dragStart.current;
+    dragStart.current = null;
+    if (!start || films.length < 2) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    /**
+     * Horizontal intent only. The hero is most of the first screen, so nearly
+     * every downward scroll starts on it; without comparing the two axes a
+     * scroll that drifts sideways would flip the slide as the page moves under
+     * the finger. Requiring dx to beat dy keeps the gesture opt-in.
+     */
+    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return;
+    // Content follows the finger: dragging left pulls the next film in.
+    go(dx < 0 ? 1 : -1);
+  };
 
   const active = films[index % Math.max(films.length, 1)];
 
   return (
-    <section className="film-grain relative isolate min-h-[560px] overflow-hidden sm:min-h-[78vh]">
+    <section
+      className="film-grain relative isolate min-h-[560px] touch-pan-y overflow-hidden sm:min-h-[78vh]"
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={() => {
+        dragStart.current = null;
+      }}
+    >
       <div aria-hidden className="absolute inset-0 -z-10">
         {films.map((film, i) => (
           <img
@@ -319,6 +370,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
             // poster so a film TMDB has no still for still gets artwork.
             src={film.backdrop_url ?? film.poster_url ?? ""}
             alt=""
+            draggable={false}
             className={`absolute inset-0 size-full object-cover transition-opacity duration-1000 ${
               i === index ? "opacity-100" : "opacity-0"
             }`}
