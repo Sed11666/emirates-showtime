@@ -12,10 +12,44 @@
  * why the location button did nothing.
  */
 import { useEffect, useState } from "react";
-import { CITY_CENTERS, withinServiceArea, type Coords } from "@/lib/venues";
+import { CITY_CENTERS, nearestCity, withinServiceArea, type Coords } from "@/lib/venues";
 
 const COORDS_KEY = "showsouk:coords";
 const CITY_KEY = "showsouk:city";
+
+/**
+ * Set once the visitor picks a city by hand, so an explicit choice is never
+ * overwritten by a location fix. Someone browsing Abu Dhabi from Dubai means it.
+ */
+const CITY_MANUAL_KEY = "showsouk:city-manual";
+
+/**
+ * Fired when a location fix renames the city. The header's picker lives in a
+ * different tree from every consumer of this hook, so nothing would otherwise
+ * tell it to re-read: a Sharjah visitor got correct Sharjah cinemas under a
+ * chip still reading "Dubai", which reads as the site not knowing where they
+ * are. `storage` events are no use here — the browser only sends those to
+ * *other* tabs, never the one that wrote.
+ */
+export const CITY_EVENT = "showsouk:city-changed";
+
+/**
+ * Name the city after a fix, unless the visitor has chosen one themselves.
+ * Returns the name so callers can set their own state from it.
+ */
+function syncCityToFix(point: Coords): string | null {
+  try {
+    if (window.localStorage.getItem(CITY_MANUAL_KEY)) return null;
+    const detected = nearestCity(point);
+    if (window.localStorage.getItem(CITY_KEY) === detected) return detected;
+    window.localStorage.setItem(CITY_KEY, detected);
+    window.dispatchEvent(new CustomEvent(CITY_EVENT, { detail: detected }));
+    return detected;
+  } catch {
+    // Private mode: the chip keeps its default, which is cosmetic only.
+    return null;
+  }
+}
 
 /**
  * How long a stored fix is trusted. Without an expiry the very first reading
@@ -83,6 +117,10 @@ export function useUserLocation() {
     if (cached && withinServiceArea(cached)) {
       setCoords(cached);
       setPrecise(true);
+      // A cached fix has to name the city too, or the chip only corrects itself
+      // on the visit where permission was granted and reverts on the next one.
+      const detected = syncCityToFix(cached);
+      if (detected) setCity(detected);
       return;
     }
     if (cached) setOutsideServiceArea(true);
@@ -123,6 +161,8 @@ export function useUserLocation() {
         setCoords(point);
         setPrecise(true);
         setOutsideServiceArea(false);
+        const detected = syncCityToFix(point);
+        if (detected) setCity(detected);
         onSuccess?.(point);
       },
       () => onError?.(),

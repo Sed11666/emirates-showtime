@@ -19,6 +19,7 @@ import {
   VENUES,
   distanceKm,
   filmDistanceKm,
+  nearestCity,
   nearestVenues,
   withinServiceArea,
   type Coords,
@@ -129,8 +130,22 @@ for (const [city, coords] of Object.entries(CITY_CENTERS)) {
   if (!ok && first) suspicious.push(`city-centre ${city} -> ${first.name} in ${first.city}`);
 }
 
+// The header chip names the city from nearestCity(), so a wrong answer here
+// tells a visitor the site does not know where they are even when every
+// distance on the page is right.
+console.log("--- header chip (nearestCity) ---");
+const wrongCity: string[] = [];
+for (const spot of SPOTS) {
+  const got = nearestCity(spot.coords);
+  const ok = got === spot.emirate;
+  console.log(`  ${ok ? " " : "*"} ${spot.name.padEnd(24)} -> ${got}${ok ? "" : `  (expected ${spot.emirate})`}`);
+  if (!ok) wrongCity.push(`${spot.name}: got ${got}, expected ${spot.emirate}`);
+}
+
 console.log("\n--- verdict ---");
+console.log(`  wrong header city: ${wrongCity.length}`);
+for (const w of wrongCity) console.log(`    ${w}`);
 console.log(`  points outside the service area: ${outside.length ? outside.join(", ") : "none"}`);
 console.log(`  suspicious orderings: ${suspicious.length}`);
 for (const s of suspicious) console.log(`    ${s}`);
-if (suspicious.length > 0 || outside.length > 0) process.exitCode = 1;
+if (suspicious.length > 0 || outside.length > 0 || wrongCity.length > 0) process.exitCode = 1;

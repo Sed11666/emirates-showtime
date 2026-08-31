@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { CITY_EVENT } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
 import { CITY_BY_SLUG } from "@/lib/venues";
 
@@ -44,18 +45,38 @@ const NAV = [
   { to: "/events", label: "Events", icon: Sparkles },
 ] as const;
 
-/** City picker. Visible on every breakpoint; label hidden on the smallest phones. */
+/**
+ * City picker. Visible on every breakpoint; label hidden on the smallest phones.
+ *
+ * It follows a location fix until the visitor overrides it. Before that it was
+ * a fixed default: someone in Sharjah who granted location got correct Sharjah
+ * cinemas beneath a chip still reading "Dubai", which reads as the site not
+ * knowing where they are even though every distance on the page was right.
+ *
+ * Picking a city by hand sets `showsouk:city-manual`, after which no fix
+ * touches it again — browsing another emirate deliberately is a real thing to
+ * want, and having the chip snap back would be worse than the original bug.
+ */
 function LocationSelector() {
   const [city, setCity] = useState("Dubai");
 
   useEffect(() => {
     const stored = window.localStorage.getItem("showsouk:city");
     if (stored) setCity(stored);
+    // useUserLocation lives in a different tree and cannot call setCity, so it
+    // announces instead.
+    const onCityChanged = (event: Event) => {
+      const next = (event as CustomEvent<string>).detail;
+      if (typeof next === "string") setCity(next);
+    };
+    window.addEventListener(CITY_EVENT, onCityChanged);
+    return () => window.removeEventListener(CITY_EVENT, onCityChanged);
   }, []);
 
   const pick = (next: string) => {
     setCity(next);
     window.localStorage.setItem("showsouk:city", next);
+    window.localStorage.setItem("showsouk:city-manual", "1");
   };
 
   return (

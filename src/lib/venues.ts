@@ -230,6 +230,28 @@ export const CITY_CENTERS: Record<string, Coords> = {
 };
 
 
+/**
+ * Which emirate a fix is in, by nearest city centre.
+ *
+ * Nearest *centre*, not nearest venue. They disagree at the edges and the
+ * centre is the one that answers "where am I": someone in a Dubai suburb near
+ * the Sharjah line is in Dubai even when a Sharjah screen is closer, and
+ * labelling them Sharjah because of a cinema would be wrong in the one place
+ * the question is delicate.
+ */
+export function nearestCity(point: Coords): string {
+  let best = "Dubai";
+  let bestKm = Infinity;
+  for (const [city, centre] of Object.entries(CITY_CENTERS)) {
+    const km = distanceKm(point, centre);
+    if (km < bestKm) {
+      bestKm = km;
+      best = city;
+    }
+  }
+  return best;
+}
+
 export function distanceKm(a: Coords, b: Coords): number {
   const toRad = (v: number) => (v * Math.PI) / 180;
   const R = 6371;
