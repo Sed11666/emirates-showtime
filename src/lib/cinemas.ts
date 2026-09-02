@@ -67,6 +67,23 @@ export type CinemaFilm = {
   director: string | null;
   /** Billed leads only — the scraper keeps the first four. */
   cast_names: string[] | null;
+  /**
+   * Critic scores, from OMDb via resolve-posters. Null where we have no IMDb id
+   * to look the film up by, which is most of the Arabic and regional catalogue.
+   */
+  imdb_rating: number | null;
+  imdb_votes: number | null;
+  rt_score: number | null;
+  metascore: number | null;
+  /**
+   * Billed cast with the role, from TMDB. Richer than cast_names, which stays
+   * because lib/search reads it; this one drives the film page.
+   */
+  cast_credits: Array<{
+    name: string;
+    character?: string | null;
+    profile?: string | null;
+  }> | null;
   formats: string[];
   showtimes: unknown;
   booking_url: string | null;
@@ -107,6 +124,11 @@ export async function fetchBrowseFilms(): Promise<CinemaFilm[]> {
     director: null,
     cast_names: null,
     duration_mins: null,
+    imdb_rating: null,
+    imdb_votes: null,
+    rt_score: null,
+    metascore: null,
+    cast_credits: null,
     last_seen_at: "",
   })) as CinemaFilm[];
 }
@@ -272,7 +294,7 @@ export async function fetchCityFilms(city: string, dayKeys: string[]): Promise<C
  * screening, so it needs the full schedule rather than just today's.
  */
 const FILM_COLUMNS =
-  "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, formats, showtimes, booking_url, source_url, last_seen_at";
+  "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, imdb_rating, imdb_votes, rt_score, metascore, cast_credits, formats, showtimes, booking_url, source_url, last_seen_at";
 
 /**
  * A cheap SQL prefilter for a slug, or null when the slug is too short to be

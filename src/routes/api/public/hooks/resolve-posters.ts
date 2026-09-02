@@ -75,7 +75,108 @@ function tmdbAuth(credential: string): { query: string; headers: Record<string, 
   return { query: `&api_key=${encodeURIComponent(trimmed)}`, headers };
 }
 
-type TmdbArt = { poster: string | null; backdrop: string | null };
+const OMDB = "https://www.omdbapi.com/";
+const TMDB_PROFILE = "https://image.tmdb.org/t/p/w185";
+const TMDB_MOVIE = "https://api.themoviedb.org/3/movie";
+
+/** How many billed performers to keep. The row scrolls, so this is about how
+ *  deep TMDB billing stays useful rather than about fitting a screen. */
+const CAST_LIMIT = 10;
+
+type TmdbArt = {
+  poster: string | null;
+  backdrop: string | null;
+  /** TMDB's own id, needed for the credits call. Present in the same response. */
+  tmdbId: number | null;
+};
+
+export type FilmMeta = {
+  imdb_id: string;
+  imdb_rating: number | null;
+  imdb_votes: number | null;
+  rt_score: number | null;
+  metascore: number | null;
+  cast_credits: Array<{
+    name: string;
+    character: string | null;
+    profile: string | null;
+  }> | null;
+};
+
+/** "7.4" → 7.4, "N/A" → null. OMDb uses the string "N/A" for every absent field. */
+function num(value: unknown): number | null {
+  if (typeof value !== "string" || value === "N/A") return null;
+  const n = Number(value.replace(/[,%]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * IMDb, Rotten Tomatoes and Metacritic in one call.
+ *
+ * OMDb returns all three keyed by imdbID, which is why this is one request per
+ * film rather than three. Everything is optional: a regional release often has
+ * an IMDb entry and no critic scores at all, and the UI renders only what came
+ * back rather than a row of "N/A".
+ */
+async function omdbRatings(imdbId: string, apiKey: string) {
+  const res = await fetch(`${OMDB}?i=${encodeURIComponent(imdbId)}&apikey=${encodeURIComponent(apiKey)}`);
+  if (!res.ok) throw new Error(`OMDb ${res.status}`);
+  const data = (await res.json()) as {
+    Response?: string;
+    imdbRating?: string;
+    imdbVotes?: string;
+    Metascore?: string;
+    Ratings?: Array<{ Source?: string; Value?: string }>;
+  };
+  // OMDb answers 200 with Response:"False" for an id it does not know.
+  if (data.Response === "False") return null;
+  const rt = data.Ratings?.find((r) => r.Source === "Rotten Tomatoes")?.Value;
+  return {
+    imdb_rating: num(data.imdbRating),
+    imdb_votes: num(data.imdbVotes),
+    rt_score: num(rt),
+    metascore: num(data.Metascore),
+  };
+}
+
+/**
+ * Billed cast with the character each plays.
+ *
+ * A second TMDB call, but only for films we are already resolving artwork for,
+ * and only for the first CAST_LIMIT entries — `order` is TMDB's own billing
+ * order, so slicing it keeps the people an audience recognises.
+ */
+async function tmdbCast(tmdbId: number, apiKey: string) {
+  const { query, headers } = tmdbAuth(apiKey);
+  const res = await fetch(`${TMDB_MOVIE}/${tmdbId}/credits?${query.replace(/^&/, "")}`, {
+    headers,
+  });
+  if (!res.ok) throw new Error(`TMDB credits ${res.status}`);
+  const data = (await res.json()) as {
+    cast?: Array<{
+      name?: string;
+      character?: string;
+      order?: number;
+      profile_path?: string | null;
+    }>;
+  };
+  const cast = (data.cast ?? [])
+    .filter((c) => typeof c.name === "string" && c.name.trim())
+    .slice(0, CAST_LIMIT)
+    .map((c) => ({
+      name: c.name!.trim(),
+      character: typeof c.character === "string" && c.character.trim() ? c.character.trim() : null,
+      // Sized here rather than in the component: w185 is roughly 3x the 56px
+      // circle it lands in, which covers a 3x display and nothing beyond. The
+      // path is null for most of the regional catalogue, and the row is built
+      // to look deliberate when it is.
+      profile:
+        typeof c.profile_path === "string" && c.profile_path.startsWith("/")
+          ? `${TMDB_PROFILE}${c.profile_path}`
+          : null,
+    }));
+  return cast.length > 0 ? cast : null;
+}
 
 async function tmdbArt(imdbId: string, apiKey: string): Promise<TmdbArt> {
   const { query, headers } = tmdbAuth(apiKey);
@@ -83,14 +184,20 @@ async function tmdbArt(imdbId: string, apiKey: string): Promise<TmdbArt> {
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`TMDB ${res.status}`);
   const data = (await res.json()) as {
-    movie_results?: Array<{ poster_path?: string | null; backdrop_path?: string | null }>;
+    movie_results?: Array<{
+      id?: number;
+      poster_path?: string | null;
+      backdrop_path?: string | null;
+    }>;
   };
   const hit = data.movie_results?.[0];
   const poster = hit?.poster_path;
+  const tmdbId = typeof hit?.id === "number" ? hit.id : null;
   // Taken from the same response rather than a second call: this endpoint has
   // always returned the backdrop, it was simply never read.
   const backdrop = hit?.backdrop_path;
   return {
+    tmdbId,
     poster:
       typeof poster === "string" && poster.startsWith("/") ? `${TMDB_IMAGE}${poster}` : null,
     backdrop:
@@ -108,6 +215,9 @@ async function run(request: Request) {
     process.env["SUPABASE_PUBLISHABLE_KEY"];
   const INGEST_TOKEN = process.env["SCRAPER_INGEST_TOKEN"];
   const TMDB_API_KEY = process.env["TMDB_API_KEY"];
+  // Optional. Without it artwork and cast still resolve; only the critic
+  // scores are skipped, and the response says so rather than failing quietly.
+  const OMDB_API_KEY = process.env["OMDB_API_KEY"];
 
   if (!SUPABASE_URL || !SUPABASE_KEY || !INGEST_TOKEN) {
     return Response.json(
@@ -133,7 +243,7 @@ async function run(request: Request) {
   // 400 of 501 live rows whose id is sitting in the poster filename.
   const { data: rows, error } = await db
     .from("cinema_films")
-    .select("imdb_id, poster_url, backdrop_url")
+    .select("imdb_id, poster_url, backdrop_url, imdb_rating, cast_credits")
     .eq("is_active", true);
   if (error) {
     return Response.json({ ok: false, error: error.message }, { status: 500 });
@@ -150,7 +260,15 @@ async function run(request: Request) {
     // Done only when BOTH are ours. Skipping on the poster alone would strand
     // every film that already has a TMDB poster and no backdrop — which is the
     // exact state of the rows resolved before backdrops existed.
-    if (poster.startsWith(TMDB_IMAGE) && backdrop) continue;
+    //
+    // Metadata is part of "done" now: every row resolved before ratings existed
+    // has its artwork and none of the rest, so an artwork-only test would skip
+    // the entire back catalogue forever.
+    const hasArt = poster.startsWith(TMDB_IMAGE) && backdrop;
+    const hasMeta =
+      (row as { imdb_rating?: number | null }).imdb_rating !== null ||
+      (row as { cast_credits?: unknown }).cast_credits !== null;
+    if (hasArt && hasMeta) continue;
     seen.add(id);
     pending.push(id);
     if (pending.length >= limit) break;
@@ -159,9 +277,13 @@ async function run(request: Request) {
   const startedAt = Date.now();
   const resolved: Array<{ imdb_id: string; poster_url: string; backdrop_url: string | null }> =
     [];
+  const meta: FilmMeta[] = [];
   let withBackdrop = 0;
   let notFound = 0;
   let failed = 0;
+  let rated = 0;
+  let withCast = 0;
+  let omdbFailed = 0;
 
   for (const imdbId of pending) {
     if (Date.now() - startedAt > BUDGET_MS) break;
@@ -171,6 +293,48 @@ async function run(request: Request) {
         resolved.push({ imdb_id: imdbId, poster_url: art.poster, backdrop_url: art.backdrop });
         if (art.backdrop) withBackdrop += 1;
       } else notFound += 1;
+
+      /**
+       * Ratings and cast, each allowed to fail on its own.
+       *
+       * Wrapped separately from the artwork above because they are separate
+       * services: OMDb being down or out of quota must not cost us the poster
+       * we already fetched, and a film with no TMDB credits should still get
+       * its IMDb score. Anything that comes back null is left alone by
+       * set_film_meta's coalesce, so a partial pass never erases a full one.
+       */
+      let ratings: Awaited<ReturnType<typeof omdbRatings>> = null;
+      if (OMDB_API_KEY) {
+        try {
+          ratings = await omdbRatings(imdbId, OMDB_API_KEY);
+          if (ratings?.imdb_rating !== null && ratings?.imdb_rating !== undefined) rated += 1;
+        } catch {
+          omdbFailed += 1;
+        }
+        await sleep(REQUEST_DELAY_MS);
+      }
+
+      let cast: Awaited<ReturnType<typeof tmdbCast>> = null;
+      if (art.tmdbId !== null) {
+        try {
+          cast = await tmdbCast(art.tmdbId, TMDB_API_KEY);
+          if (cast) withCast += 1;
+        } catch {
+          // Credits are the least important of the three; a miss retries next run.
+        }
+        await sleep(REQUEST_DELAY_MS);
+      }
+
+      if (ratings || cast) {
+        meta.push({
+          imdb_id: imdbId,
+          imdb_rating: ratings?.imdb_rating ?? null,
+          imdb_votes: ratings?.imdb_votes ?? null,
+          rt_score: ratings?.rt_score ?? null,
+          metascore: ratings?.metascore ?? null,
+          cast_credits: cast,
+        });
+      }
     } catch {
       // A single lookup failing must not sink the pass; it retries next run.
       failed += 1;
@@ -190,6 +354,24 @@ async function run(request: Request) {
     updated = Number((result as { updated?: number })?.updated ?? 0);
   }
 
+  let metaUpdated = 0;
+  if (meta.length > 0) {
+    // A separate call from set_posters, and a separate function: that one's
+    // body lives only in the database, so extending it would mean rewriting
+    // from memory code nobody has a copy of.
+    const { data: metaResult, error: metaError } = await db.rpc("set_film_meta", {
+      p_token: INGEST_TOKEN,
+      p_map: meta,
+    });
+    if (metaError) {
+      return Response.json(
+        { ok: false, error: metaError.message, stage: "set_film_meta" },
+        { status: 500 },
+      );
+    }
+    metaUpdated = Number((metaResult as { updated?: number })?.updated ?? 0);
+  }
+
   return Response.json({
     ok: true,
     ranAt: new Date().toISOString(),
@@ -198,6 +380,11 @@ async function run(request: Request) {
     notFoundOnTmdb: notFound,
     lookupsFailed: failed,
     rowsUpdated: updated,
+    ratingsFound: rated,
+    castFound: withCast,
+    omdbFailures: omdbFailed,
+    omdbConfigured: Boolean(OMDB_API_KEY),
+    metaRowsUpdated: metaUpdated,
     backdropsFound: withBackdrop,
   });
 }

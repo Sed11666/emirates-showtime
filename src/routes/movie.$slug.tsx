@@ -22,6 +22,7 @@ import { ChevronLeft, Locate } from "lucide-react";
 
 import { DAY_COUNT, buildDayOptions, toDayKey } from "@/lib/days";
 import { FilterRow } from "@/components/filter-row";
+import { FilmCast, FilmDirector, FilmRatings } from "@/components/film-ratings";
 import {
   VenueShowtimesBlock,
   countUrlUses,
@@ -216,6 +217,41 @@ function MovieShowtimesPage() {
   );
 
   const primary = matches[0];
+  /**
+   * Credits from whichever row has them, not just the first.
+   *
+   * The same film is one row per chain and per city, and the scraper only fills
+   * director/cast on rows it resolved metadata for — so matches[0] is often the
+   * one row that has neither while a sibling has both. Reading only the primary
+   * row showed an empty credits block on films we hold full credits for.
+   */
+  const credits = useMemo(() => {
+    const withCredits = matches.find((f) => f.cast_credits?.length);
+    return {
+      director: matches.find((f) => f.director)?.director ?? null,
+      // Prefer the richer cast_credits (name + role); fall back to the plain
+      // names the scraper has always filled, so a film TMDB has no credits for
+      // still lists who is in it.
+      cast: withCredits?.cast_credits?.length
+        ? withCredits.cast_credits
+        : (matches.find((f) => f.cast_names?.length)?.cast_names ?? []).map((name) => ({
+            name,
+          })),
+    };
+  }, [matches]);
+
+  const ratings = useMemo(() => {
+    const pick = <K extends keyof CinemaFilm>(key: K) =>
+      (matches.find((f) => f[key] !== null && f[key] !== undefined)?.[key] ?? null) as
+        | number
+        | null;
+    return {
+      imdbRating: pick("imdb_rating"),
+      imdbVotes: pick("imdb_votes"),
+      rtScore: pick("rt_score"),
+      metascore: pick("metascore"),
+    };
+  }, [matches]);
   const chains = [...new Set(matches.map((f) => f.cinema))].sort();
   const cities = [...new Set(matches.map((f) => f.city).filter(Boolean) as string[])].sort();
 
@@ -293,7 +329,7 @@ function MovieShowtimesPage() {
   const jsonLd = useMemo(() => {
     if (!primary) return null;
     return jsonLdDocument([
-      movieSchema(primary, slug),
+      movieSchema(primary, slug, credits),
       ...screeningSchemas(matches, slug, day),
       breadcrumbSchema(primary.title, slug),
     ]);
@@ -395,13 +431,28 @@ function MovieShowtimesPage() {
                     ))}
                 </dl>
 
-                {/* Director and cast are deliberately not rendered yet: the
-                    presentation needed more design work than the spec line, so
-                    they are held back rather than shipped cluttered. The scraper
-                    keeps populating cinema_films.director and .cast_names, so
-                    turning them back on is a render change only. */}
+                {/* Credits sit below the spec line and quieter than it: they
+                    are who made the film, not what it is, and the page exists to
+                    get someone to a showtime.
+
+                    These carry visible labels where the spec line above hides
+                    them, and the inversion is deliberate. "Action" announces
+                    itself as a genre and "95 mins" as a runtime, but a name
+                    does not announce whether it directed or starred — dropping
+                    the label there would save two words and cost the meaning.
+
+                    Cast is capped at four by the scraper, so this is two lines
+                    at most however long the billing runs. */}
+                <FilmRatings ratings={ratings} />
+                <FilmDirector director={credits.director} />
               </div>
             </div>
+
+            {/* Full width rather than inside the synopsis column: at 72px a
+                row of eight needs the whole page, and boxing it beside the
+                poster would have shown three faces and hidden the rest behind
+                a scroll nobody would guess was there. */}
+            <FilmCast cast={credits.cast} />
           </div>
         </section>
       ) : null}

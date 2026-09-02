@@ -41,7 +41,11 @@ function compact<T extends Record<string, unknown>>(input: T): T {
   return Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined && v !== null && v !== "")) as T;
 }
 
-export function movieSchema(film: CinemaFilm, slug: string): Record<string, unknown> {
+export function movieSchema(
+  film: CinemaFilm,
+  slug: string,
+  credits?: { director: string | null; cast: Array<{ name: string }> },
+): Record<string, unknown> {
   return compact({
     "@type": "Movie",
     "@id": `${ORIGIN}/movie/${slug}#movie`,
@@ -53,10 +57,28 @@ export function movieSchema(film: CinemaFilm, slug: string): Record<string, unkn
     inLanguage: film.language ?? undefined,
     contentRating: film.rating ?? undefined,
     duration: isoDuration(film.duration_mins),
-    // director and actor are held back with the visible credits on /movie/$slug.
-    // Google asks that structured data describe what the page actually shows, so
-    // marking up names we render nowhere would be the kind of mismatch that gets
-    // a rich result suppressed. Restore both alongside the visible block.
+    // Passed in rather than read off `film`, and passed from the same value the
+    // page renders. Google asks that structured data describe what the page
+    // actually shows, so these two must not be able to disagree: taking director
+    // off the film row while the visible block reads it across every row would
+    // reintroduce exactly the mismatch this comment used to warn about.
+    director: credits?.director
+      ? { "@type": "Person", name: credits.director }
+      : undefined,
+    actor: credits?.cast.length
+      ? credits.cast.map((c) => ({ "@type": "Person", name: c.name }))
+      : undefined,
+    // aggregateRating describes what the page shows, same rule as the credits.
+    aggregateRating:
+      typeof film.imdb_rating === "number" && typeof film.imdb_votes === "number"
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: film.imdb_rating,
+            ratingCount: film.imdb_votes,
+            bestRating: 10,
+            worstRating: 1,
+          }
+        : undefined,
   });
 }
 
