@@ -68,17 +68,11 @@ export function movieSchema(
     actor: credits?.cast.length
       ? credits.cast.map((c) => ({ "@type": "Person", name: c.name }))
       : undefined,
-    // aggregateRating describes what the page shows, same rule as the credits.
-    aggregateRating:
-      typeof film.imdb_rating === "number" && typeof film.imdb_votes === "number"
-        ? {
-            "@type": "AggregateRating",
-            ratingValue: film.imdb_rating,
-            ratingCount: film.imdb_votes,
-            bestRating: 10,
-            worstRating: 1,
-          }
-        : undefined,
+    // No aggregateRating. The page stopped rendering critic scores, and markup
+    // describing something a visitor cannot see is the mismatch that gets a
+    // rich result suppressed — the same rule that kept director and actor out
+    // of here while the credits block was held back. Restore it in the same
+    // commit that restores the visible row, not before.
   });
 }
 

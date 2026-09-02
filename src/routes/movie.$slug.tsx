@@ -22,7 +22,7 @@ import { ChevronLeft, Locate } from "lucide-react";
 
 import { DAY_COUNT, buildDayOptions, toDayKey } from "@/lib/days";
 import { FilterRow } from "@/components/filter-row";
-import { FilmCast, FilmDirector, FilmRatings } from "@/components/film-ratings";
+import { FilmCast, FilmDirector } from "@/components/film-ratings";
 import {
   VenueShowtimesBlock,
   countUrlUses,
@@ -240,16 +240,6 @@ function MovieShowtimesPage() {
     };
   }, [matches]);
 
-  const ratings = useMemo(() => {
-    const pick = <K extends keyof CinemaFilm>(key: K) =>
-      (matches.find((f) => f[key] !== null && f[key] !== undefined)?.[key] ?? null) as
-        | number
-        | null;
-    return {
-      imdbRating: pick("imdb_rating"),
-      rtScore: pick("rt_score"),
-    };
-  }, [matches]);
   const chains = [...new Set(matches.map((f) => f.cinema))].sort();
   const cities = [...new Set(matches.map((f) => f.city).filter(Boolean) as string[])].sort();
 
@@ -441,7 +431,16 @@ function MovieShowtimesPage() {
 
                     Cast is capped at four by the scraper, so this is two lines
                     at most however long the billing runs. */}
-                <FilmRatings ratings={ratings} />
+                {/* Critic scores are deliberately not rendered. OMDb has a
+                    rated IMDb entry for 19 of 42 live titles and none at all
+                    for Tamil or Arabic, so the row appeared on English films
+                    and was simply absent on half the catalogue — which reads
+                    as broken rather than as unavailable.
+
+                    The pipeline still fills imdb_rating, rt_score, metascore
+                    and imdb_votes on every pass, so this is a one-line render
+                    change to reverse. Put aggregateRating back in movieSchema
+                    at the same time, never before: §11.21. */}
                 <FilmDirector director={credits.director} />
               </div>
             </div>
