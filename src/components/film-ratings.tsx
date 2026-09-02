@@ -17,21 +17,12 @@
 
 export type FilmRatings = {
   imdbRating: number | null;
-  imdbVotes: number | null;
   rtScore: number | null;
-  metascore: number | null;
 };
 
-/** 67231 → "67K". Under a thousand keeps its digits. */
-function shortVotes(votes: number): string {
-  if (votes >= 1_000_000) return `${(votes / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (votes >= 1_000) return `${Math.round(votes / 1_000)}K`;
-  return String(votes);
-}
-
 export function FilmRatings({ ratings }: { ratings: FilmRatings }) {
-  const { imdbRating, imdbVotes, rtScore, metascore } = ratings;
-  if (imdbRating === null && rtScore === null && metascore === null) return null;
+  const { imdbRating, rtScore } = ratings;
+  if (imdbRating === null && rtScore === null) return null;
 
   return (
     <dl className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
@@ -43,11 +34,6 @@ export function FilmRatings({ ratings }: { ratings: FilmRatings }) {
           <dd className="font-semibold text-foreground">
             {imdbRating.toFixed(1)}
             <span className="font-normal text-muted-foreground">/10</span>
-            {imdbVotes ? (
-              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                {shortVotes(imdbVotes)} votes
-              </span>
-            ) : null}
           </dd>
         </div>
       ) : null}
@@ -58,15 +44,6 @@ export function FilmRatings({ ratings }: { ratings: FilmRatings }) {
             Rotten Tomatoes
           </dt>
           <dd className="font-semibold text-foreground">{rtScore}%</dd>
-        </div>
-      ) : null}
-
-      {metascore !== null ? (
-        <div className="flex items-baseline gap-1.5">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Metacritic
-          </dt>
-          <dd className="font-semibold text-foreground">{metascore}</dd>
         </div>
       ) : null}
     </dl>

@@ -247,9 +247,7 @@ function MovieShowtimesPage() {
         | null;
     return {
       imdbRating: pick("imdb_rating"),
-      imdbVotes: pick("imdb_votes"),
       rtScore: pick("rt_score"),
-      metascore: pick("metascore"),
     };
   }, [matches]);
   const chains = [...new Set(matches.map((f) => f.cinema))].sort();
