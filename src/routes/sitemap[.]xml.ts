@@ -21,6 +21,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { CINEMAS, fetchCinemaFilms, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
+import { LANGUAGE_SLUGS, languageSlug } from "@/lib/languages";
 import { CITY_BY_SLUG, VENUES, venueSlug } from "@/lib/venues";
 
 const ORIGIN = "https://www.showsouk.com";
@@ -71,6 +72,22 @@ async function build(): Promise<string> {
 
   try {
     const films = await fetchCinemaFilms();
+    /**
+     * One page per language, listed only when it currently has something to
+     * show. The route exists for every language in LANGUAGE_BY_SLUG so a link
+     * never 404s, but a page whose only film just left is an empty schedule,
+     * and submitting those is how a site teaches Google to distrust its own
+     * sitemap. Same rule the film pages below follow.
+     */
+    const withFilms = new Set<string>();
+    for (const film of films) {
+      if (!hasUpcomingScreenings(film.showtimes)) continue;
+      const slug = languageSlug(film.language);
+      if (slug) withFilms.add(slug);
+    }
+    for (const slug of LANGUAGE_SLUGS) {
+      if (withFilms.has(slug)) entries.push(urlEntry(`/movies/${slug}`, now, "hourly", "0.8"));
+    }
     // One entry per title, not per row: the same film has a row per chain and
     // per city, and they all resolve to the same /movie/{slug}.
     const seen = new Set<string>();

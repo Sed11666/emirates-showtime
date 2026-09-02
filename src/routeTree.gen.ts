@@ -24,6 +24,7 @@ import { Route as CinemasChainRouteImport } from './routes/cinemas_.$chain'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as MovieSlugRouteImport } from './routes/movie.$slug'
 import { Route as MoviesInCityRouteImport } from './routes/movies-in.$city'
+import { Route as MoviesLanguageRouteImport } from './routes/movies_.$language'
 import { Route as ApiPublicComingSoonRouteImport } from './routes/api/public/coming-soon'
 import { Route as CinemasChainVenueRouteImport } from './routes/cinemas_.$chain_.$venue'
 import { Route as ApiPublicHooksCoverageCheckRouteImport } from './routes/api/public/hooks/coverage-check'
@@ -107,6 +108,11 @@ const MoviesInCityRoute = MoviesInCityRouteImport.update({
   path: '/movies-in/$city',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoviesLanguageRoute = MoviesLanguageRouteImport.update({
+  id: '/movies_/$language',
+  path: '/movies/$language',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicComingSoonRoute = ApiPublicComingSoonRouteImport.update({
   id: '/api/public/coming-soon',
   path: '/api/public/coming-soon',
@@ -164,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/movies-in/$city': typeof MoviesInCityRoute
+  '/movies/$language': typeof MoviesLanguageRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
   '/cinemas/$chain/$venue': typeof CinemasChainVenueRoute
   '/api/public/hooks/coverage-check': typeof ApiPublicHooksCoverageCheckRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/movies-in/$city': typeof MoviesInCityRoute
+  '/movies/$language': typeof MoviesLanguageRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
   '/cinemas/$chain/$venue': typeof CinemasChainVenueRoute
   '/api/public/hooks/coverage-check': typeof ApiPublicHooksCoverageCheckRoute
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
   '/movies-in/$city': typeof MoviesInCityRoute
+  '/movies_/$language': typeof MoviesLanguageRoute
   '/api/public/coming-soon': typeof ApiPublicComingSoonRoute
   '/cinemas_/$chain_/$venue': typeof CinemasChainVenueRoute
   '/api/public/hooks/coverage-check': typeof ApiPublicHooksCoverageCheckRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/listing/$id'
     | '/movie/$slug'
     | '/movies-in/$city'
+    | '/movies/$language'
     | '/api/public/coming-soon'
     | '/cinemas/$chain/$venue'
     | '/api/public/hooks/coverage-check'
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/listing/$id'
     | '/movie/$slug'
     | '/movies-in/$city'
+    | '/movies/$language'
     | '/api/public/coming-soon'
     | '/cinemas/$chain/$venue'
     | '/api/public/hooks/coverage-check'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/listing/$id'
     | '/movie/$slug'
     | '/movies-in/$city'
+    | '/movies_/$language'
     | '/api/public/coming-soon'
     | '/cinemas_/$chain_/$venue'
     | '/api/public/hooks/coverage-check'
@@ -312,6 +324,7 @@ export interface RootRouteChildren {
   ListingIdRoute: typeof ListingIdRoute
   MovieSlugRoute: typeof MovieSlugRoute
   MoviesInCityRoute: typeof MoviesInCityRoute
+  MoviesLanguageRoute: typeof MoviesLanguageRoute
   ApiPublicComingSoonRoute: typeof ApiPublicComingSoonRoute
   CinemasChainVenueRoute: typeof CinemasChainVenueRoute
   ApiPublicHooksCoverageCheckRoute: typeof ApiPublicHooksCoverageCheckRoute
@@ -428,6 +441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoviesInCityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/movies_/$language': {
+      id: '/movies_/$language'
+      path: '/movies/$language'
+      fullPath: '/movies/$language'
+      preLoaderRoute: typeof MoviesLanguageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/coming-soon': {
       id: '/api/public/coming-soon'
       path: '/api/public/coming-soon'
@@ -496,6 +516,7 @@ const rootRouteChildren: RootRouteChildren = {
   ListingIdRoute: ListingIdRoute,
   MovieSlugRoute: MovieSlugRoute,
   MoviesInCityRoute: MoviesInCityRoute,
+  MoviesLanguageRoute: MoviesLanguageRoute,
   ApiPublicComingSoonRoute: ApiPublicComingSoonRoute,
   CinemasChainVenueRoute: CinemasChainVenueRoute,
   ApiPublicHooksCoverageCheckRoute: ApiPublicHooksCoverageCheckRoute,

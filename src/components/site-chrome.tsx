@@ -38,6 +38,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { CITY_EVENT } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
 import { CITY_BY_SLUG } from "@/lib/venues";
+import { LANGUAGE_BY_SLUG } from "@/lib/languages";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home },
@@ -236,6 +237,25 @@ export function SiteFooter() {
                   <Link
                     to="/movies-in/$city"
                     params={{ city: slug }}
+                    className="hover:text-foreground"
+                  >
+                    {name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Same reasoning as the emirate row above: a tier reachable only
+              from the sitemap is weaker than one a crawler can walk to. */}
+          <nav aria-label="Movies by language" className="mt-4">
+            <p className="mb-2 text-xs uppercase tracking-widest text-primary">By language</p>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+              {Object.entries(LANGUAGE_BY_SLUG).map(([slug, name]) => (
+                <li key={slug}>
+                  <Link
+                    to="/movies/$language"
+                    params={{ language: slug }}
                     className="hover:text-foreground"
                   >
                     {name}

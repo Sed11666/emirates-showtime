@@ -215,6 +215,30 @@ function keepDays(films: CinemaFilm[], dayKeys: string[]): CinemaFilm[] {
 }
 
 /**
+ * One language's films, for the language landing page's loader.
+ *
+ * Filtered in SQL on language, so like the chain and city loaders it reads only
+ * what it needs. The column is the scraper's own value ("Malayalam"), which is
+ * why lib/languages keys its slugs off exactly those strings.
+ */
+export async function fetchLanguageFilms(
+  language: string,
+  dayKeys: string[],
+): Promise<CinemaFilm[]> {
+  const { data, error } = await supabase
+    .from("cinema_films")
+    .select(
+      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
+    )
+    .eq("is_active", true)
+    .eq("language", language)
+    .order("title", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return keepDays((data ?? []) as CinemaFilm[], dayKeys);
+}
+
+/**
  * One emirate's films, for the city landing page's loader.
  *
  * cinema_films carries a city per row, so this filters in SQL and reads only
