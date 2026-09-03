@@ -142,6 +142,7 @@ function CinemasPage() {
   const [cinema, setCinema] = useState<string>(cinemaParam ?? "all");
   const [city, setCity] = useState<string>("all");
   const [language, setLanguage] = useState<string>("all");
+  const [genre, setGenre] = useState<string>("all");
   /**
    * Today, tomorrow, and the day after — the three days the scraper now reads.
    *
@@ -242,6 +243,29 @@ function CinemasPage() {
     [films],
   );
 
+  /**
+   * Genres, split out of the column rather than taken whole.
+   *
+   * The scraper stores them as one string per film — "Action, Crime, Drama" —
+   * so the raw column has 35 distinct values where the market has 14 genres.
+   * Offering those 35 as filter options would list "Action, Crime, Drama"
+   * beside "Action, Comedy" and match neither the way anyone expects.
+   *
+   * Derived from the live catalogue, not hardcoded: the reference design lists
+   * "Science Fiction" where our source says "Sci-Fi", and a hardcoded list
+   * would have offered an option that silently matched nothing.
+   */
+  const genres = useMemo(() => {
+    const found = new Set<string>();
+    for (const film of films) {
+      for (const part of String(film.genre ?? "").split(",")) {
+        const name = part.trim();
+        if (name) found.add(name);
+      }
+    }
+    return [...found].sort();
+  }, [films]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const matching = films.filter((film) => {
@@ -252,6 +276,16 @@ function CinemasPage() {
       if (cinema !== "all" && film.cinema !== cinema) return false;
       if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
       if (language !== "all" && film.language !== language) return false;
+      // Membership, not equality: a film is "Action, Crime, Drama" and has to
+      // match on any one of the three.
+      if (
+        genre !== "all" &&
+        !String(film.genre ?? "")
+          .split(",")
+          .map((g) => g.trim())
+          .includes(genre)
+      )
+        return false;
       if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
         return false;
       if (nearOnly && nearby && nearby.length > 0) {
@@ -297,7 +331,7 @@ function CinemasPage() {
       film,
       distance: distanceByTitle.get(titleKey(film.title)) ?? null,
     }));
-  }, [films, movieSlug, search, cinema, city, language, day, nearOnly, nearby, coords]);
+  }, [films, movieSlug, search, cinema, city, genre, language, day, nearOnly, nearby, coords]);
 
   /**
    * Whether anything on screen lacks a per-screening link, so the legend
@@ -519,9 +553,11 @@ function CinemasPage() {
                 SCRAPE_DAYS. Offering more would repeat the bug this replaced. */}
             <DaySelector value={day} onChange={setDay} days={DAY_COUNT} />
 
-            {/* Side by side on anything wider than a phone: three dropdowns cost
-                one row, where the old pills cost three wrapping rows. */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Side by side on anything wider than a phone: four dropdowns cost
+                one row, where the old pills cost three wrapping rows. Two per
+                row on a tablet and stacked on a phone, so no control is ever
+                narrower than its longest option. */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <FilterRow
                 label="Cinema"
                 allLabel="All cinemas"
@@ -543,6 +579,15 @@ function CinemasPage() {
                   value={language}
                   onChange={setLanguage}
                   options={languages.map((l) => ({ value: l, label: l }))}
+                />
+              )}
+              {genres.length > 0 && (
+                <FilterRow
+                  label="Genre"
+                  allLabel="All genres"
+                  value={genre}
+                  onChange={setGenre}
+                  options={genres.map((g) => ({ value: g, label: g }))}
                 />
               )}
             </div>
