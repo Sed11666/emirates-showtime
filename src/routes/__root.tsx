@@ -127,11 +127,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      /*
+       * Two preloads, not fourteen. @font-face alone does not fetch anything
+       * until the layout engine finds text that needs the face, which on a page
+       * this size is late; preload starts them with the stylesheet.
+       *
+       * Only the latin subsets of the body face and the heading face — those
+       * two paint above the fold on every route. Preloading a face that is not
+       * used on the current page wastes bandwidth and Chrome warns about it,
+       * which is why the other twelve are left to load on demand.
+       *
+       * crossOrigin is required even same-origin: fonts are fetched in CORS
+       * mode, and without it the preloaded file is discarded and fetched again.
+       */
       {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap",
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        href: "/fonts/dm-sans-400-latin.woff2",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        href: "/fonts/outfit-700-latin.woff2",
+        crossOrigin: "anonymous",
       },
       // The header's own ticket mark (lucide Ticket, same path as SiteHeader) in
       // the header's own colours: --primary green on the --background ground.
