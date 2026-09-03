@@ -288,7 +288,7 @@ async function run(request: Request) {
   // 400 of 501 live rows whose id is sitting in the poster filename.
   const { data: rows, error } = await db
     .from("cinema_films")
-    .select("imdb_id, poster_url, backdrop_url, imdb_rating, cast_credits")
+    .select("imdb_id, poster_url, backdrop_url, imdb_rating, cast_credits, tmdb_genres")
     .eq("is_active", true);
   if (error) {
     return Response.json({ ok: false, error: error.message }, { status: 500 });
@@ -306,13 +306,23 @@ async function run(request: Request) {
     // every film that already has a TMDB poster and no backdrop — which is the
     // exact state of the rows resolved before backdrops existed.
     //
-    // Metadata is part of "done" now: every row resolved before ratings existed
-    // has its artwork and none of the rest, so an artwork-only test would skip
-    // the entire back catalogue forever.
+    /**
+     * "Done" means artwork *and* every field TMDB can fill.
+     *
+     * This was `imdb_rating !== null || cast_credits !== null`, and the `||`
+     * was the bug: once cast landed, a row counted as complete and was skipped
+     * forever, so adding tmdb_genres later reached 8 rows out of 550 instead of
+     * the whole catalogue. Each new field has to be named here or it only ever
+     * populates for films that happen to still need a poster.
+     *
+     * Ratings are deliberately not part of the test. OMDb has no entry for most
+     * regional releases, so requiring imdb_rating would re-fetch those titles on
+     * every run forever and burn the daily quota on a question already answered.
+     */
     const hasArt = poster.startsWith(TMDB_IMAGE) && backdrop;
     const hasMeta =
-      (row as { imdb_rating?: number | null }).imdb_rating !== null ||
-      (row as { cast_credits?: unknown }).cast_credits !== null;
+      (row as { cast_credits?: unknown }).cast_credits !== null &&
+      (row as { tmdb_genres?: unknown }).tmdb_genres !== null;
     if (hasArt && hasMeta) continue;
     seen.add(id);
     pending.push(id);
