@@ -77,6 +77,7 @@ function tmdbAuth(credential: string): { query: string; headers: Record<string, 
 
 const OMDB = "https://www.omdbapi.com/";
 const TMDB_PROFILE = "https://image.tmdb.org/t/p/w185";
+const TMDB_GENRE_LIST = "https://api.themoviedb.org/3/genre/movie/list";
 const TMDB_MOVIE = "https://api.themoviedb.org/3/movie";
 
 /** How many billed performers to keep. The row scrolls, so this is about how
@@ -88,7 +89,38 @@ type TmdbArt = {
   backdrop: string | null;
   /** TMDB's own id, needed for the credits call. Present in the same response. */
   tmdbId: number | null;
+  /** TMDB's numeric genre ids. Names come from the per-run map below. */
+  genreIds: number[];
 };
+
+/**
+ * TMDB's genre id-to-name map.
+ *
+ * Fetched once per run rather than per film: it is ~19 entries and changes
+ * about never, but it is the only way to turn the genre_ids the find endpoint
+ * already returns into names. One request for the whole pass.
+ *
+ * Returns an empty map on failure rather than throwing. Genres are the least
+ * important thing this route writes, and losing them must not cost the artwork
+ * and ratings the same pass is collecting.
+ */
+async function tmdbGenreMap(apiKey: string): Promise<Map<number, string>> {
+  try {
+    const { query, headers } = tmdbAuth(apiKey);
+    const res = await fetch(`${TMDB_GENRE_LIST}?${query.replace(/^&/, "")}`, { headers });
+    if (!res.ok) return new Map();
+    const data = (await res.json()) as { genres?: Array<{ id?: number; name?: string }> };
+    return new Map(
+      (data.genres ?? [])
+        .filter((g): g is { id: number; name: string } =>
+          typeof g.id === "number" && typeof g.name === "string",
+        )
+        .map((g) => [g.id, g.name]),
+    );
+  } catch {
+    return new Map();
+  }
+}
 
 export type FilmMeta = {
   imdb_id: string;
@@ -101,6 +133,16 @@ export type FilmMeta = {
     character: string | null;
     profile: string | null;
   }> | null;
+  /**
+   * Genres from TMDB, which replace cinemauae's in the UI.
+   *
+   * The source's own field is unreliable: its page for "Im Game" says
+   * "genre":"Fantasy" for an Action/Crime/Thriller film, and 19 of 52 titles
+   * arrive with one genre where the film has three or four. Stored in its own
+   * column because the scraper upserts the genre column every 15 minutes and
+   * would overwrite anything written back into it.
+   */
+  tmdb_genres: string[] | null;
 };
 
 /** "7.4" → 7.4, "N/A" → null. OMDb uses the string "N/A" for every absent field. */
@@ -188,16 +230,19 @@ async function tmdbArt(imdbId: string, apiKey: string): Promise<TmdbArt> {
       id?: number;
       poster_path?: string | null;
       backdrop_path?: string | null;
+      genre_ids?: number[];
     }>;
   };
   const hit = data.movie_results?.[0];
   const poster = hit?.poster_path;
   const tmdbId = typeof hit?.id === "number" ? hit.id : null;
+  const genreIds = Array.isArray(hit?.genre_ids) ? hit.genre_ids : [];
   // Taken from the same response rather than a second call: this endpoint has
   // always returned the backdrop, it was simply never read.
   const backdrop = hit?.backdrop_path;
   return {
     tmdbId,
+    genreIds,
     poster:
       typeof poster === "string" && poster.startsWith("/") ? `${TMDB_IMAGE}${poster}` : null,
     backdrop:
@@ -274,6 +319,8 @@ async function run(request: Request) {
     if (pending.length >= limit) break;
   }
 
+  const genreNames = await tmdbGenreMap(TMDB_API_KEY);
+
   const startedAt = Date.now();
   const resolved: Array<{ imdb_id: string; poster_url: string; backdrop_url: string | null }> =
     [];
@@ -283,6 +330,7 @@ async function run(request: Request) {
   let failed = 0;
   let rated = 0;
   let withCast = 0;
+  let withGenres = 0;
   let omdbFailed = 0;
 
   for (const imdbId of pending) {
@@ -325,7 +373,14 @@ async function run(request: Request) {
         await sleep(REQUEST_DELAY_MS);
       }
 
-      if (ratings || cast) {
+      // Names for the ids the find call already returned. Empty when the map
+      // could not be fetched, which coalesce then leaves alone.
+      const genres = art.genreIds
+        .map((id) => genreNames.get(id))
+        .filter((name): name is string => Boolean(name));
+      if (genres.length > 0) withGenres += 1;
+
+      if (ratings || cast || genres.length > 0) {
         meta.push({
           imdb_id: imdbId,
           imdb_rating: ratings?.imdb_rating ?? null,
@@ -333,6 +388,7 @@ async function run(request: Request) {
           rt_score: ratings?.rt_score ?? null,
           metascore: ratings?.metascore ?? null,
           cast_credits: cast,
+          tmdb_genres: genres.length > 0 ? genres : null,
         });
       }
     } catch {
@@ -382,6 +438,8 @@ async function run(request: Request) {
     rowsUpdated: updated,
     ratingsFound: rated,
     castFound: withCast,
+    genresFound: withGenres,
+    genreMapSize: genreNames.size,
     omdbFailures: omdbFailed,
     omdbConfigured: Boolean(OMDB_API_KEY),
     metaRowsUpdated: metaUpdated,

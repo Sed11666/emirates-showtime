@@ -23,6 +23,7 @@ import {
   type CinemaKey,
   fetchBrowseFilms,
   fetchCinemaFilmsForDay,
+  filmGenres,
   filmSlug,
   hasDatedShowtimes,
   mergeFilmsByTitle,
@@ -257,12 +258,7 @@ function CinemasPage() {
    */
   const genres = useMemo(() => {
     const found = new Set<string>();
-    for (const film of films) {
-      for (const part of String(film.genre ?? "").split(",")) {
-        const name = part.trim();
-        if (name) found.add(name);
-      }
-    }
+    for (const film of films) for (const name of filmGenres(film)) found.add(name);
     return [...found].sort();
   }, [films]);
 
@@ -276,16 +272,9 @@ function CinemasPage() {
       if (cinema !== "all" && film.cinema !== cinema) return false;
       if (city !== "all" && (film.city ?? "").toLowerCase() !== city.toLowerCase()) return false;
       if (language !== "all" && film.language !== language) return false;
-      // Membership, not equality: a film is "Action, Crime, Drama" and has to
-      // match on any one of the three.
-      if (
-        genre !== "all" &&
-        !String(film.genre ?? "")
-          .split(",")
-          .map((g) => g.trim())
-          .includes(genre)
-      )
-        return false;
+      // Membership, not equality: a film carries several genres and has to
+      // match on any one of them.
+      if (genre !== "all" && !filmGenres(film).includes(genre)) return false;
       if (term && !`${film.title} ${film.genre ?? ""} ${film.venues.join(" ")}`.toLowerCase().includes(term))
         return false;
       if (nearOnly && nearby && nearby.length > 0) {

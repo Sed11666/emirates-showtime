@@ -84,6 +84,11 @@ export type CinemaFilm = {
     character?: string | null;
     profile?: string | null;
   }> | null;
+  /**
+   * Genres from TMDB. Preferred over the scraped genre column, which comes
+   * from cinemauae and is unreliable — see filmGenres().
+   */
+  tmdb_genres: string[] | null;
   formats: string[];
   showtimes: unknown;
   booking_url: string | null;
@@ -101,7 +106,7 @@ export type CinemaFilm = {
  * /movie/$slug, which keeps using the full read below.
  */
 const BROWSE_COLUMNS =
-  "id, cinema, title, city, venues, genre, language, rating, poster_url, backdrop_url, formats, showtimes, booking_url, source_url";
+  "id, cinema, title, city, venues, genre, tmdb_genres, language, rating, poster_url, backdrop_url, formats, showtimes, booking_url, source_url";
 
 /**
  * The catalogue as the home page and /cinemas need it.
@@ -411,6 +416,34 @@ export function showtimesForDay(value: unknown, dayKey: string): string[] {
 
 export function hasDatedShowtimes(value: unknown): boolean {
   return parseShowtimes(value).some((e) => e.date);
+}
+
+/**
+ * A film's genres, from the best source available.
+ *
+ * TMDB first. cinemauae's own genre field is wrong often enough to matter: its
+ * page for "Im Game" carries "genre":"Fantasy" for an Action/Crime/Thriller
+ * film, and 19 of 52 live titles arrived with a single genre where the film
+ * has three or four — Toy Story 5 as "Animation", Harry Potter as "Adventure".
+ * A genre filter built on that puts films under one heading and hides them
+ * from the rest.
+ *
+ * Falls back to splitting the scraped string, because two titles have no
+ * imdb_id and so can never be looked up. One genre is better than none.
+ *
+ * One function rather than the split repeated at each call site: the filter
+ * predicate and the option list have to agree exactly, or an option appears
+ * that matches nothing.
+ */
+export function filmGenres(film: {
+  genre?: string | null;
+  tmdb_genres?: string[] | null;
+}): string[] {
+  if (film.tmdb_genres?.length) return film.tmdb_genres;
+  return String(film.genre ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
 }
 
 /**

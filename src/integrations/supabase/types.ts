@@ -34,6 +34,12 @@ export type Database = {
           backdrop_url: string | null
           booking_url: string | null
           cast_names: string[] | null
+          cast_credits: Json | null
+          imdb_rating: number | null
+          imdb_votes: number | null
+          metascore: number | null
+          rt_score: number | null
+          tmdb_genres: string[] | null
           cinema: string
           city: string
           created_at: string
@@ -61,6 +67,12 @@ export type Database = {
           backdrop_url?: string | null
           booking_url?: string | null
           cast_names?: string[] | null
+          cast_credits?: Json | null
+          imdb_rating?: number | null
+          imdb_votes?: number | null
+          metascore?: number | null
+          rt_score?: number | null
+          tmdb_genres?: string[] | null
           cinema: string
           city?: string
           created_at?: string
@@ -88,6 +100,12 @@ export type Database = {
           backdrop_url?: string | null
           booking_url?: string | null
           cast_names?: string[] | null
+          cast_credits?: Json | null
+          imdb_rating?: number | null
+          imdb_votes?: number | null
+          metascore?: number | null
+          rt_score?: number | null
+          tmdb_genres?: string[] | null
           cinema?: string
           city?: string
           created_at?: string
