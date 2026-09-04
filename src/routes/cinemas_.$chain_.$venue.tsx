@@ -188,12 +188,16 @@ function VenuePage() {
     { dayKey: day },
   );
   const siblings = VENUES.filter((v) => v.cinema === chain && v.name !== venueName);
+  // The other names people use for this screen. See Venue.aliases: these come
+  // from queries that already reach the page, on spellings the page never said.
+  const aliases = findVenue(chain, venueParam)?.aliases ?? [];
 
   const jsonLd = jsonLdDocument([
     {
       "@type": "MovieTheater",
       "@id": `${ORIGIN}/cinemas/${chain}/${venueParam}#theater`,
       name: `${chainLabel} ${name}`,
+      ...(aliases.length ? { alternateName: aliases } : {}),
       url: `${ORIGIN}/cinemas/${chain}/${venueParam}`,
       address: {
         "@type": "PostalAddress",
@@ -247,6 +251,16 @@ function VenuePage() {
             <span className="mx-1 opacity-50">·</span>
             {showing.length} {showing.length === 1 ? "film" : "films"} showing
           </p>
+          {/* Reads as an aside to a visitor and answers "am I in the right
+              place?" for someone who searched "06 mall cinema". Kept to the
+              names in Venue.aliases so it stays a sentence, not a keyword list. */}
+          {aliases.length > 0 && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Also known as {aliases.slice(0, -1).join(", ")}
+              {aliases.length > 1 ? " or " : ""}
+              {aliases[aliases.length - 1]}.
+            </p>
+          )}
         </header>
 
         {/* Same picker as /cinemas, so the three days behave the same wherever

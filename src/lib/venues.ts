@@ -26,6 +26,24 @@ export type Venue = {
    * a pattern. A 404 is worse than the chain page it replaced.
    */
   url?: string;
+  /**
+   * Other names people genuinely use for this screen.
+   *
+   * Rendered under the heading and emitted as schema.org alternateName, because
+   * Search Console showed whole clusters of impressions arriving on spellings
+   * the page never contained. Zero 6 alone drew "06 cinema", "o6 mall",
+   * "zero6 mall cinema", "cinema 06" and "6 mall cinema", ranking anywhere from
+   * position 11 to 59 — the page was relevant and simply did not say the words.
+   *
+   * Only add a variant that has actually turned up in Search Console or that
+   * the mall itself uses. Inventing spellings to catch traffic is keyword
+   * stuffing, and it reads as such to a person looking at the page.
+   *
+   * Arabic variants are deliberately absent. There is real Arabic volume here
+   * ("سينما 06", "زيرو 6 مول") but it wants Arabic pages, not Arabic strings
+   * bolted onto an English one.
+   */
+  aliases?: string[];
 };
 
 /**
@@ -69,14 +87,14 @@ export const VENUES: Venue[] = [
   // chips always fall through. These three URLs are taken from Reel's own
   // sitemap, not inferred, and each lists what is playing at that screen.
   { cinema: "reel", name: "Dubai Mall Cinema", city: "Dubai", lat: 25.203117, lng: 55.279006, url: "https://reelcinemas.com/en-ae/locations/the-dubai-mall" },
-  { cinema: "reel", name: "Springs Souk Cinema", city: "Dubai", lat: 25.0666, lng: 55.1841, url: "https://reelcinemas.com/en-ae/locations/the-springs-souk" },
+  { cinema: "reel", name: "Springs Souk Cinema", city: "Dubai", lat: 25.0666, lng: 55.1841, url: "https://reelcinemas.com/en-ae/locations/the-springs-souk", aliases: ["Spring Souk", "The Springs Souk"] },
 
   // Novo
-  { cinema: "novo", name: "Dragon Mart Cinema", city: "Dubai", lat: 25.174961, lng: 55.417626 },
-  { cinema: "novo", name: "Mega Mall Cinema", city: "Sharjah", lat: 25.3448, lng: 55.3987 },
+  { cinema: "novo", name: "Dragon Mart Cinema", city: "Dubai", lat: 25.174961, lng: 55.417626, aliases: ["Dragon Mart 2"] },
+  { cinema: "novo", name: "Mega Mall Cinema", city: "Sharjah", lat: 25.3448, lng: 55.3987, aliases: ["Megamall", "Mega Mall Sharjah"] },
   { cinema: "novo", name: "Sahara Center Cinema", city: "Sharjah", lat: 25.297543, lng: 55.372659 },
-  { cinema: "novo", name: "Buhaira Cinema", city: "Sharjah", lat: 25.33208, lng: 55.375704 },
-  { cinema: "novo", name: "Manar Mall Cinema", city: "Ras Al Khaimah", lat: 25.785498, lng: 55.965447 },
+  { cinema: "novo", name: "Buhaira Cinema", city: "Sharjah", lat: 25.33208, lng: 55.375704, aliases: ["Buhaira Center"] },
+  { cinema: "novo", name: "Manar Mall Cinema", city: "Ras Al Khaimah", lat: 25.785498, lng: 55.965447, aliases: ["Al Manar Mall"] },
   { cinema: "novo", name: "Bawabat Al Sharq Mall Cinema", city: "Abu Dhabi", lat: 24.311121, lng: 54.621092 },
 
   // Roxy
@@ -103,7 +121,7 @@ export const VENUES: Venue[] = [
   { cinema: "star", name: "Bawadi Mall Cinema", city: "Al Ain", lat: 24.159206, lng: 55.807493 },
   { cinema: "star", name: "Al Ain Mall Cinema", city: "Al Ain", lat: 24.222193, lng: 55.781395 },
   { cinema: "star", name: "Al Foah Mall Cinema", city: "Al Ain", lat: 24.339521, lng: 55.805063 },
-  { cinema: "star", name: "Barari Outlet Mall Cinema", city: "Al Ain", lat: 24.086435, lng: 55.83159 },
+  { cinema: "star", name: "Barari Outlet Mall Cinema", city: "Al Ain", lat: 24.086435, lng: 55.83159, aliases: ["Barari Mall"] },
 
   // Cine Royal Ã¢â‚¬â€ Abu Dhabi emirate only
   { cinema: "cineroyal", name: "Deerfields Mall Cinema", city: "Abu Dhabi", lat: 24.523184, lng: 54.670535 },
@@ -116,7 +134,7 @@ export const VENUES: Venue[] = [
   { cinema: "cinemacity", name: "Al Qana Cinema", city: "Abu Dhabi", lat: 24.40265, lng: 54.495842 },
   { cinema: "cinemacity", name: "Arabian Center Cinema", city: "Dubai", lat: 25.234215, lng: 55.433915 },
   { cinema: "cinemacity", name: "Fountain Views Cinema", city: "Dubai", lat: 25.19457, lng: 55.281721 },
-  { cinema: "cinemacity", name: "Zero 6 Mall Cinema", city: "Sharjah", lat: 25.290003, lng: 55.498341 },
+  { cinema: "cinemacity", name: "Zero 6 Mall Cinema", city: "Sharjah", lat: 25.290003, lng: 55.498341, aliases: ["Zero6", "06 Mall", "O6 Mall"] },
   { cinema: "cinemacity", name: "Rahmania Mall Cinema", city: "Sharjah", lat: 25.329421, lng: 55.603205 },
 
   // Both Reel (Dubai Marina) and Cinema City (Abu Dhabi) call a screen "Marina
