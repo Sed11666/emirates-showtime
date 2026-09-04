@@ -48,27 +48,60 @@ function shortName(name: string): string {
 }
 
 /**
+ * The venue as a searcher writes it: "Yas Mall Cinema", "Mega Mall Cinema".
+ *
+ * Nearly every name in VENUES already ends in "Cinema", so this usually returns
+ * the name untouched. The exception is "Kempinski Private Cinema Mall of
+ * Emirates", which carries the word mid-string and must not be given a second.
+ */
+function venuePhrase(name: string): string {
+  return /cinema/i.test(name) ? name : `${name} Cinema`;
+}
+
+/**
  * The <title>, budgeted to what Google actually renders.
  *
- * Venue names are the long ones — "VOX Cinemas City Center Fujairah Showtimes
- * — Fujairah | ShowSouk" was 64 characters, so the tail was cut off in the
- * SERP for the tier we have the most pages of.
+ * Rewritten from Search Console (24 Aug – 2 Sep 2026). The venue tier drew more
+ * impressions than anything else on the site and converted almost none of them:
+ * /cinemas/vox/reem-mall sat at position 10.9 on 78 impressions for zero clicks,
+ * /cinemas/vox/yas-mall at 15.5 on 173 for zero, /cinemas/novo/mega-mall at 11.6
+ * on 127 for zero. A page ranking that well with no clicks is not a ranking
+ * problem, it is a title that does not look like the search.
  *
- * Things are dropped in the order they earn least, matching titleTag() on the
- * film page. The brand goes first: "| ShowSouk" earns nothing for a domain
- * nobody searches for yet. The city goes second, and only when it has to,
- * because "vox mall of the emirates showtimes dubai" is the shape of the query
- * this page is for. The chain and the venue are never dropped — between them
- * they are the query.
+ * The searches behind those impressions were, near enough without exception,
+ * the mall and not the chain:
+ *
+ *     reem mall movies · yas mall cinema movies today · megamall cinema
+ *     dragon mart movie timings · mega mall cinema timings today
+ *     manar mall cinema show timings today · barari mall cinema
+ *
+ * Nobody types "VOX Cinemas Reem Mall", which is what we led with. So the venue
+ * goes first and the chain moves behind the dash. "Timings" is in here because
+ * it is how the query is actually phrased locally and it appeared nowhere in
+ * our copy.
+ *
+ * Candidates are ordered longest first and the first that fits wins; each step
+ * drops whatever earns least: "& Timings", then the city, then "Today". The
+ * venue phrase and "Showtimes" are never dropped — between them they are the
+ * query. There is no "| ShowSouk" rung: the brand earns nothing on a domain
+ * nobody searches for yet, and it costs eleven characters the venue name needs.
+ *
+ * The city outranks "& Timings" deliberately. Several mall names repeat across
+ * emirates — Marina Mall is Reel in Dubai and Cinema City in Abu Dhabi, and
+ * there are four City Centres — so the city is what tells a searcher which
+ * result is theirs. "Timings" still appears in every description below.
  */
-function venueTitle(chainLabel: string, name: string, city: string): string {
-  const BRAND = " | ShowSouk";
+function venueTitle(chainLabel: string, venueName: string, city: string): string {
+  const venue = venuePhrase(venueName);
   const BUDGET = 60;
-  const withCity = `${chainLabel} ${name} Showtimes — ${city}`;
-  if (withCity.length + BRAND.length <= BUDGET) return withCity + BRAND;
-  if (withCity.length <= BUDGET) return withCity;
-  const bare = `${chainLabel} ${name} Showtimes`;
-  return bare.length + BRAND.length <= BUDGET ? bare + BRAND : bare;
+  const candidates = [
+    `${venue} Showtimes & Timings Today — ${chainLabel}, ${city}`,
+    `${venue} Showtimes Today — ${chainLabel}, ${city}`,
+    `${venue} Showtimes Today — ${chainLabel}`,
+    `${venue} Showtimes — ${chainLabel}`,
+    `${venue} Showtimes`,
+  ];
+  return candidates.find((t) => t.length <= BUDGET) ?? candidates[candidates.length - 1]!;
 }
 
 export const Route = createFileRoute("/cinemas_/$chain_/$venue")({
@@ -95,24 +128,25 @@ export const Route = createFileRoute("/cinemas_/$chain_/$venue")({
   },
   head: ({ params, loaderData }) => {
     const chainLabel = CINEMA_LABELS[params.chain] ?? params.chain;
-    const name = loaderData?.venueName
-      ? shortName(loaderData.venueName)
-      : params.venue.replace(/-/g, " ");
+    const venue = venuePhrase(loaderData?.venueName ?? params.venue.replace(/-/g, " "));
     const city = loaderData?.city ?? "the UAE";
     const canonical = `${ORIGIN}/cinemas/${params.chain}/${params.venue}`;
+    // Leads with the venue for the same reason the title does, and carries
+    // "movie timings" because that is the phrasing the queries arrive in.
+    //
     // Budgeted the same way as the title. The long form sits at ~160 for the
     // longest venue names, which is exactly where it gets cut, so the short
     // form drops the closing clause rather than let Google choose the cut.
-    const full = `Today's showtimes at ${chainLabel} ${name}, ${city}. Every film and time on screen now, with a direct link to book on the cinema's own site.`;
+    const full = `${venue} movie timings today — every film showing at ${chainLabel}, ${city}, with times and a direct link to book on the cinema's own site.`;
     const description =
       full.length <= 158
         ? full
-        : `Today's showtimes at ${chainLabel} ${name}, ${city}. Every film and time on screen now, with a direct booking link.`;
+        : `${venue} movie timings today — every film showing at ${chainLabel}, ${city}, with a direct booking link.`;
     return {
       meta: [
-        { title: venueTitle(chainLabel, name, city) },
+        { title: venueTitle(chainLabel, venue, city) },
         { name: "description", content: description },
-        { property: "og:title", content: `${chainLabel} ${name} Showtimes` },
+        { property: "og:title", content: `${venue} Showtimes — ${chainLabel}` },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { property: "og:url", content: canonical },
