@@ -10,7 +10,7 @@
  * LocationSelector is persisted and read by useUserLocation as the fallback
  * position for nearest-cinema sorting. Admin-only links are gated by useIsAdmin.
  */
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Clapperboard,
   Home,
@@ -102,8 +102,31 @@ function LocationSelector() {
   );
 }
 
+/**
+ * Returns an onClick for a link whose target may be the page you are already
+ * on, so that clicking it returns you to the top.
+ *
+ * The router short-circuits a navigation to the current location, so nothing
+ * resets the scroll position and the control reads as broken: the ShowSouk logo
+ * moved you to the top from every page except the home page, which is the one
+ * place people press it hardest. Every header and tab-bar link has the same
+ * problem — Cinemas while on /cinemas, the mobile Home tab while home.
+ *
+ * Only fires when the path already matches. A real navigation is left alone so
+ * the router keeps doing its own scroll handling.
+ */
+function useScrollTopWhenHere() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (to: string) => () => {
+    if (pathname !== to) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  };
+}
+
 /** Fixed bottom tab bar — mobile replacement for the centred desktop nav. */
 function MobileTabBar() {
+  const scrollTopWhenHere = useScrollTopWhenHere();
   return (
     <nav
       aria-label="Primary"
@@ -115,6 +138,7 @@ function MobileTabBar() {
           <Link
             key={to}
             to={to}
+            onClick={scrollTopWhenHere(to)}
             className="flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors"
             activeProps={{ className: "text-primary" }}
           >
@@ -131,6 +155,7 @@ export function SiteHeader() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const [searchOpen, setSearchOpen] = useState(false);
+  const scrollTopWhenHere = useScrollTopWhenHere();
 
   return (
     <>
@@ -139,7 +164,11 @@ export function SiteHeader() {
 
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-2 px-3 sm:px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-none md:gap-5">
-          <Link to="/" className="flex min-w-0 shrink items-center gap-2">
+          <Link
+            to="/"
+            onClick={scrollTopWhenHere("/")}
+            className="flex min-w-0 shrink items-center gap-2"
+          >
             <Ticket className="size-6 shrink-0 text-primary" />
             <span className="truncate font-display text-lg font-bold tracking-tight sm:text-xl">
               Show<span className="text-gold-gradient">Souk</span>
@@ -153,6 +182,7 @@ export function SiteHeader() {
             <Link
               key={to}
               to={to}
+              onClick={scrollTopWhenHere(to)}
               className="rounded-full px-3.5 py-2 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
               activeProps={{ className: "text-foreground bg-accent/70" }}
             >
