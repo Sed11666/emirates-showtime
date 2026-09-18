@@ -20,11 +20,11 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 
-import { CINEMAS, fetchCinemaFilms, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
-import { LANGUAGE_SLUGS, languageSlug } from "@/lib/languages";
-import { CITY_BY_SLUG, VENUES, venueSlug } from "@/lib/venues";
+// The URL list lives in lib/seo-audit.ts so this route and the admin SEO
+// auditor can never disagree about what counts as a landing page.
+import { SITE_ORIGIN, allTargets } from "@/lib/seo-audit";
 
-const ORIGIN = "https://www.showsouk.com";
+const ORIGIN = SITE_ORIGIN;
 
 /** XML text nodes must escape these five, and slugs can carry an ampersand. */
 function xmlEscape(value: string): string {
@@ -48,62 +48,12 @@ function urlEntry(path: string, lastmod: string, changefreq: string, priority: s
 async function build(): Promise<string> {
   const now = new Date().toISOString();
 
-  const entries: string[] = [
-    urlEntry("/", now, "hourly", "1.0"),
-    urlEntry("/cinemas", now, "hourly", "0.9"),
-    // Rarely changes and is not a landing page, but a policy Google cannot
-    // find is a trust signal wasted. Low priority, yearly.
-    urlEntry("/privacy", now, "yearly", "0.3"),
-    urlEntry("/terms", now, "yearly", "0.3"),
-    // Chain landing pages. Static in number and always meaningful, so they go
-    // in unconditionally rather than depending on a database read.
-    ...CINEMAS.map((c) => urlEntry(`/cinemas/${c.key}`, now, "hourly", "0.9")),
-    // One page per screen — the tier that answers "reel dubai mall showtimes".
-    // Driven by the venue directory, so a screen we cannot name is a screen we
-    // do not list.
-    ...VENUES.map((v) =>
-      urlEntry(`/cinemas/${v.cinema}/${venueSlug(v.name)}`, now, "hourly", "0.8"),
-    ),
-    // One page per emirate — "movies in dubai today" and its seven siblings.
-    ...Object.keys(CITY_BY_SLUG).map((slug) =>
-      urlEntry(`/movies-in/${slug}`, now, "hourly", "0.9"),
-    ),
-  ];
+  // allTargets() already falls back to the static tiers when the catalogue
+  // read fails, so a database hiccup still yields a valid sitemap rather than
+  // a 500 that Search Console records as a fetch error.
+  const { targets } = await allTargets();
+  const entries = targets.map((t) => urlEntry(t.path, now, t.changefreq, t.priority));
 
-  try {
-    const films = await fetchCinemaFilms();
-    /**
-     * One page per language, listed only when it currently has something to
-     * show. The route exists for every language in LANGUAGE_BY_SLUG so a link
-     * never 404s, but a page whose only film just left is an empty schedule,
-     * and submitting those is how a site teaches Google to distrust its own
-     * sitemap. Same rule the film pages below follow.
-     */
-    const withFilms = new Set<string>();
-    for (const film of films) {
-      if (!hasUpcomingScreenings(film.showtimes)) continue;
-      const slug = languageSlug(film.language);
-      if (slug) withFilms.add(slug);
-    }
-    for (const slug of LANGUAGE_SLUGS) {
-      if (withFilms.has(slug)) entries.push(urlEntry(`/movies/${slug}`, now, "hourly", "0.8"));
-    }
-    // One entry per title, not per row: the same film has a row per chain and
-    // per city, and they all resolve to the same /movie/{slug}.
-    const seen = new Set<string>();
-    for (const film of films) {
-      // A film with nothing left to watch is a page that renders an empty
-      // schedule. Let it drop out until it has screenings again.
-      if (!hasUpcomingScreenings(film.showtimes)) continue;
-      const slug = filmSlug(film.title);
-      if (!slug || seen.has(slug)) continue;
-      seen.add(slug);
-      entries.push(urlEntry(`/movie/${slug}`, now, "daily", "0.8"));
-    }
-  } catch {
-    // A database hiccup should still yield a valid sitemap with the static
-    // pages rather than a 500 that Search Console records as a fetch error.
-  }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

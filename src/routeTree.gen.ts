@@ -20,6 +20,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AdminSeoRouteImport } from './routes/admin_.seo'
 import { Route as CinemasChainRouteImport } from './routes/cinemas_.$chain'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as MovieSlugRouteImport } from './routes/movie.$slug'
@@ -32,6 +33,7 @@ import { Route as ApiPublicHooksResolvePostersRouteImport } from './routes/api/p
 import { Route as ApiPublicHooksScrapeAggregatorRouteImport } from './routes/api/public/hooks/scrape-aggregator'
 import { Route as ApiPublicHooksScrapeCinemasRouteImport } from './routes/api/public/hooks/scrape-cinemas'
 import { Route as ApiPublicHooksScrapeEventsRouteImport } from './routes/api/public/hooks/scrape-events'
+import { Route as ApiPublicHooksSeoAuditRouteImport } from './routes/api/public/hooks/seo-audit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -86,6 +88,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSeoRoute = AdminSeoRouteImport.update({
+  id: '/admin_/seo',
+  path: '/admin/seo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CinemasChainRoute = CinemasChainRouteImport.update({
@@ -153,6 +160,11 @@ const ApiPublicHooksScrapeEventsRoute =
     path: '/api/public/hooks/scrape-events',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSeoAuditRoute = ApiPublicHooksSeoAuditRouteImport.update({
+  id: '/api/public/hooks/seo-audit',
+  path: '/api/public/hooks/seo-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/seo': typeof AdminSeoRoute
   '/cinemas/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
@@ -178,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
+  '/api/public/hooks/seo-audit': typeof ApiPublicHooksSeoAuditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -191,6 +205,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/seo': typeof AdminSeoRoute
   '/cinemas/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
@@ -203,6 +218,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
+  '/api/public/hooks/seo-audit': typeof ApiPublicHooksSeoAuditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -217,6 +233,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin_/seo': typeof AdminSeoRoute
   '/cinemas_/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
   '/movie/$slug': typeof MovieSlugRoute
@@ -229,6 +246,7 @@ export interface FileRoutesById {
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
+  '/api/public/hooks/seo-audit': typeof ApiPublicHooksSeoAuditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -244,6 +262,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/seo'
     | '/cinemas/$chain'
     | '/listing/$id'
     | '/movie/$slug'
@@ -256,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
+    | '/api/public/hooks/seo-audit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -269,6 +289,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/seo'
     | '/cinemas/$chain'
     | '/listing/$id'
     | '/movie/$slug'
@@ -281,6 +302,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
+    | '/api/public/hooks/seo-audit'
   id:
     | '__root__'
     | '/'
@@ -294,6 +316,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin_/seo'
     | '/cinemas_/$chain'
     | '/listing/$id'
     | '/movie/$slug'
@@ -306,6 +329,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
+    | '/api/public/hooks/seo-audit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -320,6 +344,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  AdminSeoRoute: typeof AdminSeoRoute
   CinemasChainRoute: typeof CinemasChainRoute
   ListingIdRoute: typeof ListingIdRoute
   MovieSlugRoute: typeof MovieSlugRoute
@@ -332,6 +357,7 @@ export interface RootRouteChildren {
   ApiPublicHooksScrapeAggregatorRoute: typeof ApiPublicHooksScrapeAggregatorRoute
   ApiPublicHooksScrapeCinemasRoute: typeof ApiPublicHooksScrapeCinemasRoute
   ApiPublicHooksScrapeEventsRoute: typeof ApiPublicHooksScrapeEventsRoute
+  ApiPublicHooksSeoAuditRoute: typeof ApiPublicHooksSeoAuditRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -411,6 +437,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/seo': {
+      id: '/admin_/seo'
+      path: '/admin/seo'
+      fullPath: '/admin/seo'
+      preLoaderRoute: typeof AdminSeoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cinemas_/$chain': {
@@ -497,6 +530,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksScrapeEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/seo-audit': {
+      id: '/api/public/hooks/seo-audit'
+      path: '/api/public/hooks/seo-audit'
+      fullPath: '/api/public/hooks/seo-audit'
+      preLoaderRoute: typeof ApiPublicHooksSeoAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -512,6 +552,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  AdminSeoRoute: AdminSeoRoute,
   CinemasChainRoute: CinemasChainRoute,
   ListingIdRoute: ListingIdRoute,
   MovieSlugRoute: MovieSlugRoute,
@@ -524,6 +565,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksScrapeAggregatorRoute: ApiPublicHooksScrapeAggregatorRoute,
   ApiPublicHooksScrapeCinemasRoute: ApiPublicHooksScrapeCinemasRoute,
   ApiPublicHooksScrapeEventsRoute: ApiPublicHooksScrapeEventsRoute,
+  ApiPublicHooksSeoAuditRoute: ApiPublicHooksSeoAuditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

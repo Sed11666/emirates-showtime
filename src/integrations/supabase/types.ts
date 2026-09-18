@@ -431,6 +431,116 @@ export type Database = {
         }
         Relationships: []
       }
+      seo_audit_runs: {
+        Row: {
+          created_at: string
+          finished_at: string | null
+          id: string
+          notes: string | null
+          pages_checked: number
+          pages_failing: number
+          score: number
+          sitemap_url_count: number
+          started_at: string
+          status: string
+          trigger: string
+        }
+        Insert: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          pages_checked?: number
+          pages_failing?: number
+          score?: number
+          sitemap_url_count?: number
+          started_at?: string
+          status?: string
+          trigger?: string
+        }
+        Update: {
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          notes?: string | null
+          pages_checked?: number
+          pages_failing?: number
+          score?: number
+          sitemap_url_count?: number
+          started_at?: string
+          status?: string
+          trigger?: string
+        }
+        Relationships: []
+      }
+      seo_page_checks: {
+        Row: {
+          canonical: string | null
+          canonical_ok: boolean
+          created_at: string
+          description: string | null
+          description_len: number
+          h1_count: number
+          id: string
+          in_sitemap: boolean
+          issues: string[]
+          jsonld_types: string[]
+          path: string
+          response_ms: number | null
+          run_id: string
+          status_code: number | null
+          tier: string
+          title: string | null
+          title_len: number
+        }
+        Insert: {
+          canonical?: string | null
+          canonical_ok?: boolean
+          created_at?: string
+          description?: string | null
+          description_len?: number
+          h1_count?: number
+          id?: string
+          in_sitemap?: boolean
+          issues?: string[]
+          jsonld_types?: string[]
+          path: string
+          response_ms?: number | null
+          run_id: string
+          status_code?: number | null
+          tier?: string
+          title?: string | null
+          title_len?: number
+        }
+        Update: {
+          canonical?: string | null
+          canonical_ok?: boolean
+          created_at?: string
+          description?: string | null
+          description_len?: number
+          h1_count?: number
+          id?: string
+          in_sitemap?: boolean
+          issues?: string[]
+          jsonld_types?: string[]
+          path?: string
+          response_ms?: number | null
+          run_id?: string
+          status_code?: number | null
+          tier?: string
+          title?: string | null
+          title_len?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_page_checks_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "seo_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -467,6 +577,10 @@ export type Database = {
       }
       ingest_cinema_films: {
         Args: { p_rows: Json; p_token: string }
+        Returns: Json
+      }
+      ingest_seo_audit: {
+        Args: { p_rows: Json; p_run: Json; p_token: string }
         Returns: Json
       }
       page_cache_get: {
