@@ -32,6 +32,7 @@ import { Route as ApiPublicHooksResolvePostersRouteImport } from './routes/api/p
 import { Route as ApiPublicHooksScrapeAggregatorRouteImport } from './routes/api/public/hooks/scrape-aggregator'
 import { Route as ApiPublicHooksScrapeCinemasRouteImport } from './routes/api/public/hooks/scrape-cinemas'
 import { Route as ApiPublicHooksScrapeEventsRouteImport } from './routes/api/public/hooks/scrape-events'
+import { Route as ApiPublicHooksSeoAuditRouteImport } from './routes/api/public/hooks/seo-audit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -153,6 +154,11 @@ const ApiPublicHooksScrapeEventsRoute =
     path: '/api/public/hooks/scrape-events',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSeoAuditRoute = ApiPublicHooksSeoAuditRouteImport.update({
+  id: '/api/public/hooks/seo-audit',
+  path: '/api/public/hooks/seo-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
+  '/api/public/hooks/seo-audit': typeof ApiPublicHooksSeoAuditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
+  '/api/public/hooks/seo-audit': typeof ApiPublicHooksSeoAuditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/api/public/hooks/scrape-aggregator': typeof ApiPublicHooksScrapeAggregatorRoute
   '/api/public/hooks/scrape-cinemas': typeof ApiPublicHooksScrapeCinemasRoute
   '/api/public/hooks/scrape-events': typeof ApiPublicHooksScrapeEventsRoute
+  '/api/public/hooks/seo-audit': typeof ApiPublicHooksSeoAuditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
+    | '/api/public/hooks/seo-audit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
+    | '/api/public/hooks/seo-audit'
   id:
     | '__root__'
     | '/'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/scrape-aggregator'
     | '/api/public/hooks/scrape-cinemas'
     | '/api/public/hooks/scrape-events'
+    | '/api/public/hooks/seo-audit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   ApiPublicHooksScrapeAggregatorRoute: typeof ApiPublicHooksScrapeAggregatorRoute
   ApiPublicHooksScrapeCinemasRoute: typeof ApiPublicHooksScrapeCinemasRoute
   ApiPublicHooksScrapeEventsRoute: typeof ApiPublicHooksScrapeEventsRoute
+  ApiPublicHooksSeoAuditRoute: typeof ApiPublicHooksSeoAuditRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -497,6 +510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksScrapeEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/seo-audit': {
+      id: '/api/public/hooks/seo-audit'
+      path: '/api/public/hooks/seo-audit'
+      fullPath: '/api/public/hooks/seo-audit'
+      preLoaderRoute: typeof ApiPublicHooksSeoAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -524,6 +544,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksScrapeAggregatorRoute: ApiPublicHooksScrapeAggregatorRoute,
   ApiPublicHooksScrapeCinemasRoute: ApiPublicHooksScrapeCinemasRoute,
   ApiPublicHooksScrapeEventsRoute: ApiPublicHooksScrapeEventsRoute,
+  ApiPublicHooksSeoAuditRoute: ApiPublicHooksSeoAuditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
