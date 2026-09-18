@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -33,13 +33,8 @@ export type Database = {
         Row: {
           backdrop_url: string | null
           booking_url: string | null
-          cast_names: string[] | null
           cast_credits: Json | null
-          imdb_rating: number | null
-          imdb_votes: number | null
-          metascore: number | null
-          rt_score: number | null
-          tmdb_genres: string[] | null
+          cast_names: string[] | null
           cinema: string
           city: string
           created_at: string
@@ -50,29 +45,29 @@ export type Database = {
           genre: string | null
           id: string
           imdb_id: string | null
+          imdb_rating: number | null
+          imdb_votes: number | null
           is_active: boolean
           language: string | null
           last_seen_at: string
+          metascore: number | null
           poster_url: string | null
           rating: string | null
+          rt_score: number | null
           showtimes: Json
           source_url: string | null
           synopsis: string | null
           title: string
           title_key: string
+          tmdb_genres: string[] | null
           updated_at: string
           venues: string[]
         }
         Insert: {
           backdrop_url?: string | null
           booking_url?: string | null
-          cast_names?: string[] | null
           cast_credits?: Json | null
-          imdb_rating?: number | null
-          imdb_votes?: number | null
-          metascore?: number | null
-          rt_score?: number | null
-          tmdb_genres?: string[] | null
+          cast_names?: string[] | null
           cinema: string
           city?: string
           created_at?: string
@@ -83,29 +78,29 @@ export type Database = {
           genre?: string | null
           id?: string
           imdb_id?: string | null
+          imdb_rating?: number | null
+          imdb_votes?: number | null
           is_active?: boolean
           language?: string | null
           last_seen_at?: string
+          metascore?: number | null
           poster_url?: string | null
           rating?: string | null
+          rt_score?: number | null
           showtimes?: Json
           source_url?: string | null
           synopsis?: string | null
           title: string
           title_key: string
+          tmdb_genres?: string[] | null
           updated_at?: string
           venues?: string[]
         }
         Update: {
           backdrop_url?: string | null
           booking_url?: string | null
-          cast_names?: string[] | null
           cast_credits?: Json | null
-          imdb_rating?: number | null
-          imdb_votes?: number | null
-          metascore?: number | null
-          rt_score?: number | null
-          tmdb_genres?: string[] | null
+          cast_names?: string[] | null
           cinema?: string
           city?: string
           created_at?: string
@@ -116,16 +111,21 @@ export type Database = {
           genre?: string | null
           id?: string
           imdb_id?: string | null
+          imdb_rating?: number | null
+          imdb_votes?: number | null
           is_active?: boolean
           language?: string | null
           last_seen_at?: string
+          metascore?: number | null
           poster_url?: string | null
           rating?: string | null
+          rt_score?: number | null
           showtimes?: Json
           source_url?: string | null
           synopsis?: string | null
           title?: string
           title_key?: string
+          tmdb_genres?: string[] | null
           updated_at?: string
           venues?: string[]
         }
@@ -482,6 +482,7 @@ export type Database = {
       }
       page_cache_put: { Args: { p_rows: Json; p_token: string }; Returns: Json }
       retire_stale_films: { Args: { p_chains: string[] }; Returns: number }
+      set_film_meta: { Args: { p_map: Json; p_token: string }; Returns: Json }
       set_posters: { Args: { p_map: Json; p_token: string }; Returns: Json }
       touch_films: { Args: { p_keys: Json; p_token: string }; Returns: Json }
     }
@@ -503,12 +504,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -532,11 +533,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -557,11 +558,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -582,11 +583,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -599,11 +600,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
