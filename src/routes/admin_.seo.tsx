@@ -36,7 +36,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { TIER_LABELS, type SeoTier } from "@/lib/seo-audit";
 
-export const Route = createFileRoute("/admin/seo")({
+export const Route = createFileRoute("/admin_/seo")({
   head: () => ({
     meta: [
       { title: "SEO health | ShowSouk admin" },
