@@ -20,11 +20,11 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 
-import { CINEMAS, fetchCinemaFilms, filmSlug, hasUpcomingScreenings } from "@/lib/cinemas";
-import { LANGUAGE_SLUGS, languageSlug } from "@/lib/languages";
-import { CITY_BY_SLUG, VENUES, venueSlug } from "@/lib/venues";
+// The URL list lives in lib/seo-audit.ts so this route and the admin SEO
+// auditor can never disagree about what counts as a landing page.
+import { SITE_ORIGIN, allTargets } from "@/lib/seo-audit";
 
-const ORIGIN = "https://www.showsouk.com";
+const ORIGIN = SITE_ORIGIN;
 
 /** XML text nodes must escape these five, and slugs can carry an ampersand. */
 function xmlEscape(value: string): string {
