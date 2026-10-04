@@ -277,6 +277,11 @@
   --gradient-gold: linear-gradient(100deg, oklch(0.86 0.115 88), oklch(0.74 0.13 84));
   --shadow-poster: 0 22px 50px -20px oklch(0 0 0 / 0.7);
   --shadow-glow: 0 0 0 1px oklch(0.80 0.132 85 / 0.28), 0 24px 70px -28px oklch(0.53 0.108 165 / 0.8);
+  --shadow-surface: 0 1px 0 oklch(1 0 0 / 0.035), 0 18px 46px -32px oklch(0 0 0 / 0.82);
+  --shadow-surface-hover: 0 1px 0 oklch(1 0 0 / 0.06), 0 28px 60px -32px oklch(0 0 0 / 0.92);
+  --ease-cinematic: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-fast: 180ms;
+  --motion-medium: 320ms;
 }
 
 
@@ -394,6 +399,8 @@
   /* Warm grey rather than black: black shadows on ivory look like holes. */
   --shadow-poster: 0 18px 40px -20px oklch(0.30 0.020 170 / 0.22);
   --shadow-glow: 0 0 0 1px oklch(0.52 0.108 80 / 0.35), 0 18px 44px -24px oklch(0.30 0.020 170 / 0.30);
+  --shadow-surface: 0 1px 0 oklch(1 0 0 / 0.7), 0 14px 36px -28px oklch(0.30 0.020 170 / 0.28);
+  --shadow-surface-hover: 0 1px 0 oklch(1 0 0 / 0.85), 0 24px 50px -28px oklch(0.30 0.020 170 / 0.36);
 }
 
 /*
@@ -448,6 +455,17 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 34%, transparent);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
   }
 
   h1,
@@ -475,6 +493,83 @@
 
 @utility shadow-glow {
   box-shadow: var(--shadow-glow);
+}
+
+@utility cinematic-surface {
+  box-shadow: var(--shadow-surface);
+  transition:
+    transform var(--motion-medium) var(--ease-cinematic),
+    box-shadow var(--motion-medium) var(--ease-cinematic),
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease;
+
+  &:hover {
+    box-shadow: var(--shadow-surface-hover);
+  }
+}
+
+@utility cinematic-card {
+  box-shadow: var(--shadow-surface);
+  transform: translateZ(0);
+  transition:
+    transform var(--motion-medium) var(--ease-cinematic),
+    box-shadow var(--motion-medium) var(--ease-cinematic),
+    border-color var(--motion-fast) ease;
+
+  &:hover {
+    transform: translate3d(0, -4px, 0);
+    box-shadow: var(--shadow-surface-hover);
+  }
+
+  &:active {
+    transform: translate3d(0, -1px, 0) scale(0.995);
+  }
+}
+
+@utility cinematic-control {
+  transition:
+    transform var(--motion-fast) var(--ease-cinematic),
+    box-shadow var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease;
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+@utility cinematic-image {
+  transform: scale(1.001);
+  transition:
+    transform 650ms var(--ease-cinematic),
+    filter var(--motion-medium) ease,
+    opacity var(--motion-medium) ease;
+}
+
+@utility state-panel {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  box-shadow: var(--shadow-surface);
+}
+
+@keyframes skeleton-sheen {
+  from { transform: translate3d(-120%, 0, 0); }
+  to { transform: translate3d(120%, 0, 0); }
+}
+
+@utility skeleton-sheen {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 25%, color-mix(in oklab, var(--foreground) 8%, transparent) 48%, transparent 72%);
+    animation: skeleton-sheen 1.5s ease-in-out infinite;
+  }
 }
 
 /* Cinematic poster marquee — endless reel background */
@@ -590,4 +685,9 @@
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none !important; }
   .reveal-on-scroll { opacity: 1 !important; animation: none !important; }
+  .skeleton-sheen::after { animation: none !important; }
+  .cinematic-card,
+  .cinematic-control,
+  .cinematic-image,
+  .cinematic-surface { transition-duration: 0.01ms !important; }
 }
