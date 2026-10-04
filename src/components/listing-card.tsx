@@ -12,7 +12,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
     <Link
       to="/listing/$id"
       params={{ id: listing.id }}
-      className="group block overflow-hidden rounded-xl border border-border/70 bg-card shadow-poster transition-transform hover:-translate-y-1"
+      className="cinematic-card group block overflow-hidden rounded-xl border border-border/45 bg-card shadow-poster hover:border-gold/45"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-muted">
         {listing.poster_url ? (
@@ -20,7 +20,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
             src={listing.poster_url}
             alt={`${listing.title} poster`}
             loading="lazy"
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="cinematic-image size-full object-cover group-hover:scale-[1.045]"
           />
         ) : (
           <div className="flex size-full items-center justify-center text-muted-foreground">

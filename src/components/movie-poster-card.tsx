@@ -70,7 +70,7 @@ export function MoviePosterCard({
       to="/movie/$slug"
       params={{ slug: filmSlug(item.title) }}
       aria-label={`${item.title} — synopsis and showtimes`}
-      className={`group relative block shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-poster transition-all duration-500 hover:-translate-y-2 hover:scale-[1.02] hover:border-gold/50 hover:gold-glow ${width} ${className}`}
+      className={`cinematic-card group relative block shrink-0 overflow-hidden rounded-2xl border border-border/45 bg-card shadow-poster hover:border-gold/45 ${width} ${className}`}
     >
 
 
@@ -80,7 +80,7 @@ export function MoviePosterCard({
             src={item.poster}
             alt={`${item.title} poster`}
             loading="lazy"
-            className="size-full object-cover opacity-90 transition-all duration-700 group-hover:scale-105 group-hover:opacity-100"
+            className="cinematic-image size-full object-cover opacity-90 group-hover:scale-[1.045] group-hover:opacity-100"
           />
         ) : (
           <div className="flex size-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
@@ -101,7 +101,7 @@ export function MoviePosterCard({
           </div>
         ) : null}
 
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/85 to-transparent p-3 pt-14">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/90 to-transparent p-3 pt-16 transition-[padding] duration-300 group-hover:pb-3.5">
           <h3 className="line-clamp-1 text-sm font-semibold">{item.title}</h3>
           <p className="line-clamp-1 text-[11px] text-muted-foreground">
             {item.meta.join(" · ") || "Details coming soon"}

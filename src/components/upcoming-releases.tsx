@@ -15,6 +15,7 @@ import { CalendarDays, Clapperboard } from "lucide-react";
 
 import type { ComingSoonFilm } from "@/lib/coming-soon";
 import { toDayKey } from "@/lib/days";
+import { Skeleton } from "@/components/ui/skeleton";
 
 async function fetchComingSoon(): Promise<ComingSoonFilm[]> {
   const res = await fetch("/api/public/coming-soon");
@@ -60,13 +61,23 @@ export function UpcomingReleases() {
   const upcoming = films.filter((f) => !f.releaseDayKey || f.releaseDayKey > today);
   const groups = groupByDate(upcoming);
 
-  if (isLoading) return <p className="text-muted-foreground">Loading upcoming releases…</p>;
+  if (isLoading)
+    return (
+      <div aria-label="Loading upcoming releases" className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }, (_, index) => (
+          <div key={index} className="overflow-hidden rounded-xl border border-border/45 bg-card/50">
+            <Skeleton className="aspect-[2/3] w-full rounded-none" />
+            <div className="space-y-2 p-3"><Skeleton className="h-4 w-4/5" /><Skeleton className="h-3 w-2/5" /></div>
+          </div>
+        ))}
+      </div>
+    );
   if (error)
     return <p className="text-destructive">Could not load upcoming releases. Please try again.</p>;
 
   if (upcoming.length === 0)
     return (
-      <p className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
+      <p className="state-panel p-8 text-center text-muted-foreground">
         No upcoming releases listed right now.
       </p>
     );
@@ -87,7 +98,7 @@ export function UpcomingReleases() {
             {group.films.map((film) => (
               <li
                 key={film.imdbId ?? film.slug}
-                className="overflow-hidden rounded-xl border border-border/60 bg-card/50"
+                className="cinematic-card group overflow-hidden rounded-xl border border-border/45 bg-card/50 hover:border-gold/40"
               >
                 <div className="aspect-[2/3] w-full bg-muted">
                   {film.posterUrl ? (
@@ -95,7 +106,7 @@ export function UpcomingReleases() {
                       src={film.posterUrl}
                       alt={`${film.title} poster`}
                       loading="lazy"
-                      className="size-full object-cover"
+                      className="cinematic-image size-full object-cover group-hover:scale-[1.045]"
                     />
                   ) : (
                     <div className="flex size-full items-center justify-center text-muted-foreground">

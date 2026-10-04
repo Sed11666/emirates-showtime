@@ -28,6 +28,8 @@ export const Route = createFileRoute("/auth")({
         property: "og:description",
         content: "Create a ShowSouk account to book UAE cinema tickets.",
       },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });

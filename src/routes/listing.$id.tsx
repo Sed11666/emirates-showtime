@@ -23,6 +23,8 @@ export const Route = createFileRoute("/listing/$id")({
         property: "og:description",
         content: "Showtimes, venue and ticket pricing for this UAE listing.",
       },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ListingDetail,
@@ -44,7 +46,7 @@ function ListingDetail() {
   });
 
   if (isLoading) {
-    return <div className="mx-auto max-w-6xl px-4 py-20 text-muted-foreground">Loading…</div>;
+    return <div className="state-panel mx-auto my-20 max-w-6xl px-4 py-10 text-center text-muted-foreground">Loading…</div>;
   }
 
   if (!listing) {
@@ -61,12 +63,12 @@ function ListingDetail() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-14">
       <div className="grid gap-10 md:grid-cols-[320px_1fr]">
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-poster">
+        <div className="cinematic-surface overflow-hidden rounded-xl border border-border/60 bg-card shadow-poster">
           {listing.poster_url ? (
             <img
               src={listing.poster_url}
               alt={`${listing.title} poster`}
-              className="aspect-[3/4] w-full object-cover"
+              className="cinematic-image aspect-[3/4] w-full object-cover hover:scale-[1.025]"
             />
           ) : (
             <div className="flex aspect-[3/4] items-center justify-center text-muted-foreground">

@@ -85,7 +85,7 @@ function LocationSelector() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label={`Change city, currently ${city}`}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground md:px-3"
+          className="cinematic-control inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/35 px-2.5 py-1.5 text-xs text-muted-foreground shadow-sm hover:border-primary/60 hover:bg-accent/35 hover:text-foreground md:px-3"
         >
           <MapPin className="size-3.5 shrink-0 text-primary" />
           <span className="max-w-[8ch] truncate">{city}</span>
@@ -130,7 +130,7 @@ function MobileTabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border/50 bg-background/90 shadow-[0_-12px_40px_-28px_var(--foreground)] backdrop-blur-xl md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="mx-auto grid max-w-md grid-cols-3">
@@ -139,8 +139,8 @@ function MobileTabBar() {
             key={to}
             to={to}
             onClick={scrollTopWhenHere(to)}
-            className="flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors"
-            activeProps={{ className: "text-primary" }}
+            className="cinematic-control relative flex min-h-12 flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:scale-x-0 after:rounded-full after:bg-primary after:transition-transform"
+            activeProps={{ className: "text-primary after:scale-x-100" }}
           >
             <Icon className="size-5" />
             {label}
@@ -159,7 +159,7 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/75 shadow-[0_14px_40px_-32px_var(--foreground)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/65">
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
 
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-2 px-3 sm:px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:gap-4">
@@ -183,7 +183,7 @@ export function SiteHeader() {
               key={to}
               to={to}
               onClick={scrollTopWhenHere(to)}
-              className="rounded-full px-3.5 py-2 text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+              className="cinematic-control relative rounded-full px-3.5 py-2 text-muted-foreground after:absolute after:inset-x-4 after:bottom-0.5 after:h-px after:origin-center after:scale-x-0 after:bg-gold after:transition-transform hover:bg-accent/45 hover:text-foreground hover:after:scale-x-100"
               activeProps={{ className: "text-foreground bg-accent/70" }}
             >
               <span className="inline-flex items-center gap-1.5">
@@ -198,7 +198,7 @@ export function SiteHeader() {
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Search"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border/70 text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
+            className="cinematic-control inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/35 text-muted-foreground shadow-sm hover:border-primary/60 hover:bg-accent/35 hover:text-foreground"
           >
             <Search className="size-4" />
           </button>

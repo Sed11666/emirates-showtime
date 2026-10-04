@@ -40,6 +40,8 @@ export const Route = createFileRoute("/admin")({
         property: "og:description",
         content: "Publish your own UAE movie or event listing in seconds.",
       },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AdminPage,
