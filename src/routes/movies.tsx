@@ -27,6 +27,8 @@ export const Route = createFileRoute("/movies")({
         property: "og:description",
         content: "Browse every film playing across UAE cinemas this week.",
       },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: MoviesPage,

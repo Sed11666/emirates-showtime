@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Project architecture rules
+
+- Keep visual polish centralized in semantic CSS utilities and shared UI primitives so all routes stay consistent without altering feature logic.

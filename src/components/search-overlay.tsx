@@ -42,17 +42,17 @@ export const CATEGORY_META = {
 
 export function ResultRow({ result, onNavigate }: { result: SearchResult; onNavigate?: () => void }) {
   const rowClass =
-    "flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition-colors hover:border-gold/40 hover:bg-accent/50";
+    "cinematic-control group flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl border border-transparent px-3 py-2 hover:border-gold/30 hover:bg-accent/45";
 
   const body = (
     <>
-      <div className="h-16 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+      <div className="h-16 w-12 shrink-0 overflow-hidden rounded-md bg-muted shadow-sm">
         {result.imageUrl ? (
           <img
             src={result.imageUrl}
             alt={`${result.title} poster`}
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="cinematic-image h-full w-full object-cover group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -161,9 +161,9 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
       <button
         aria-label="Close search"
         onClick={onClose}
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 backdrop-blur-md animate-in fade-in-0 duration-200"
       />
-      <div className="relative mx-auto mt-24 w-[min(44rem,92vw)] overflow-hidden rounded-2xl border border-gold/25 bg-card shadow-2xl">
+      <div className="cinematic-surface relative mx-auto mt-24 w-[min(44rem,92vw)] overflow-hidden rounded-2xl border border-gold/20 bg-card/95 shadow-2xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-300">
         <div className="flex items-center gap-2 border-b border-border/70 px-4 py-3">
           <Search className="size-4 text-primary" />
           <Input
@@ -182,7 +182,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="text-muted-foreground hover:text-foreground"
+            className="cinematic-control rounded-full p-2 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
           >
             <X className="size-4" />
           </button>
@@ -227,7 +227,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
               onClose();
               navigate({ to: "/search", search: { q: query.trim(), tab: "all" } });
             }}
-            className="w-full border-t border-border/70 px-4 py-3 text-left text-xs text-muted-foreground hover:text-foreground"
+            className="cinematic-control w-full border-t border-border/70 px-4 py-3 text-left text-xs text-muted-foreground hover:bg-accent/30 hover:text-foreground"
           >
             Press Enter to see all results for “{query.trim()}”
           </button>

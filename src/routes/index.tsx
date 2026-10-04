@@ -230,7 +230,7 @@ function Home() {
         action={{ label: "All showtimes" }}
       >
         {nowShowing.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {nowShowing.map((item) => (
               <MoviePosterCard key={item.id} item={item} fullWidth />
             ))}
@@ -255,7 +255,7 @@ function Home() {
                 // cinemas showtimes" however good the data behind it was.
                 to="/cinemas/$chain"
                 params={{ chain: chain.key }}
-                className="group rounded-2xl border border-border/60 bg-card/50 px-5 py-7 text-center transition-all hover:-translate-y-1 hover:border-gold/50 hover:gold-glow"
+                 className="cinematic-card group rounded-2xl border border-border/45 bg-card/50 px-5 py-7 text-center hover:border-gold/45 hover:bg-card/75"
               >
                 <p className="font-display text-sm font-bold uppercase tracking-wide">
                   {CINEMA_LABELS[chain.key]}
@@ -270,7 +270,7 @@ function Home() {
       {/* ── Never miss a showtime ───────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-16">
         <Reveal>
-          <div className="film-grain relative overflow-hidden rounded-3xl border border-gold/25">
+             <div className="cinematic-surface film-grain relative overflow-hidden rounded-3xl border border-gold/20">
             <div className="absolute inset-0 bg-[radial-gradient(120%_140%_at_10%_0%,oklch(0.42_0.095_165)_0%,oklch(0.2_0.03_170)_55%,oklch(0.16_0.015_170)_100%)]" />
             <div className="relative px-7 py-14 sm:px-14">
               <p className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-gold">
@@ -371,8 +371,8 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
             src={film.backdrop_url ?? film.poster_url ?? ""}
             alt=""
             draggable={false}
-            className={`absolute inset-0 size-full object-cover transition-opacity duration-1000 ${
-              i === index ? "opacity-100" : "opacity-0"
+             className={`absolute inset-0 size-full object-cover transition-[opacity,transform,filter] duration-1000 ease-out ${
+               i === index ? "scale-100 opacity-100" : "scale-[1.025] opacity-0"
             }`}
           />
         ))}
@@ -414,11 +414,11 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
               {active.language ? <span>{active.language}</span> : null}
             </div>
 
-            <Button asChild variant="gold" size="lg" className="mt-7 w-fit">
+            <Button asChild variant="gold" size="lg" className="group mt-7 w-fit">
               {/* Same destination as the poster cards below: the hero is a
                   movie banner, so it must not lead somewhere different. */}
               <Link to="/movie/$slug" params={{ slug: filmSlug(active.title) }}>
-                Get Showtimes <ChevronRight className="size-4" />
+                 Get Showtimes <ChevronRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
             </Button>
           </>
@@ -435,7 +435,7 @@ function HeroSlider({ films }: { films: MergedFilm[] }) {
                 key={film.id}
                 onClick={() => setIndex(i)}
                 aria-label={`Show ${film.title}`}
-                className={`h-1 rounded-full transition-all ${
+                 className={`cinematic-control h-1 rounded-full transition-all ${
                   i === index ? "w-8 bg-gold" : "w-4 bg-border hover:bg-muted-foreground"
                 }`}
               />

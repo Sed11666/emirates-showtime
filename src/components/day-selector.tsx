@@ -29,7 +29,7 @@ export function DaySelector({
           type="button"
           onClick={() => onChange(option.value)}
           aria-pressed={value === option.value}
-          className={`rounded-full border px-3 py-1.5 text-xs leading-tight transition-colors ${
+           className={`cinematic-control rounded-full border px-3 py-1.5 text-xs leading-tight shadow-sm ${
             value === option.value
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border text-muted-foreground hover:border-primary/60 hover:text-foreground"

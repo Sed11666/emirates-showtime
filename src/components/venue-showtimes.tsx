@@ -80,7 +80,7 @@ export function VenueShowtimesBlock({
     /* Each screen is its own panel rather than a hairline-divided row: with 36
        venues on one film, dividers alone gave no sense of where one cinema
        ended and the next began. */
-    <div className="rounded-xl border border-border/50 bg-background/40 p-4 transition-colors hover:border-border">
+    <div className="cinematic-surface rounded-xl border border-border/45 bg-background/40 p-4 hover:border-border/90 hover:bg-background/55">
       {/* Stacked, not two columns: a venue with 25 screenings used to squeeze
           the name column to zero width, showing a bare pin with no name. */}
       <div className="mb-3.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -125,7 +125,7 @@ export function VenueShowtimesBlock({
               aria-label={`${exact ? "Book" : "Open the cinema's booking site for"} ${filmTitle} at ${
                 venue.venue
               }, ${screening.time}${screening.format ? `, ${screening.format}` : ""}`}
-              className={`flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-colors ${
+              className={`cinematic-control flex min-w-[4.75rem] flex-col items-center gap-0.5 rounded-lg px-3 py-2 ${
                 exact
                   ? "border border-chip-border bg-background/60 hover:border-primary/70 hover:bg-primary/5"
                   : "border border-dashed border-chip-border bg-transparent hover:border-foreground/40 hover:bg-muted/30"
@@ -162,7 +162,7 @@ export function VenueShowtimesBlock({
           <Link
             to="/cinemas"
             search={{ movie: filmSlug }}
-            className="flex min-w-[4.75rem] flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gold/40 px-3 py-2 text-gold transition-colors hover:border-gold/70 hover:bg-gold/5"
+             className="cinematic-control flex min-w-[4.75rem] flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gold/40 px-3 py-2 text-gold hover:border-gold/70 hover:bg-gold/5"
             aria-label={`Show ${venue.hiddenTimes} more ${
               venue.hiddenTimes === 1 ? "time" : "times"
             } for ${filmTitle} at ${venue.venue}`}

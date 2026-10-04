@@ -40,6 +40,12 @@ export const Route = createFileRoute("/terms")({
           "The terms for using ShowSouk. We list UAE cinema showtimes and link you to the cinema to book — we never sell tickets or hold a seat.",
       },
       { property: "og:title", content: "Terms of Service — ShowSouk" },
+       {
+         property: "og:description",
+         content: "The terms for browsing UAE showtimes and booking directly with cinemas through ShowSouk.",
+       },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "https://www.showsouk.com/terms" },
     ],
     links: [{ rel: "canonical", href: "https://www.showsouk.com/terms" }],

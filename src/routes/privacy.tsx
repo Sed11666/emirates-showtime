@@ -36,6 +36,12 @@ export const Route = createFileRoute("/privacy")({
           "What ShowSouk collects and what it does not. No payments, no ad tracking, and your location never leaves your device.",
       },
       { property: "og:title", content: "Privacy Policy — ShowSouk" },
+       {
+         property: "og:description",
+         content: "How ShowSouk handles account, location and browsing information.",
+       },
+       { property: "og:type", content: "website" },
+       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:url", content: "https://www.showsouk.com/privacy" },
     ],
     links: [{ rel: "canonical", href: "https://www.showsouk.com/privacy" }],
