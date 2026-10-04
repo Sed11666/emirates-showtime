@@ -42,7 +42,7 @@ export const CATEGORY_META = {
 
 export function ResultRow({ result, onNavigate }: { result: SearchResult; onNavigate?: () => void }) {
   const rowClass =
-    "cinematic-control group flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 hover:border-gold/30 hover:bg-accent/45";
+    "cinematic-control group flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl border border-transparent px-3 py-2 hover:border-gold/30 hover:bg-accent/45";
 
   const body = (
     <>
