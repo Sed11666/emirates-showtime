@@ -22,7 +22,7 @@ import { ChevronLeft, Locate } from "lucide-react";
 
 import { DAY_COUNT, buildDayOptions, toDayKey } from "@/lib/days";
 import { FilterRow } from "@/components/filter-row";
-import { FilmCast, FilmDirector } from "@/components/film-ratings";
+import { FilmCast, FilmFacts } from "@/components/film-ratings";
 import {
   VenueShowtimesBlock,
   countUrlUses,
@@ -229,6 +229,8 @@ function MovieShowtimesPage() {
     const withCredits = matches.find((f) => f.cast_credits?.length);
     return {
       director: matches.find((f) => f.director)?.director ?? null,
+      // Same reasoning as the director: any sibling row that carries it.
+      language: matches.find((f) => f.language)?.language ?? null,
       // Prefer the richer cast_credits (name + role); fall back to the plain
       // names the scraper has always filled, so a film TMDB has no credits for
       // still lists who is in it.
@@ -441,7 +443,7 @@ function MovieShowtimesPage() {
                     and imdb_votes on every pass, so this is a one-line render
                     change to reverse. Put aggregateRating back in movieSchema
                     at the same time, never before: §11.21. */}
-                <FilmDirector director={credits.director} />
+                <FilmFacts language={credits.language} director={credits.director} />
               </div>
             </div>
 

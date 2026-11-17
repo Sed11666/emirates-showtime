@@ -310,6 +310,8 @@ const MAX_CAST = 4;
 
 const LD_RX = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g;
 const META_DESC_RX = /<meta name="description" content="([^"]*)"/i;
+/** `<i class="bi bi-translate me-1"></i>Arabic` -> "Arabic". */
+const TRANSLATE_RX = /<i class="bi bi-translate[^"]*"><\/i>\s*([^<]{2,40})</;
 
 /**
  * Film metadata comes from the page's schema.org JSON-LD rather than its
@@ -331,11 +333,23 @@ export function parseMovieMeta(html: string): MovieMeta {
 
   const genre = typeof ld?.["genre"] === "string" ? (ld["genre"] as string).trim() : null;
 
-  // Language is absent from the JSON-LD, but the meta description reliably ends
-  // "<Language> <Genre>." — e.g. "…in all UAE cinemas. Malayalam Crime, Thriller."
-  // so removing the genre leaves the language.
+  // Language is absent from the JSON-LD. It is printed in the hero's spec line
+  // after a translate icon: `<i class="bi bi-translate me-1"></i>Arabic</span>`.
+  //
+  // It used to be read from the meta description, which ended "<Language>
+  // <Genre>." — until cinemauae shortened that to "Showtimes and tickets for X
+  // in UAE cinemas." (seen 2026-11-18). That failed silently: every row stored
+  // a null language, and coalesce in ingest_cinema_films hid it on the old
+  // database by keeping values captured earlier. The rebuilt database had no
+  // earlier values, so all 45 titles had none. Verified on 40 of 40 film pages.
+  // The description parse stays as a fallback in case the icon goes instead.
   let language: string | null = null;
-  const desc = META_DESC_RX.exec(html)?.[1];
+  const iconLang = TRANSLATE_RX.exec(html)?.[1];
+  if (iconLang) {
+    const cleaned = decodeEntities(iconLang).trim();
+    if (cleaned && cleaned.length <= 40) language = cleaned;
+  }
+  const desc = language ? undefined : META_DESC_RX.exec(html)?.[1];
   if (desc) {
     const tail = /in all UAE cinemas\.\s*(.+?)\.?\s*$/i.exec(decodeEntities(desc))?.[1];
     if (tail) {

@@ -14,6 +14,9 @@
  * Vote count is abbreviated ("67K") rather than exact: the precision is noise
  * at a glance, and it is stale the moment we store it.
  */
+import { Link } from "@tanstack/react-router";
+
+import { languageSlug } from "@/lib/languages";
 
 export type FilmRatings = {
   imdbRating: number | null;
@@ -84,23 +87,61 @@ function initials(name: string): string {
  * titles, so the line must not assume the word "as" is always earned.
  */
 /**
- * The director, inline beside the synopsis.
+ * Language and director, inline beside the synopsis.
+ *
+ * One definition list with the labels in their own column, so the two values
+ * start on the same vertical line at every width rather than drifting with
+ * the length of each label. Language comes first: for a UAE audience choosing
+ * between a Hindi, Tamil and Arabic release of the same week it decides more
+ * than who directed it.
  *
  * Kept out of the portrait row on purpose: one name does not earn a headshot,
  * and giving it one makes the crew compete with the cast for the same glance.
- * The label is visible where the spec line above hides them — "Action"
- * announces itself as a genre, a name does not announce what it did.
+ * The labels are visible where the spec line above hides them — "Action"
+ * announces itself as a genre, but "Arabic" or a name does not announce what
+ * it is.
+ *
+ * A language we have a landing page for links to it (/movies/arabic): it is
+ * the natural next question ("what else is on in Arabic?") and the internal
+ * link those pages exist to receive. Anything else is plain text.
  */
-export function FilmDirector({ director }: { director: string | null }) {
-  if (!director) return null;
+export function FilmFacts({
+  language,
+  director,
+}: {
+  language: string | null;
+  director: string | null;
+}) {
+  if (!language && !director) return null;
+  const langSlug = languageSlug(language);
   return (
     // Muted label, emphasised value — the same split the ratings row above uses
-    // ("ROTTEN TOMATOES" quiet, "71%" bright) and the cast names below. The
-    // whole line used to be muted, which made the one proper noun on it the
-    // dimmest text in the block.
-    <dl className="mt-3 flex gap-2 text-[0.8125rem] leading-relaxed sm:text-sm">
-      <dt className="shrink-0 text-muted-foreground">Director</dt>
-      <dd className="min-w-0 font-semibold text-foreground">{director}</dd>
+    // ("ROTTEN TOMATOES" quiet, "71%" bright) and the cast names below.
+    <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-1.5 text-[0.8125rem] leading-relaxed sm:text-sm">
+      {language ? (
+        <>
+          <dt className="text-muted-foreground">Language</dt>
+          <dd className="min-w-0 font-semibold text-foreground">
+            {langSlug ? (
+              <Link
+                to="/movies/$language"
+                params={{ language: langSlug }}
+                className="underline-offset-4 hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
+              >
+                {language}
+              </Link>
+            ) : (
+              language
+            )}
+          </dd>
+        </>
+      ) : null}
+      {director ? (
+        <>
+          <dt className="text-muted-foreground">Director</dt>
+          <dd className="min-w-0 font-semibold text-foreground">{director}</dd>
+        </>
+      ) : null}
     </dl>
   );
 }
