@@ -107,8 +107,8 @@ const SCRAPE_DAYS = 3;
 /**
  * Self-pacing. PAGES_PER_RUN must stay at or under the pages a run actually
  * completes — measured at 12 with three days per page — and PACE_WINDOW_MS must
- * match the cron interval, currently every 15 minutes. A full pass is
- * ceil(sitemap / PAGES_PER_RUN) fires, about four hours at these numbers.
+ * match the cron interval, currently every 30 minutes. A full pass is
+ * ceil(sitemap / PAGES_PER_RUN) fires, about 4.5 hours at these numbers.
  */
 const PAGES_PER_RUN = 10;
 const PACE_WINDOW_MS = 30 * 60 * 1000;

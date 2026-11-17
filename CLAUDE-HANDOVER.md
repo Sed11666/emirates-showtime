@@ -5,6 +5,56 @@ it as `CLAUDE-HANDOVER.md` in the repo root and tell Claude to read it.
 
 ---
 
+## 0. Read first — the database moved on 2026-11-18
+
+The Lovable workspace ran out of credits (warning emails 8 and 11 Nov), its
+grace period ended on 17 Nov and Lovable Cloud **paused the database**. Its
+hostname stopped resolving, every server-rendered page threw, and the site
+served HTTP 500. Nothing could be exported: the old project was unreachable.
+
+The owner chose not to pay Lovable. The site now runs on **its own free
+Supabase project**, `kzquclpirneczwqskwmf` (Mumbai), owned directly by the
+owner. Consequences, all deliberate:
+
+- **The whole schema and every function body is now in the repo:**
+  `supabase/setup/01-schema.sql` (tables, RLS, all ten functions) and
+  `supabase/setup/02-cron.sql` (scheduled jobs). Both are idempotent. This
+  closes §11.10 and §11.26 — the database can finally be rebuilt from git.
+- The six functions that only ever lived in the old database
+  (`ingest_cinema_films`, `page_cache_get/put`, `touch_films`,
+  `retire_stale_films`, `set_posters`) were **rewritten from this file's
+  documentation and their call sites**, not recovered. `set_film_meta` and
+  `scraper_token_ok`/`film_matches_imdb` helpers likewise. They were tested
+  locally before going live; see §5 for what each guarantees.
+- **Lost for good:** user accounts, Notify Me subscribers, `/admin` listings,
+  SEO-audit history, scrape history. Films, showtimes and artwork refilled
+  from the scrapers within the hour.
+- **The cinema scrape now runs every 30 minutes, not 15** (owner's decision,
+  to halve egress on the 5 GB free plan). `PACE_WINDOW_MS` was changed to
+  match in `fd75e1c`. A full pass is now ~4.5 hours.
+- **Events are not scheduled.** `scrape-events` needs `LOVABLE_API_KEY` and
+  `FIRECRAWL_API_KEY`, which do not exist on Vercel, and `/events` is a
+  placeholder. Re-enabling it means rewriting that route first.
+- **Lovable is no longer a runtime dependency of anything.** The service-role
+  key now exists (Supabase dashboard → Project Settings → API keys) — but keep
+  it out of the repo and out of chat; the token-RPC pattern still stands.
+
+Rebuilt the night of 17–18 Nov 2026 (Dubai). Measured right after the first
+full pass: 337 film rows, 44 titles, 8 cities, 4,854 screenings across three
+days, 3,251 with a booking link; 38 of 40 titles resolved to TMDB artwork.
+
+**Novo is absent, and that is the source, not us.** On 2026-11-18 cinemauae's
+Novo venue pages (e.g. `/dubai/dragon-mart-cinema`) carried **zero** time chips
+and no film page listed a Novo screening. It will return by itself if they
+resume. If it does not, the fix is a direct Novo source, the way §4b does Reel.
+
+**Free-plan limits to watch:** 500 MB database, 5 GB egress a month, project
+pauses after 7 days with no activity (the cron keeps it active). Each scrape
+run that writes reads back ~0.8 MB of showtimes (the carry-forward query in
+the aggregator), so the scraper alone is ~1 GB a month at 30-minute pacing.
+
+---
+
 ## 1. What this is
 
 **ShowSouk** — a BookMyShow-style cinema showtime aggregator for the UAE.
@@ -38,8 +88,8 @@ Owner: Syed Ebaad (`syedebaad609@gmail.com`, GitHub `Sed11666`).
 | Domain | **GoDaddy** DNS → Vercel | `A @ → 216.198.79.1`, `CNAME www → 2ac6d918bd63059a.vercel-dns-017.com` |
 | Canonical URL | `https://www.showsouk.com` | apex 308-redirects to `www` |
 | Code | GitHub **`Sed11666/emirates-showtime`** (public) | this is the whole app |
-| Database + Auth | **Supabase** (provisioned via Lovable Cloud), project ref `wrytmjudhqiyivzadwib` | |
-| Lovable project | `9236f6c6-9e4f-4f96-8288-cbb769f606b6`, workspace `3403e9b503afc266681f` | **out of credits — do not rely on it** |
+| Database + Auth | **Supabase**, own free project `kzquclpirneczwqskwmf` (Mumbai), since 2026-11-18 | schema + functions in `supabase/setup/` (§0). The old Lovable Cloud project `wrytmjudhqiyivzadwib` is paused and gone |
+| Lovable project | `9236f6c6-9e4f-4f96-8288-cbb769f606b6`, workspace `3403e9b503afc266681f` | **out of credits, database paused 2026-11-17 — nothing depends on it any more** |
 
 There is a second repo, **`Sed11666/ShowSouk`** (public) — an earlier standalone
 Reel scraper on GitHub Pages. It is **not used by the live site**. Ignore it
@@ -76,8 +126,8 @@ The site used to run on Lovable hosting. It was migrated to Vercel. The Lovable
 credits), so:
 - Never point anything at `*.lovable.app` expecting current code.
 - The only live code path is GitHub `main` → Vercel.
-- One exception: the **events** cron still calls the frozen Lovable deployment.
-  Cinemas do not.
+- Since 2026-11-18 nothing calls Lovable at all: the events cron was not
+  recreated on the new database (§0).
 
 ---
 
@@ -135,7 +185,7 @@ every day was read. Two earlier variants each destroyed real data: a per-day
 budget check between days let a run write today alone over a row that already
 held three. Budget is checked once per page, never between its days.
 
-**Trigger:** `pg_cron` job `scrape-aggregator-15m`, every 15 minutes, a plain
+**Trigger:** `pg_cron` job `scrape-aggregator-30m`, every 30 minutes (15 until 2026-11-18), a plain
 `net.http_post` with **no `?offset=`**.
 
 The route paces itself from the clock: `PAGES_PER_RUN` per `PACE_WINDOW_MS`
@@ -228,7 +278,8 @@ withdrawn sessions, and real screen names (it fixed a live data fault where
 
 ## 5. Database
 
-Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
+Project ref `kzquclpirneczwqskwmf` (since 2026-11-18; §0). All tables in `public`, RLS enabled.
+The definitive source for everything below is `supabase/setup/01-schema.sql`.
 
 ### Tables
 - **`cinema_films`** — one row per `(cinema, title_key, city)`. **Its only
@@ -252,7 +303,24 @@ Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 - **`user_roles`** — `(user_id, role)`. Roles live here, never on a profile row.
 - `cinema_scrape_runs` / `event_scrape_runs` — audit logs.
 
-### Functions (all `SECURITY DEFINER`; all take the ingest token **except one**)
+### Functions (all `SECURITY DEFINER`; bodies in `supabase/setup/01-schema.sql`)
+
+As rebuilt on 2026-11-18 — the notes below describe the new bodies:
+- `ingest_cinema_films` replaces showtimes/venues/formats, coalesces every
+  metadata field, never overwrites an `image.tmdb.org` poster with a hotlinked
+  one, strips cinemauae/aptrixx booking links (row- and screening-level), and
+  returns `{upserted, retired, chains}`.
+- `retire_stale_films` has **no API grant at all** — EXECUTE revoked from
+  `public, anon, authenticated`. §11.2 is closed.
+- `page_cache_put` with `unchanged: true` only bumps `hit_count`; it never moves
+  `fetched_at` or touches `film_keys`, so an entry expires at the end of the day
+  it was written (gotcha 3).
+- `set_posters` / `set_film_meta` match on `imdb_id`, or on the id inside the
+  poster filename when the column is null, and back-fill `imdb_id`.
+  `set_posters` counts only rows that actually changed — §11.11 is closed.
+- All token checks go through `scraper_token_ok(text)`.
+
+Original notes (pre-move):
 - `ingest_cinema_films(p_token text, p_rows jsonb)` — the only write path for
   scraped films. Strips competitor URLs at the boundary, coalesces metadata so a
   thin page can't blank good values, then calls `retire_stale_films`.
@@ -271,11 +339,15 @@ Project ref `wrytmjudhqiyivzadwib`. All tables in `public`, RLS enabled.
 
 ### Cron
 ```
-scrape-aggregator-15m   */15 * * * *   → showsouk.com (Vercel)   cinemas
-scrape-events-6h        15 */6 * * *   → lovable.app (frozen)    events
+scrape-aggregator-30m   */30 * * * *   → showsouk.com (Vercel)   cinemas
 resolve-posters-daily   17 4 * * *     → showsouk.com (Vercel)   posters
 coverage-check-5h       37 */5 * * *   → showsouk.com (Vercel)   monitoring
+seo-audit-daily         47 2 * * *     → showsouk.com (Vercel)   SEO dashboard
 ```
+Defined in `supabase/setup/02-cron.sql`; every job uses a 120 s pg_net
+timeout. **`*/30` and `PACE_WINDOW_MS` must change together** — a 30-minute
+cron with a 15-minute pace window advances 20 pages per fire while reading 10,
+and half the catalogue is never refreshed. No events job (§0).
 The cinemas job is a plain `net.http_post` with **no query string**. It must not
 pass `?offset=` and must not touch `scraper_cursor` — the route paces itself
 (§4). A job that computed an offset was tried and failed silently for 40 minutes;
@@ -387,11 +459,11 @@ URL and the **publishable** key, which ship in the browser bundle by design.
 
 | Secret | Lives in | How to get it |
 |---|---|---|
-| `SCRAPER_INGEST_TOKEN` | Vercel env var | `select token from scraper_auth;` in Lovable Cloud → SQL editor |
+| `SCRAPER_INGEST_TOKEN` | Vercel env var, type **Secret** | `select token from public.scraper_auth;` in the Supabase SQL editor (regenerated 2026-11-18) |
 | `RESEND_API_KEY` | Vercel env var | Resend dashboard. Only the coverage check uses it (§5b) |
 | `COVERAGE_ALERT_TO` / `_FROM` | Vercel env var | plain addresses, not secret, but they live with the key |
 | GitHub PAT | your machine only | create a fine-grained token, repo `emirates-showtime`, **Contents: Read and write** |
-| Supabase service_role | **not available** | Lovable Cloud hides it — that's why the RPC pattern exists |
+| Supabase service_role | Supabase dashboard only | available since the move (§0) but not set on Vercel; nothing live needs it. Never in the repo |
 | `FIRECRAWL_API_KEY`, `LOVABLE_API_KEY` | Lovable secrets | legacy, no longer used by the live pipeline |
 
 **Never** put the service_role key or the ingest token in the repo, and never
@@ -1173,7 +1245,9 @@ evening and day switching has to stay instant. That is a fluidity cost, not a wi
 
    Venue → `cinemaRefId`: Khalidiyah Mall 2, Dalma Mall 101, Al Dhannah Mall
    200, Deerfields Mall 300, WTC Mall Abu Dhabi 10000001.
-2. **`retire_stale_films` is callable by anyone — still open, highest risk.**
+2. ~~**`retire_stale_films` is callable by anyone**~~ — **closed 2026-11-18**: the
+   rebuilt function has no API grant (§0, §5). History kept below.
+   **Was: callable by anyone — highest risk.**
    Every other scraper RPC rejects a bad token with `42501`. This one takes no
    token and returns `200` to a caller holding only the publishable key, which
    ships in the browser bundle by design. It is the function that deactivates
@@ -1192,7 +1266,11 @@ evening and day switching has to stay instant. That is a fluidity cost, not a wi
    against that URL triggers real work. It is otherwise no longer outstanding —
    see the closed list below.
 
-4. **Google sign-in is blocked structurally, and is currently hidden.**
+4. **Google sign-in — unblocked by the move, not yet set up.** Since 2026-11-18
+   the project is ours, so Supabase → Authentication → Providers → Google *is*
+   reachable: create a Google OAuth client, paste its id/secret there, then set
+   `GOOGLE_LACKS_CREDENTIALS` to `false`. The text below describes the Lovable era.
+   **Was: Google sign-in is blocked structurally, and is currently hidden.**
    `/auth/v1/authorize?provider=google` returns
    `400 {"msg":"Unsupported provider: missing OAuth secret"}`: the provider is
    switched on with no client credentials attached.
@@ -1219,7 +1297,8 @@ evening and day switching has to stay instant. That is a fluidity cost, not a wi
    (`https://www.showsouk.com/**`), not one exact URL. An unlisted `redirectTo`
    does not error — Supabase silently substitutes the Site URL.
 
-5. **Events pipeline still depends on the frozen Lovable deployment.** If that
+5. **Events are unscheduled since 2026-11-18** (§0); the route still needs
+   Lovable/Firecrawl keys. **Was: events pipeline still depends on the frozen Lovable deployment.** If that
    ever goes away, events stop refreshing. Cinemas are already independent, and
    since `3f92e8d` this is the *only* remaining Lovable runtime dependency.
 
@@ -1239,7 +1318,8 @@ evening and day switching has to stay instant. That is a fluidity cost, not a wi
 
 9. **Revoke the old GitHub token** that was pasted into a previous chat.
 
-10. **Migrations cannot rebuild the database.** None of `ingest_cinema_films`,
+10. ~~**Migrations cannot rebuild the database.**~~ — **closed 2026-11-18**:
+    `supabase/setup/01-schema.sql` rebuilds all of it. History kept below. None of `ingest_cinema_films`,
     `page_cache_get`, `page_cache_put`, `touch_films`, `retire_stale_films` or
     `set_posters` appear in `supabase/migrations/` — all six were created through
     the Lovable Cloud SQL editor and exist only in the live database. Their
@@ -1247,7 +1327,7 @@ evening and day switching has to stay instant. That is a fluidity cost, not a wi
     record that they exist; what it has nowhere is their **bodies**, so none of
     them could be recreated from this repository. Verified by probing each live.
 
-11. **`set_posters` over-reports.** It returned `rowsUpdated: 286` on a run where
+11. ~~**`set_posters` over-reports.**~~ — **closed 2026-11-18** (rewritten, §5). It returned `rowsUpdated: 286` on a run where
     exactly 184 rows changed, and again `114` where 114 changed but only after a
     differing count. Data outcomes are correct; the number is not. Likely counts
     matched rather than modified rows. Unverifiable without service-role access.
@@ -1400,8 +1480,8 @@ evening and day switching has to stay instant. That is a fluidity cost, not a wi
     deploy before triggering**, or the old code runs. Verify the deploy landed
     (compare an asset hash) rather than assuming.
 
-26. **`set_posters` and `ingest_cinema_films` bodies still live only in the
-    database.** Extends item 10. Both were edited again this session; the current
+26. ~~**`set_posters` and `ingest_cinema_films` bodies still live only in the
+    database.**~~ — **closed 2026-11-18**, see §0. Extends item 10. Both were edited again this session; the current
     definitions are in the live DB and in scratch SQL files, not in the repo.
 
 27. **Stale film slugs are still in Google's index.** Source titles change, so

@@ -60,11 +60,11 @@ before adding a route.
    the chain's own booking page (exact screening where available)
 ```
 
-Scheduling: `pg_cron` posts to the public scrape routes. Cinemas every 15
-minutes as a plain `http_post` with **no query string** — the route paces itself
+Scheduling: `pg_cron` posts to the public scrape routes. Cinemas every 30
+minutes (`PACE_WINDOW_MS` must match) as a plain `http_post` with **no query string** — the route paces itself
 from the clock (`PAGES_PER_RUN` per `PACE_WINDOW_MS`), so `scraper_cursor` is
-inert and nothing should pass `?offset=`. A full pass is ~16 fires, about four
-hours. Events roughly every 6 hours.
+inert and nothing should pass `?offset=`. A full pass is ~9 fires, about 4.5
+hours. Events are not scheduled (see CLAUDE-HANDOVER §0).
 
 Each film page is read for **three days** (`?d=0|1|2`, the source's ceiling) and
 written all-or-nothing: `ingest_cinema_films` replaces a film's showtimes rather
@@ -148,7 +148,10 @@ All tables in `public`, RLS enabled.
 
 ### Writing scraped data
 
-Lovable Cloud never exposes the Supabase service-role key, so the scraper
+The database is the owner's own Supabase project `kzquclpirneczwqskwmf` since
+2026-11-18 (the Lovable Cloud one was paused). Every table and function is in
+`supabase/setup/01-schema.sql`; cron jobs in `02-cron.sql` — edit those files
+alongside any live change. Lovable Cloud never exposed the service-role key, so the scraper
 authenticates with the public publishable key **plus an ingest token** and
 writes through `SECURITY DEFINER` functions:
 
