@@ -111,7 +111,7 @@ const SCRAPE_DAYS = 3;
  * ceil(sitemap / PAGES_PER_RUN) fires, about four hours at these numbers.
  */
 const PAGES_PER_RUN = 10;
-const PACE_WINDOW_MS = 15 * 60 * 1000;
+const PACE_WINDOW_MS = 30 * 60 * 1000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
