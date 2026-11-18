@@ -39,6 +39,7 @@ import {
   filmLevelFallback,
 } from "@/components/venue-showtimes";
 import { jsonLdDocument } from "@/lib/structured-data";
+import { browsePageHeaders } from "@/lib/cache-headers";
 
 const ORIGIN = "https://www.showsouk.com";
 
@@ -49,6 +50,8 @@ export const Route = createFileRoute("/movies_/$language")({
     const days = dayKeys();
     return { films: await fetchLanguageFilms(language, days), days, language };
   },
+  // CDN cache for 5 min; never for an empty page. See lib/cache-headers.ts.
+  headers: ({ loaderData }) => browsePageHeaders(loaderData?.films),
   head: ({ params, loaderData }) => {
     const language = loaderData?.language ?? LANGUAGE_BY_SLUG[params.language] ?? params.language;
     const canonical = `${ORIGIN}/movies/${params.language}`;

@@ -46,6 +46,7 @@ import { toDayKey } from "@/lib/days";
 import { jsonLdDocument, siteSchemas } from "@/lib/structured-data";
 
 import { VENUES } from "@/lib/venues";
+import { browsePageHeaders } from "@/lib/cache-headers";
 
 
 export const Route = createFileRoute("/")({
@@ -53,6 +54,8 @@ export const Route = createFileRoute("/")({
   // homepage shipped an empty shell and search engines saw no film names at
   // all. Today only; the client query pulls the full set right after.
   loader: async () => ({ films: await fetchCinemaFilmsForDay(toDayKey(new Date())) }),
+  // CDN cache for 5 min; never for an empty page. See lib/cache-headers.ts.
+  headers: ({ loaderData }) => browsePageHeaders(loaderData?.films),
   head: () => ({
     meta: [
       { title: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },

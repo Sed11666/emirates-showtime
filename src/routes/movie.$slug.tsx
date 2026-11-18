@@ -37,6 +37,7 @@ import {
 } from "@/lib/cinemas";
 import { venueBlocks } from "@/lib/showtimes";
 import { useUserLocation } from "@/hooks/useUserLocation";
+import { browsePageHeaders } from "@/lib/cache-headers";
 
 /**
  * Cities this film actually plays in, busiest first.
@@ -130,6 +131,8 @@ export const Route = createFileRoute("/movie/$slug")({
     if (films.length === 0) throw notFound();
     return { films };
   },
+  // CDN cache for 5 min; never for an empty page. See lib/cache-headers.ts.
+  headers: ({ loaderData }) => browsePageHeaders(loaderData?.films),
   head: ({ params, loaderData }) => {
     // Prefer the real title over a title-cased slug: the slug turns "Above and
     // Below" into "Above And Below", and a <title> that disagrees with the <h1>

@@ -222,6 +222,12 @@ Each of these cost a production incident.
 - Every content route defines its own `head()` with a unique title/description
   and og tags; `__root.tsx` holds defaults only. Do not set a site-wide
   canonical or `og:url` there — it would claim every page is the homepage.
+- **Browse pages are CDN-cached for 5 minutes** via `browsePageHeaders()` in
+  `lib/cache-headers.ts` (empty pages and errors are never cached). This is
+  safe only because the server render is identical for every visitor — sign-in
+  and the chosen city live in the browser. A route that renders anything
+  visitor-specific on the server (cookies, auth, request headers) must NOT use
+  it. Server functions run in `bom1` (Mumbai, next to the database; `vercel.json`).
 - Server-only logic uses server routes; anything under `/api/public/*` bypasses
   site auth, so validate input inside the handler.
 - Generated files that must not be edited: `src/routeTree.gen.ts`,

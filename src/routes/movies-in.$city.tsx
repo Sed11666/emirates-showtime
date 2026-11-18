@@ -34,6 +34,7 @@ import {
   filmLevelFallback,
 } from "@/components/venue-showtimes";
 import { jsonLdDocument } from "@/lib/structured-data";
+import { browsePageHeaders } from "@/lib/cache-headers";
 
 const ORIGIN = "https://www.showsouk.com";
 
@@ -44,6 +45,8 @@ export const Route = createFileRoute("/movies-in/$city")({
     const days = dayKeys();
     return { films: await fetchCityFilms(city, days), days, city };
   },
+  // CDN cache for 5 min; never for an empty page. See lib/cache-headers.ts.
+  headers: ({ loaderData }) => browsePageHeaders(loaderData?.films),
   head: ({ params, loaderData }) => {
     const city = loaderData?.city ?? CITY_BY_SLUG[params.city] ?? params.city;
     const screens = VENUES.filter((v) => v.city === city).length;
