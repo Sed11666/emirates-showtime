@@ -55,6 +55,76 @@ the aggregator), so the scraper alone is ~1 GB a month at 30-minute pacing.
 
 ---
 
+## 0b. Also changed on 2026-11-18 (daytime) — read with §0
+
+**Language stopped being scraped, silently.** cinemauae shortened every film
+page's meta description to "Showtimes and tickets for X in UAE cinemas.", so
+the parse that took the language from its tail returned null on every page.
+The old database hid this by coalescing values captured earlier; the rebuilt
+one had none, so all 45 titles had no language and `/movies/{language}`, the
+language filter and the film-page "Language" line were empty. The scraper now
+reads the hero spec line — `<i class="bi bi-translate …"></i>Arabic` — verified
+on 40 of 40 film pages, with the old description parse kept as a fallback
+(`194bd66`). After a manual catch-up pass all 347 rows had a language.
+**Lesson, same as gotcha 11's family:** a parser that returns null on a format
+change fails silently, and `coalesce` in the ingest function hides it for as
+long as old values survive. If a field goes empty across the board, suspect the
+source's markup before the database.
+
+**Film page shows the language** above the director (`FilmFacts` in
+`components/film-ratings.tsx`; one `<dl>` with a shared value column, 20 px
+gutter). A language with a landing page links to `/movies/{slug}`.
+
+**Dark-mode hero** used a full-frame scrim that buried the backdrop. It now
+uses the same directional scrim as light mode (`bf4672e`, `src/styles.css`).
+
+**Mobile slowness — diagnosed and two of three causes fixed.** Measured from
+a browser in India against the live site:
+
+| Page | Before | Functions in `bom1` (`a7da36f`) | + CDN cache (`01796d0`) |
+|---|---|---|---|
+| `/` | 1.98 s | 0.67 s | 0.06 s |
+| `/cinemas` | 2.05 s | 0.82 s | 0.06 s |
+| `/movie/ebenezer` | 1.38 s | 0.70 s | 0.04 s |
+| `/movies/tamil` | 1.03 s | 0.25 s | 0.04 s |
+
+1. **Functions ran in `iad1` (Washington) while the database is in Mumbai** —
+   every loader query crossed the ocean (`x-vercel-id: bom1::iad1`). Now
+   `"regions": ["bom1"]` in `vercel.json`. Vercel has **no UAE region**; Mumbai
+   is the closest one to the UAE audience *and* sits next to the database, so a
+   Dubai visitor pays one short hop and every query stays in-region. The
+   dashboard setting had been suggested on 18 Nov and never took effect — keep
+   it in the repo. Hobby allows one region.
+2. **Nothing was cached.** Browse pages (home, `/cinemas`, chain, venue, city,
+   language, film) now send `s-maxage=300, stale-while-revalidate=600` through
+   `browsePageHeaders()` in `lib/cache-headers.ts`. Vercel strips `s-maxage`
+   from what the browser sees — check `x-vercel-cache: HIT`, not the header.
+   **Empty pages are never cached** (a loader returning no films must not pin
+   "Showtimes are updating…" for everyone), nor errors/404s, `/admin`,
+   `/auth`, `/search`, `/api/*`. **The rule that keeps this safe:** every server
+   render is identical for every visitor (auth and city live in the browser; no
+   loader reads cookies or headers). A page that starts rendering anything
+   visitor-specific on the server must not use the helper. Also in CLAUDE.md §7.
+3. **Not fixed yet — the payload** (owner deferred; §11 item 33).
+
+**Google Search Console, 24 Aug – 15 Nov** (owner's export): 453 clicks, 99.6k
+impressions, average position 9.7 (from ~17 in early September). Week of 2 Nov:
+135 clicks / 39k impressions; week of 9 Nov: 94 / 24k. Mobile is 83% of clicks.
+Findings that should steer work:
+- **Novo pages earned 88 clicks (~19% of all)** — `/cinemas/novo` is the #2 page
+  after `/`. They are empty since cinemauae stopped listing Novo (§0). Highest
+  priority: §11 item 34.
+- Regional-language pages and films convert best (`/movies/tamil` 1.4% CTR,
+  `/movies/kannada` 2.6%, Premada Oorali 1.6% at position 6) against a 0.45%
+  site average.
+- Chain-name queries ("vox cinema" 8,081 impressions / 1 click, "roxy cinema"
+  7,130 / 2) are navigational — people want the chain's own site. Do not chase.
+- Film pages are the biggest tier (169 clicks / 35k impressions) but click
+  through poorly (Jailer 2: 11k impressions, 0.23%, position 9.8) — §11 item 35.
+- The 17–18 Nov outage is not in this export; expect a dip in the next one.
+
+---
+
 ## 1. What this is
 
 **ShowSouk** — a BookMyShow-style cinema showtime aggregator for the UAE.
@@ -84,7 +154,7 @@ Owner: Syed Ebaad (`syedebaad609@gmail.com`, GitHub `Sed11666`).
 
 | Thing | Where | Notes |
 |---|---|---|
-| Website | **Vercel**, project `emirates-showtime`, team `showsouk` | auto-deploys from GitHub `main` |
+| Website | **Vercel**, project `emirates-showtime`, team `showsouk` | auto-deploys from GitHub `main`; functions in **`bom1`** (Mumbai) via `vercel.json` since 2026-11-18; browse pages CDN-cached 5 min (§0b) |
 | Domain | **GoDaddy** DNS → Vercel | `A @ → 216.198.79.1`, `CNAME www → 2ac6d918bd63059a.vercel-dns-017.com` |
 | Canonical URL | `https://www.showsouk.com` | apex 308-redirects to `www` |
 | Code | GitHub **`Sed11666/emirates-showtime`** (public) | this is the whole app |
@@ -1148,6 +1218,12 @@ ranking path.
 
 ## 10e. Capacity — what actually limits how many people can use this
 
+> **2026-11-18:** browse pages are now CDN-cached (§0b), so most visits no longer
+> run the loader at all — the server-side half of the per-visit egress below
+> mostly disappears. The client refetch after hydration still pays in full
+> until §11 item 33 lands. The free plan is the owner's own Supabase project
+> now (500 MB DB, 5 GB egress/month), not Lovable Cloud.
+
 Measured 2026-08-30. **Supabase egress on the free tier is the binding
 constraint, not Vercel.** Vercel's 100 GB would carry ~1.1M visits a month;
 Supabase's 5 GB ran out around 20,500.
@@ -1527,6 +1603,37 @@ evening and day switching has to stay instant. That is a fluidity cost, not a wi
     coverage of ~64 sitemap URLs therefore takes several runs, so a single
     healthy report is weaker evidence than it looks. Read a run as one sample,
     not as a clean bill of health.
+
+### Opened 2026-11-18
+
+33. **Slim the homepage and `/cinemas` payload (mobile).** Deferred by the owner.
+    The home HTML is 712 KB (72 KB gzipped), 558 KB of it one inline data
+    script: every screening of today with all **2,379 booking links**, though
+    the page shows no showtimes — it only needs per-film counts for
+    `rankByTrending` / `hasUpcomingScreenings`. After hydration the client query
+    then downloads the full catalogue again (726 KB JSON, ~0.8 s). `/cinemas`
+    is 997 KB. Also: the four hero backdrops load at TMDB `w1280` eagerly on a
+    375 px phone (use `w780` below `md`, eager only for the first slide), and
+    ~860 KB of JS across 30 chunks (largest 408 KB and 208 KB). Preview and
+    measure before pushing; keep BROWSE_COLUMNS and the client query in step
+    (see the comment on `fetchCinemaFilmsForDay`).
+34. **Novo has no source.** cinemauae's Novo venue pages carry zero time chips
+    (checked 2026-11-18); the Novo landing pages, which earn ~19% of Search
+    clicks, are empty. Add a direct Novo adapter the way §4b does Reel. Look at
+    what Novo's own site serves publicly before writing code.
+35. **Film-page titles and descriptions for "[film] showtimes Dubai" / "ticket
+    booking" queries** — high impressions, poor CTR (§0b). This is the
+    "strengthen film page templates" item from the 7 Nov SEO plan.
+36. **Owner task: in Search Console, resubmit the sitemap and request
+    re-crawls** of `/cinemas/novo`, `/movies/tamil` and the top film pages after
+    the 17–18 Nov outage.
+37. **Lockfile is out of sync with `package.json`** — `npm ci` refuses
+    (`@lovable.dev/vite-tanstack-config` 2.13.1 locked vs 2.23.1 required).
+    `npm install --no-save --no-package-lock` works for local checks. With
+    newer resolved versions `tsc --noEmit` reports 3 errors that predate
+    2026-11-18 (`__root.tsx:175`, `listing.$id.tsx:33`, `movie.$slug.tsx:170`,
+    `error` typed `unknown`); none come from that day's changes. Refresh the
+    lockfile deliberately, then fix those three.
 
 ### Closed
 
