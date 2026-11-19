@@ -153,6 +153,29 @@ the cursor.
 **Read this before touching pacing again:** never derive the next start from
 anything but the pages actually completed.
 
+**Same night — films opening tomorrow were invisible.** A page whose *today*
+was empty was treated as coming-soon and its other days were never read, so a
+Thursday release (seen: OM Chapter 1 — 0 today, 351 tomorrow, 181 the day
+after) only appeared on opening day. Now an empty today costs one more read;
+only today *and* tomorrow empty means coming-soon.
+
+**The "New" pill.** Owner's rule: from the day before release through the
+third day of release, then it retires. The schedule cannot answer "days since
+opening" — we only hold three days, so the first screening date is gone once a
+film opens — so the scraper now reads the **release date** cinemauae prints in
+the hero (`bi-calendar` icon, 47/47 film pages; re-releases carry the
+re-release date) into `cinema_films.release_date`
+(`supabase/setup/04-release-date.sql`, folded into `01-schema.sql`). Without a
+date the pill falls back to "opens tomorrow". Shown on poster cards (first in
+the format row, which then shows two formats), the film block header on every
+showtimes board, and the film page title.
+
+**Not fixed, owner's call pending:** a film cinemauae has pulled (0 screenings
+on all three days — seen: The Mongoose, Jailer 2, Pee Mak) keeps its old future
+showtimes on our site until retirement, up to ~48 h after it was last seen.
+Clearing them immediately trades against the non-destructive rule (a glitchy
+empty page would blank a film until the next lap).
+
 ---
 
 ## 1. What this is

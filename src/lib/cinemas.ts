@@ -59,6 +59,8 @@ export type CinemaFilm = {
   language: string | null;
   rating: string | null;
   duration_mins: number | null;
+  /** UAE release date (yyyy-mm-dd) from cinemauae; drives the "New" pill. */
+  release_date?: string | null;
   poster_url: string | null;
   /** 16:9 still from TMDB, for the hero. Posters are portrait and go soft
       when a landscape frame upscales them. */
@@ -106,7 +108,7 @@ export type CinemaFilm = {
  * /movie/$slug, which keeps using the full read below.
  */
 const BROWSE_COLUMNS =
-  "id, cinema, title, city, venues, genre, tmdb_genres, language, rating, poster_url, backdrop_url, formats, showtimes, booking_url, source_url";
+  "id, cinema, title, city, venues, genre, tmdb_genres, language, rating, release_date, poster_url, backdrop_url, formats, showtimes, booking_url, source_url";
 
 /**
  * The catalogue as the home page and /cinemas need it.
@@ -142,7 +144,7 @@ export async function fetchCinemaFilms(): Promise<CinemaFilm[]> {
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
-      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, formats, showtimes, booking_url, source_url, last_seen_at",
+      "id, cinema, title, city, venues, genre, language, rating, release_date, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, formats, showtimes, booking_url, source_url, last_seen_at",
     )
     .eq("is_active", true)
     .order("title", { ascending: true });
@@ -209,7 +211,7 @@ export async function fetchChainFilms(
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
-      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
+      "id, cinema, title, city, venues, genre, language, rating, release_date, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
     )
     .eq("is_active", true)
     .eq("cinema", chain)
@@ -255,7 +257,7 @@ export async function fetchLanguageFilms(
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
-      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
+      "id, cinema, title, city, venues, genre, language, rating, release_date, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
     )
     .eq("is_active", true)
     .eq("language", language)
@@ -276,7 +278,7 @@ export async function fetchCityFilms(city: string, dayKeys: string[]): Promise<C
   const { data, error } = await supabase
     .from("cinema_films")
     .select(
-      "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
+      "id, cinema, title, city, venues, genre, language, rating, release_date, duration_mins, poster_url, formats, showtimes, booking_url, source_url, last_seen_at",
     )
     .eq("is_active", true)
     .eq("city", city)
@@ -299,7 +301,7 @@ export async function fetchCityFilms(city: string, dayKeys: string[]): Promise<C
  * screening, so it needs the full schedule rather than just today's.
  */
 const FILM_COLUMNS =
-  "id, cinema, title, city, venues, genre, language, rating, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, imdb_rating, imdb_votes, rt_score, metascore, cast_credits, formats, showtimes, booking_url, source_url, last_seen_at";
+  "id, cinema, title, city, venues, genre, language, rating, release_date, duration_mins, poster_url, backdrop_url, synopsis, director, cast_names, imdb_rating, imdb_votes, rt_score, metascore, cast_credits, formats, showtimes, booking_url, source_url, last_seen_at";
 
 /**
  * A cheap SQL prefilter for a slug, or null when the slug is too short to be
@@ -458,6 +460,52 @@ export function filmGenres(film: {
 export function hasUpcomingScreenings(value: unknown, now: Date = new Date()): boolean {
   const today = toDayKey(now);
   return parseShowtimes(value).some((e) => !isScreeningOver(e.time, e.date ?? null, today, now));
+}
+
+/**
+ * True for a film that opens tomorrow: nothing scheduled today, something
+ * scheduled tomorrow. Drives the "New" pill (FilmBlockHeader, film page).
+ *
+ * UAE releases land on Thursday and cinemauae lists them the evening before;
+ * the scraper reads tomorrow whenever today is empty precisely so these
+ * appear early (CLAUDE-HANDOVER §0c). Judged on the schedule, not on a release
+ * date, because the schedule is the only date we read first-hand — on opening
+ * day the film has screenings today and the pill goes. An undated entry counts
+ * as today, so a row from before dated showtimes never reads as new.
+ */
+export function opensTomorrow(value: unknown, now: Date = new Date()): boolean {
+  const today = toDayKey(now);
+  // Dubai is UTC+4 all year, so +24 h is always the next Dubai day.
+  const tomorrow = toDayKey(new Date(now.getTime() + 86_400_000));
+  const entries = parseShowtimes(value);
+  if (entries.some((e) => !e.date || e.date === today)) return false;
+  return entries.some((e) => e.date === tomorrow);
+}
+
+/** How many days a film keeps its "New" pill, counting release day as day 1. */
+export const NEW_RELEASE_DAYS = 3;
+
+/**
+ * The "New" pill: from the day before release through day NEW_RELEASE_DAYS
+ * (owner's rule, 2026-11-19 — "first 3 days of the release, then retire").
+ * A Thursday release is new Wed, Thu, Fri and Sat.
+ *
+ * The release date is the source of truth because we only hold three days of
+ * schedule: once a film opens, its first screening date is gone from our rows,
+ * so "days since opening" cannot be read off the showtimes. Films without a
+ * release date fall back to opensTomorrow() — the evening before only.
+ * yyyy-mm-dd keys compare correctly as strings.
+ */
+export function isNewRelease(
+  film: { release_date?: string | null; showtimes: unknown },
+  now: Date = new Date(),
+): boolean {
+  const release = film.release_date;
+  if (release && /^\d{4}-\d{2}-\d{2}$/.test(release)) {
+    const dayAt = (offsetDays: number) => toDayKey(new Date(now.getTime() + offsetDays * 86_400_000));
+    return release <= dayAt(1) && release >= dayAt(-(NEW_RELEASE_DAYS - 1));
+  }
+  return opensTomorrow(film.showtimes, now);
 }
 
 /**
@@ -789,6 +837,9 @@ export function mergeFilmsByTitle(films: CinemaFilm[]): MergedFilm[] {
     if (!existing.duration_mins && film.duration_mins) existing.duration_mins = film.duration_mins;
     if (!existing.genre && film.genre) existing.genre = film.genre;
     if (!existing.language && film.language) existing.language = film.language;
+    // Earliest across chains and cities: a film is new from when it first opened.
+    if (film.release_date && (!existing.release_date || film.release_date < existing.release_date))
+      existing.release_date = film.release_date;
     if (Array.isArray(film.showtimes) && Array.isArray(existing.showtimes)) {
       existing.showtimes = [...existing.showtimes, ...film.showtimes];
     } else if (!existing.showtimes) {

@@ -31,6 +31,7 @@ import {
   showtimesByVenue,
   showtimesForDay,
   titleKey,
+  isNewRelease,
 } from "@/lib/cinemas";
 
 import {
@@ -667,6 +668,7 @@ function CinemasPage() {
                 >
                   <FilmBlockHeader
                     title={film.title}
+                    isNew={isNewRelease(film)}
                     badges={[
                       film.rating,
                       formatDistance(distance),

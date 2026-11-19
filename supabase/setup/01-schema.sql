@@ -193,6 +193,9 @@ create table if not exists public.cinema_films (
   cast_names text[],
   cast_credits jsonb,
   tmdb_genres text[],
+  -- The film's UAE release date as cinemauae prints it (re-releases carry the
+  -- re-release date). Drives the "New" pill: day before release to day 3.
+  release_date date,
   imdb_rating numeric,
   imdb_votes integer,
   rt_score integer,
@@ -509,6 +512,8 @@ begin
       case when (r->>'duration_mins') ~ '^\d+$' then (r->>'duration_mins')::int end as duration_mins,
       nullif(r->>'synopsis', '')                         as synopsis,
       nullif(r->>'director', '')                         as director,
+      case when (r->>'release_date') ~ '^\d{4}-\d{2}-\d{2}$'
+           then (r->>'release_date')::date end           as release_date,
       case when jsonb_typeof(r->'cast_names') = 'array' and jsonb_array_length(r->'cast_names') > 0
            then array(select jsonb_array_elements_text(r->'cast_names')) end as cast_names
     from src
@@ -523,13 +528,13 @@ begin
     insert into public.cinema_films as f (
       cinema, title, title_key, city, venues, formats, showtimes,
       booking_url, source_url, poster_url, imdb_id, genre, language, rating,
-      duration_mins, synopsis, director, cast_names,
+      duration_mins, synopsis, director, cast_names, release_date,
       is_active, last_seen_at
     )
     select
       cinema, title, title_key, city, venues, formats, showtimes,
       booking_url, source_url, poster_url, imdb_id, genre, language, rating,
-      duration_mins, synopsis, director, cast_names,
+      duration_mins, synopsis, director, cast_names, release_date,
       true, now()
     from dedup
     on conflict (cinema, title_key, city) do update set
@@ -551,6 +556,7 @@ begin
       synopsis      = coalesce(excluded.synopsis, f.synopsis),
       director      = coalesce(excluded.director, f.director),
       cast_names    = coalesce(excluded.cast_names, f.cast_names),
+      release_date  = coalesce(excluded.release_date, f.release_date),
       is_active     = true,
       last_seen_at  = now()
     returning f.cinema

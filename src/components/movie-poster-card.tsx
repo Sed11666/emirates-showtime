@@ -8,7 +8,8 @@
 import { Star, Ticket } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { MergedFilm } from "@/lib/cinemas";
-import { filmFormats, filmSlug } from "@/lib/cinemas";
+import { filmFormats, filmSlug, isNewRelease } from "@/lib/cinemas";
+import { NewPill } from "@/components/film-block-header";
 
 
 export type PosterItem = {
@@ -20,6 +21,8 @@ export type PosterItem = {
   /** Screen formats (IMAX, 4DX, 3D, 2D…) shown on the poster. */
   formats: string[];
   tag: string | null;
+  /** In its release window (isNewRelease): shows the "New" pill. */
+  isNew?: boolean;
 };
 
 export function filmToPoster(film: MergedFilm): PosterItem {
@@ -34,6 +37,7 @@ export function filmToPoster(film: MergedFilm): PosterItem {
     rating: film.rating,
     formats: film.screenFormats ?? filmFormats(film),
     tag: null,
+    isNew: isNewRelease(film),
   };
 }
 
@@ -88,9 +92,14 @@ export function MoviePosterCard({
           </div>
         )}
 
-        {item.formats.length > 0 ? (
+        {item.formats.length > 0 || item.isNew ? (
           <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1">
-            {item.formats.slice(0, 3).map((format) => (
+            {/* First in the same row rather than pinned to a corner: on a phone
+                the format pills already span the card, and a pinned pill sat on
+                top of them. A new film shows two formats instead of three so
+                the row still fits on one line. */}
+            {item.isNew ? <NewPill className="shadow-sm" /> : null}
+            {item.formats.slice(0, item.isNew ? 2 : 3).map((format) => (
               <span
                 key={format}
                 className="rounded-md border border-gold/50 bg-background/75 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold backdrop-blur"

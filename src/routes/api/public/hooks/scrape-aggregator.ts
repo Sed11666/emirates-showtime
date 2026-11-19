@@ -293,6 +293,12 @@ export type MovieMeta = {
   language: string | null;
   rating: string | null;
   durationMins: number | null;
+  /**
+   * UAE release date, yyyy-mm-dd, from the hero spec line ("12 Nov 2026" after
+   * a calendar icon). Re-releases carry the re-release date. Drives the "New"
+   * pill on the site (lib/cinemas isNewRelease).
+   */
+  releaseDate: string | null;
   synopsis: string | null;
   /**
    * From the page's Movie JSON-LD, which carries `director` as a Person node.
@@ -316,6 +322,24 @@ const LD_RX = /<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g;
 const META_DESC_RX = /<meta name="description" content="([^"]*)"/i;
 /** `<i class="bi bi-translate me-1"></i>Arabic` -> "Arabic". */
 const TRANSLATE_RX = /<i class="bi bi-translate[^"]*"><\/i>\s*([^<]{2,40})</;
+/** `<i class="bi bi-calendar…"></i>12 Nov 2026` -> "12 Nov 2026". Seen on 47/47 film pages, 2026-11-19. */
+const RELEASE_RX = /<i class="bi bi-calendar[^"]*"><\/i>\s*([^<]{4,30})</;
+const MONTHS: Record<string, string> = {
+  jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+  jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+};
+
+/** "12 Nov 2026" -> "2026-11-12"; anything else -> null rather than a guess. */
+export function parseReleaseDate(html: string): string | null {
+  const raw = RELEASE_RX.exec(html)?.[1];
+  if (!raw) return null;
+  const m = /^(\d{1,2})\s+([A-Za-z]{3})[A-Za-z]*\s+(\d{4})$/.exec(decodeEntities(raw).trim());
+  if (!m) return null;
+  const month = MONTHS[m[2]!.toLowerCase()];
+  const day = Number(m[1]);
+  if (!month || day < 1 || day > 31) return null;
+  return `${m[3]}-${month}-${String(day).padStart(2, "0")}`;
+}
 
 /**
  * Film metadata comes from the page's schema.org JSON-LD rather than its
@@ -378,6 +402,7 @@ export function parseMovieMeta(html: string): MovieMeta {
     language,
     rating: typeof rating === "string" && rating.trim() ? rating.trim() : null,
     durationMins: durationMins > 0 ? durationMins : null,
+    releaseDate: parseReleaseDate(html),
     synopsis:
       typeof synopsis === "string" && synopsis.trim() ? decodeEntities(synopsis).trim() : null,
     director: parseDirector(ld),
@@ -716,9 +741,14 @@ async function runScrape(request: Request) {
       dayResults.push({ dayKey, parsed });
 
       // Most of the sitemap is coming-soon titles with no screenings at all.
-      // Asking those for tomorrow and the day after would triple the load we
-      // put on the source to learn the same nothing three times over.
-      if (dayIndex === 0 && parsed.screenings.length === 0) break;
+      // Asking those for all three days would triple the load we put on the
+      // source to learn the same nothing three times over — but stopping at an
+      // empty TODAY missed every film opening tomorrow: UAE releases land on
+      // Thursday, and the evening before, cinemauae already lists them
+      // (seen 2026-11-19: OM Chapter 1 had 0 today, 351 tomorrow, 181 the day
+      // after). So an empty today costs one more read; only today AND tomorrow
+      // empty means coming-soon.
+      if (dayIndex === 1 && parsed.screenings.length === 0 && dayResults[0]!.parsed.screenings.length === 0) break;
 
       await sleep(PAGE_DELAY_MS);
     }
@@ -794,6 +824,7 @@ async function runScrape(request: Request) {
               language: meta.language,
               rating: meta.rating,
               duration_mins: meta.durationMins,
+              release_date: meta.releaseDate,
               synopsis: meta.synopsis,
               director: meta.director,
               cast_names: meta.cast,

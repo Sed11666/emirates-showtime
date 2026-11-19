@@ -53,6 +53,7 @@ export type Database = {
           metascore: number | null
           poster_url: string | null
           rating: string | null
+          release_date: string | null
           rt_score: number | null
           showtimes: Json
           source_url: string | null
@@ -86,6 +87,7 @@ export type Database = {
           metascore?: number | null
           poster_url?: string | null
           rating?: string | null
+          release_date?: string | null
           rt_score?: number | null
           showtimes?: Json
           source_url?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           metascore?: number | null
           poster_url?: string | null
           rating?: string | null
+          release_date?: string | null
           rt_score?: number | null
           showtimes?: Json
           source_url?: string | null

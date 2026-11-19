@@ -26,6 +26,7 @@ import {
   rankByTrending,
   showtimesByVenue,
   type CinemaKey,
+  isNewRelease,
 } from "@/lib/cinemas";
 import { DAY_COUNT, dayKeys } from "@/lib/days";
 import { DaySelector } from "@/components/day-selector";
@@ -215,6 +216,7 @@ function ChainPage() {
                     heading
                     title={film.title}
                     slug={filmSlug(film.title)}
+                    isNew={isNewRelease(film)}
                     badges={[film.genre, film.rating]}
                   />
 

@@ -24,6 +24,7 @@ import {
   mergeFilmsByTitle,
   rankByTrending,
   showtimesByVenue,
+  isNewRelease,
 } from "@/lib/cinemas";
 import { DAY_COUNT, dayKeys } from "@/lib/days";
 import { DaySelector } from "@/components/day-selector";
@@ -304,6 +305,7 @@ function VenuePage() {
                     heading
                     title={film.title}
                     slug={filmSlug(film.title)}
+                    isNew={isNewRelease(film)}
                     badges={[film.genre, film.rating]}
                   />
                   <div className="flex flex-wrap gap-2 p-5">

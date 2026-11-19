@@ -28,6 +28,7 @@ export function FilmBlockHeader({
   badges,
   trailing,
   heading = false,
+  isNew = false,
 }: {
   title: string;
   /** When set, the title links through to that film's page. */
@@ -37,6 +38,8 @@ export function FilmBlockHeader({
   /** Rendered at the far end — the "All times" link on the board. */
   trailing?: ReactNode;
   heading?: boolean;
+  /** Opens tomorrow (opensTomorrow in lib/cinemas). Renders the solid "New" pill. */
+  isNew?: boolean;
 }) {
   const Title = heading ? "h2" : "p";
   const pills = (badges ?? []).filter((b): b is string => Boolean(b));
@@ -57,6 +60,7 @@ export function FilmBlockHeader({
             title
           )}
         </Title>
+        {isNew ? <NewPill /> : null}
         {pills.map((text) => (
           <span
             key={text}
@@ -68,5 +72,21 @@ export function FilmBlockHeader({
       </div>
       {trailing}
     </div>
+  );
+}
+
+/**
+ * The "New" pill: a film opening tomorrow. Solid gold, unlike the outlined fact
+ * pills beside it, because it is news rather than a property of the film — and
+ * it must still read on a phone where it wraps under the title.
+ */
+export function NewPill({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`shrink-0 rounded-md bg-gold px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold-foreground ${className}`}
+      title="Opens tomorrow"
+    >
+      New
+    </span>
   );
 }

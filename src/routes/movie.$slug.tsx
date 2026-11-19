@@ -34,9 +34,11 @@ import {
   filmSlug,
   titleKey,
   type CinemaFilm,
+  isNewRelease,
 } from "@/lib/cinemas";
 import { venueBlocks } from "@/lib/showtimes";
 import { useUserLocation } from "@/hooks/useUserLocation";
+import { NewPill } from "@/components/film-block-header";
 import { browsePageHeaders } from "@/lib/cache-headers";
 
 /**
@@ -351,9 +353,25 @@ function MovieShowtimesPage() {
             />
           ) : null}
           <div className="min-w-0">
-            <h1 className="truncate font-display text-lg font-bold uppercase tracking-wide sm:text-xl">
-              {primary?.title ?? slug.replace(/-/g, " ")}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="truncate font-display text-lg font-bold uppercase tracking-wide sm:text-xl">
+                {primary?.title ?? slug.replace(/-/g, " ")}
+              </h1>
+              {/* Every row of the film, not just primary: the earliest release
+                  date across chains, and — without one — "opens tomorrow"
+                  only if no chain or city screens it today. */}
+              {matches.length > 0 &&
+              isNewRelease({
+                release_date:
+                  matches
+                    .map((f) => f.release_date)
+                    .filter((d): d is string => Boolean(d))
+                    .sort()[0] ?? null,
+                showtimes: matches.flatMap((f) => (Array.isArray(f.showtimes) ? f.showtimes : [])),
+              }) ? (
+                <NewPill />
+              ) : null}
+            </div>
             {/* Genre and certificate only — runtime is carried by the spec line
                 below, and the header sits beside the poster where a short label
                 reads better than a full spec list. */}

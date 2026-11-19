@@ -28,6 +28,7 @@ import {
   mergeFilmsByTitle,
   rankByTrending,
   showtimesByVenue,
+  isNewRelease,
 } from "@/lib/cinemas";
 import { DAY_COUNT, dayKeys } from "@/lib/days";
 import { LANGUAGE_BY_SLUG } from "@/lib/languages";
@@ -192,6 +193,7 @@ function LanguagePage() {
                     heading
                     title={film.title}
                     slug={filmSlug(film.title)}
+                    isNew={isNewRelease(film)}
                     badges={[film.genre, film.rating]}
                   />
                   <div className="space-y-3 p-4 sm:space-y-4 sm:p-5">
