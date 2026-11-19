@@ -105,10 +105,14 @@ const PAGE_DELAY_MS = 900;
 const SCRAPE_DAYS = 3;
 
 /**
- * Self-pacing. PAGES_PER_RUN must stay at or under the pages a run actually
- * completes — measured at 12 with three days per page — and PACE_WINDOW_MS must
- * match the cron interval, currently every 30 minutes. A full pass is
- * ceil(sitemap / PAGES_PER_RUN) fires, about 4.5 hours at these numbers.
+ * FALLBACK pacing only — used when the scraper_cursor RPCs are unavailable.
+ * The normal path is the progress cursor (see "Where to start the walk").
+ *
+ * The clock version picked slice floor(now / window) * PAGES_PER_RUN. It
+ * starved pages: a slice of ten currently-showing films costs ~30 fetches and
+ * stopped at page 6 or 7 inside the 45 s budget, and the next fire moved on
+ * regardless, so the tail of every busy slice was never read. Measured
+ * 2026-11-19: ~11 of ~40 showing films 18-24 h stale.
  */
 const PAGES_PER_RUN = 10;
 const PACE_WINDOW_MS = 30 * 60 * 1000;
@@ -590,13 +594,44 @@ async function runScrape(request: Request) {
    * Overlap is harmless; only overshoot loses pages, so PAGES_PER_RUN is set
    * below what a run measurably completes.
    */
+  /*
+   * Progress cursor (2026-11-19). The cron run starts where the previous cron
+   * run actually stopped and advances by the pages it completed, so there is
+   * no step to keep in sync with the code's speed — the reason the first
+   * cursor was abandoned — and no slice whose tail is skipped forever, the
+   * flaw of the clock version above. Busy stretches simply take more runs.
+   *
+   * A manual ?offset= run neither reads nor moves the cursor, so testing a page
+   * never makes the rotation skip anything. If the cursor RPC fails (not yet
+   * deployed, or a database hiccup) we fall back to the clock.
+   */
   const explicitOffset = url.searchParams.get("offset");
   const autoOffset =
     Math.floor(Date.now() / PACE_WINDOW_MS) * PAGES_PER_RUN % Math.max(1, pages.length);
-  const offset =
-    explicitOffset === null
-      ? autoOffset
-      : Math.max(0, Number(explicitOffset) || 0) % Math.max(1, pages.length);
+  let fromCursor = false;
+  let offset: number;
+  if (explicitOffset !== null) {
+    offset = Math.max(0, Number(explicitOffset) || 0) % Math.max(1, pages.length);
+  } else {
+    const { data: pos, error: cursorError } = await db.rpc("scraper_cursor_get" as never, {
+      p_token: INGEST_TOKEN,
+      p_total: pages.length,
+    } as never);
+    if (!cursorError && typeof pos === "number" && Number.isFinite(pos)) {
+      offset = pos % Math.max(1, pages.length);
+      fromCursor = true;
+    } else {
+      offset = autoOffset;
+    }
+  }
+  const advanceCursor = async (by: number) => {
+    if (!fromCursor || by <= 0) return;
+    await db.rpc("scraper_cursor_advance" as never, {
+      p_token: INGEST_TOKEN,
+      p_by: by,
+      p_total: pages.length,
+    } as never);
+  };
   const ordered = [...pages.slice(offset), ...pages.slice(0, offset)];
 
   // Validators and last-known content hashes for the pages we are about to
@@ -828,6 +863,7 @@ async function runScrape(request: Request) {
 
   if (batch.length === 0) {
     await flushSideEffects();
+    await advanceCursor(pagesWalked);
     // Zero rows is the normal outcome for most of the sitemap: only ~46 of its
     // 132 pages are currently-showing films, the rest are coming-soon titles
     // with no screenings at all. An all-unchanged pass is likewise the steady
@@ -842,6 +878,9 @@ async function runScrape(request: Request) {
         // scraper_cursor.step has to stay under, and a steady state of
         // all-unchanged passes is exactly when you need to read it.
         pagesWalked,
+        // "cursor" normally; "clock" means the cursor RPC failed or is missing.
+        pacing: explicitOffset !== null ? "manual" : fromCursor ? "cursor" : "clock",
+        startOffset: offset,
         nextOffset: complete ? 0 : (offset + pagesWalked) % ordered.length,
         pagesTotal: ordered.length,
         failed,
@@ -964,6 +1003,8 @@ async function runScrape(request: Request) {
     0,
   );
 
+  await advanceCursor(pagesWalked);
+
   return Response.json({
     ok: true,
     ranAt: new Date().toISOString(),
@@ -980,6 +1021,8 @@ async function runScrape(request: Request) {
     // the sitemap every fire and never scrape them at all.
     nextOffset: complete ? 0 : (offset + pagesWalked) % ordered.length,
     pagesWalked,
+    pacing: explicitOffset !== null ? "manual" : fromCursor ? "cursor" : "clock",
+    startOffset: offset,
     chains: [...touchedChains],
     rowsSent: batch.length,
     screenings,

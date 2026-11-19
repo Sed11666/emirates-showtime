@@ -61,10 +61,13 @@ before adding a route.
 ```
 
 Scheduling: `pg_cron` posts to the public scrape routes. Cinemas every 30
-minutes (`PACE_WINDOW_MS` must match) as a plain `http_post` with **no query string** — the route paces itself
-from the clock (`PAGES_PER_RUN` per `PACE_WINDOW_MS`), so `scraper_cursor` is
-inert and nothing should pass `?offset=`. A full pass is ~9 fires, about 4.5
-hours. Events are not scheduled (see CLAUDE-HANDOVER §0).
+minutes as a plain `http_post` with **no query string**. Each run resumes from
+the progress cursor (`scraper_cursor_get` / `scraper_cursor_advance`) and
+advances by the pages it actually completed — never by a fixed step. The old
+clock pacing (`PAGES_PER_RUN` per `PACE_WINDOW_MS`) is only a fallback: it
+skipped the tail of every busy slice forever (CLAUDE-HANDOVER §0c). A manual
+`?offset=` run neither reads nor moves the cursor. A full pass is ~8–10
+fires. Events are not scheduled (see CLAUDE-HANDOVER §0).
 
 Each film page is read for **three days** (`?d=0|1|2`, the source's ceiling) and
 written all-or-nothing: `ingest_cinema_films` replaces a film's showtimes rather
@@ -140,7 +143,7 @@ All tables in `public`, RLS enabled.
 - **live_events** — one row per (source, event) from the arena scrapers.
 - **scraper_auth** — the ingest token. RLS on with **no policies**, so PostgREST
   can never read it; only SECURITY DEFINER functions can.
-- **scraper_cursor** — sitemap walk position.
+- **scraper_cursor** — the scraper's progress through the sitemap (row id 1).
 - **scraper_page_cache** — per-URL `etag`, `last_modified`, `content_hash`,
   `film_keys[]`, `fetched_at`.
 - **listings** — manually curated entries from `/admin`.

@@ -13,10 +13,10 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- Cinemas: every 30 minutes, plain POST, NO query string — the route paces
--- itself from the clock (CLAUDE-HANDOVER §4). This interval MUST equal
--- PACE_WINDOW_MS in scrape-aggregator.ts (30 * 60 * 1000), or pages are skipped.
--- 10 pages per run x ~86 pages = a full refresh roughly every 4.5 hours.
+-- Cinemas: every 30 minutes, plain POST, NO query string. Since 2026-11-19
+-- each run resumes from the progress cursor (scraper_cursor) and advances by
+-- the pages it completed, so the interval no longer has to match anything in
+-- the code; PACE_WINDOW_MS is only the fallback when the cursor RPC fails.
 select cron.schedule(
   'scrape-aggregator-30m',
   '*/30 * * * *',

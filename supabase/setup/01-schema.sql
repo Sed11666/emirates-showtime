@@ -354,8 +354,9 @@ insert into public.scraper_auth (id, token, note)
 values (1, encode(extensions.gen_random_bytes(32), 'hex'), 'Vercel SCRAPER_INGEST_TOKEN')
 on conflict (id) do nothing;
 
--- Inert since the scraper paces itself from the clock (CLAUDE-HANDOVER §4).
--- Kept only because the generated types still list it.
+-- The scraper's progress cursor since 2026-11-19 (scraper_cursor_get /
+-- scraper_cursor_advance below). It was inert while the scraper paced itself
+-- from the clock, which starved the tail of busy slices.
 create table if not exists public.scraper_cursor (
   id integer primary key default 1,
   pos integer not null default 0,
@@ -926,6 +927,63 @@ end;
 $$;
 revoke all on function public.ingest_seo_audit(text, jsonb, jsonb) from public;
 grant execute on function public.ingest_seo_audit(text, jsonb, jsonb) to anon, authenticated, service_role;
+
+-- -----------------------------------------------------------------------------
+-- Scraper progress cursor (added 2026-11-19; see 03-scraper-cursor.sql)
+-- -----------------------------------------------------------------------------
+
+insert into public.scraper_cursor (id, pos, step, total)
+values (1, 0, 0, 0)
+on conflict (id) do nothing;
+
+-- Where the next run should start. p_total is the current sitemap length, so a
+-- sitemap that shrank never yields an offset past its end.
+create or replace function public.scraper_cursor_get(p_token text, p_total integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pos integer;
+begin
+  if not public.scraper_token_ok(p_token) then
+    raise exception 'unauthorized' using errcode = '42501';
+  end if;
+  select pos into v_pos from public.scraper_cursor where id = 1;
+  return coalesce(v_pos, 0) % greatest(coalesce(p_total, 1), 1);
+end;
+$$;
+revoke all on function public.scraper_cursor_get(text, integer) from public;
+grant execute on function public.scraper_cursor_get(text, integer) to anon, authenticated, service_role;
+
+-- Advance by the pages this run actually completed. Returns the new position.
+create or replace function public.scraper_cursor_advance(p_token text, p_by integer, p_total integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_total integer := greatest(coalesce(p_total, 1), 1);
+  v_pos integer;
+begin
+  if not public.scraper_token_ok(p_token) then
+    raise exception 'unauthorized' using errcode = '42501';
+  end if;
+  update public.scraper_cursor
+     set pos        = (pos + greatest(coalesce(p_by, 0), 0)) % v_total,
+         step       = greatest(coalesce(p_by, 0), 0),
+         total      = v_total,
+         updated_at = now()
+   where id = 1
+  returning pos into v_pos;
+  return v_pos;
+end;
+$$;
+revoke all on function public.scraper_cursor_advance(text, integer, integer) from public;
+grant execute on function public.scraper_cursor_advance(text, integer, integer) to anon, authenticated, service_role;
+
 
 -- -----------------------------------------------------------------------------
 -- Done. Quick check — should list 13 tables:

@@ -125,6 +125,36 @@ Findings that should steer work:
 
 ---
 
+## 0c. The scraper skipped the tail of every busy slice (fixed 2026-11-19)
+
+**Symptom:** the biggest films (Ramayana, Ebenezer, How to Rob a Bank, The Cat
+in the Hat) went 18–24 h without a refresh while small films refreshed fine.
+Showtimes still looked plausible because each write carries three days.
+
+**Cause:** clock pacing. Each fire took slice `floor(now / 30 min) * 10` of the
+sitemap and had a 45 s budget. The first ~40 sitemap pages are now-showing
+films costing three fetches each (~2.5 s per fetch from `bom1`, including the
+900 ms courtesy delay), so a busy slice stopped at page 6 or 7 — measured:
+slices 0–9 and 10–19 finished 6 pages, 30–39 finished 7 — and the next fire
+moved to the next slice regardless. Pages 6–9, 16–19 and 37–39 were never
+read. `PAGES_PER_RUN` "set below what a run completes" held only on average
+across light and heavy slices, never for the heavy ones.
+
+**Fix:** a progress cursor that advances by the pages a run actually completed
+(`scraper_cursor_get` / `scraper_cursor_advance`, `supabase/setup/03-scraper-cursor.sql`,
+folded into `01-schema.sql`). Busy stretches take more fires, quiet ones fewer;
+nothing is skipped forever, and there is no step to keep in sync with the
+code's speed — which is why the *first* cursor (fixed `step`) was abandoned.
+The run report now says `pacing: "cursor" | "clock" | "manual"` and
+`startOffset`. `"clock"` means the RPC failed and the old pacing was used —
+investigate if it persists. A manual `?offset=` run neither reads nor moves
+the cursor.
+
+**Read this before touching pacing again:** never derive the next start from
+anything but the pages actually completed.
+
+---
+
 ## 1. What this is
 
 **ShowSouk** — a BookMyShow-style cinema showtime aggregator for the UAE.
