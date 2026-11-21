@@ -178,6 +178,32 @@ empty page would blank a film until the next lap).
 
 ---
 
+## 0d. Novo removed from the site (2026-11-21)
+
+Novo published no UAE showtimes anywhere — cinemauae's six Novo venue pages
+carried zero time chips from at least 8 Nov (Google's snapshot of
+`/cinemas/novo` showed 0 films that day, before the database move), the
+independent showtimesuae.com showed 0 too, and `uae.novocinemas.com` redirects
+to Novo Qatar. The owner reports the chain has shut its UAE operation. The
+empty pages were thin content (part of Search Console's "Crawled — currently
+not indexed") while `/cinemas/novo` had been the #2 page by clicks.
+
+Removed: the `novo` entry in `CINEMAS` and `CinemaKey` (chain cards, filters,
+search, sitemap, SEO audit), its six venues in `lib/venues.ts`, `NOVO` in the
+scraper's `CHAIN_KEYS` (stray chips are skipped like any unknown badge), and
+Novo from copy (home and `/cinemas` meta, privacy, terms).
+
+**Redirects, not 404s** (`vercel.json`, permanent → 308): `/cinemas/novo` →
+`/cinemas`; each venue → its city page (Dragon Mart → Dubai; Sahara Center,
+Mega Mall, Buhaira → Sharjah; Manar Mall → Ras Al Khaimah; Bawabat Al Sharq →
+Abu Dhabi); any other `/cinemas/novo/*` → `/cinemas`. A "novo cinemas sharjah"
+searcher lands on what is playing in Sharjah, and the pages' ranking signals
+move with them. **To restore Novo:** add the chain back to `CINEMAS`, the six
+venues from git history (`8705920:src/lib/venues.ts`), `NOVO: "novo"` in
+`CHAIN_KEYS`, and delete the redirects.
+
+---
+
 ## 1. What this is
 
 **ShowSouk** — a BookMyShow-style cinema showtime aggregator for the UAE.

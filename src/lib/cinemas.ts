@@ -5,7 +5,8 @@
  * scraper at src/routes/api/public/hooks/scrape-cinemas.ts.
  *
  * Responsibilities:
- *  - CINEMAS / CINEMA_LABELS: the four supported UAE chains (vox, reel, novo, roxy).
+ *  - CINEMAS / CINEMA_LABELS: the six UAE chains we list (Novo removed
+ *    2026-11-21 — it shut its UAE operation; see CLAUDE-HANDOVER §0d).
  *  - fetchCinemaFilms(): pulls active films from Lovable Cloud (Supabase).
  *  - fetchBrowseFilms(): the same, minus the columns only the film page reads.
  *  - showtimeList / showtimesForDay / showtimesByVenue: normalise the loosely
@@ -23,7 +24,6 @@ import { isScreeningOver, parseDayKey, timeToMinutes, toDayKey } from "@/lib/day
 export type CinemaKey =
   | "vox"
   | "reel"
-  | "novo"
   | "roxy"
   | "star"
   | "cineroyal"
@@ -38,7 +38,6 @@ export type CinemaKey =
 export const CINEMAS: { key: CinemaKey; label: string }[] = [
   { key: "vox", label: "VOX Cinemas" },
   { key: "star", label: "Star Cinemas" },
-  { key: "novo", label: "Novo Cinemas" },
   { key: "roxy", label: "Roxy Cinemas" },
   { key: "cinemacity", label: "Cinema City" },
   { key: "cineroyal", label: "Cine Royal" },
@@ -703,7 +702,7 @@ export function filmSlug(title: string) {
 export type MergedFilm = CinemaFilm & { cinemas: string[]; screenFormats: string[] };
 
 /**
- * One card per movie: the same title playing at VOX, Reel, Novo and Roxy is
+ * One card per movie: the same title playing at VOX, Reel, Star and Roxy is
  * collapsed into a single entry carrying every chain and screen format.
  */
 /**

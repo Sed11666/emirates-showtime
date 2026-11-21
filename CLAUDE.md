@@ -1,8 +1,9 @@
 # ShowSouk — Architecture Guide
 
 ShowSouk is a BookMyShow-style entertainment discovery platform for the UAE.
-It aggregates **real, scraped** cinema showtimes across seven chains (VOX, Reel,
-Novo, Roxy, Star, Cine Royal, Cinema City) plus arena events, lets visitors find
+It aggregates **real, scraped** cinema showtimes across six chains (VOX, Reel,
+Roxy, Star, Cine Royal, Cinema City — Novo was removed 2026-11-21 after it shut
+its UAE operation; CLAUDE-HANDOVER §0d) plus arena events, lets visitors find
 the nearest cinema, and deep-links each showtime to that exact screening on the
 chain's own booking page. There is no in-app checkout or cart.
 

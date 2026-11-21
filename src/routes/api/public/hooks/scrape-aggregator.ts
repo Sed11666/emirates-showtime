@@ -40,7 +40,9 @@ const UA =
 const CHAIN_KEYS: Record<string, string> = {
   VOX: "vox",
   REEL: "reel",
-  NOVO: "novo",
+  // NOVO removed 2026-11-21: the chain shut its UAE operation, and the site no
+  // longer lists it, so stray NOVO chips must not ingest rows nobody can see.
+  // An unknown badge is skipped below. To restore: NOVO: "novo".
   ROXY: "roxy",
   STAR: "star",
   CINEROYAL: "cineroyal",

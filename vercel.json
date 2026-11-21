@@ -3,6 +3,48 @@
   "regions": [
     "bom1"
   ],
+  "redirects": [
+    {
+      "source": "/cinemas/novo",
+      "destination": "/cinemas",
+      "permanent": true
+    },
+    {
+      "source": "/cinemas/novo/dragon-mart",
+      "destination": "/movies-in/dubai",
+      "permanent": true
+    },
+    {
+      "source": "/cinemas/novo/sahara-center",
+      "destination": "/movies-in/sharjah",
+      "permanent": true
+    },
+    {
+      "source": "/cinemas/novo/mega-mall",
+      "destination": "/movies-in/sharjah",
+      "permanent": true
+    },
+    {
+      "source": "/cinemas/novo/buhaira",
+      "destination": "/movies-in/sharjah",
+      "permanent": true
+    },
+    {
+      "source": "/cinemas/novo/manar-mall",
+      "destination": "/movies-in/ras-al-khaimah",
+      "permanent": true
+    },
+    {
+      "source": "/cinemas/novo/bawabat-al-sharq-mall",
+      "destination": "/movies-in/abu-dhabi",
+      "permanent": true
+    },
+    {
+      "source": "/cinemas/novo/:path*",
+      "destination": "/cinemas",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/fonts/(.*)",

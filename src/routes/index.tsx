@@ -66,7 +66,7 @@ export const Route = createFileRoute("/")({
         // cinemas showtimes" and its cousins are the queries this page has any
         // chance at — so the words cut are the connective ones, not the nouns.
         content:
-          "What's on at VOX, Star, Novo, Roxy, Reel, Cinema City and Cine Royal — today's showtimes across Dubai, Abu Dhabi and the Emirates, with booking links.",
+          "What's on at VOX, Star, Roxy, Reel, Cinema City and Cine Royal — today's showtimes across Dubai, Abu Dhabi and the Emirates, with booking links.",
       },
       { property: "og:title", content: "ShowSouk — Movies, Showtimes & Cinemas in the UAE" },
       {

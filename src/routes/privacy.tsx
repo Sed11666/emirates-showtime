@@ -151,7 +151,7 @@ function PrivacyPage() {
       <Section title="When you click a showtime">
         <p>
           Booking happens on the cinema&rsquo;s own website, not here. Clicking a time takes you
-          to VOX, Star, Novo, Roxy, Reel, Cinema City or Cine Royal, and from that point their
+          to VOX, Star, Roxy, Reel, Cinema City or Cine Royal, and from that point their
           privacy policy applies rather than ours. We are not told whether you booked, what you
           paid, or which seat you chose.
         </p>

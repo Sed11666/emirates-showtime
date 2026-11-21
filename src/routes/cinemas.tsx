@@ -99,17 +99,17 @@ export const Route = createFileRoute("/cinemas")({
   head: () => ({
 
     meta: [
-      { title: "UAE Cinema Showtimes — VOX, Star, Novo & More | ShowSouk" },
+      { title: "UAE Cinema Showtimes — VOX, Star, Roxy & More | ShowSouk" },
       {
         name: "description",
         content:
-          "Filtered now-showing listings from seven UAE cinema chains — VOX, Star, Novo, Cinema City, Cine Royal, Reel and Roxy — refreshed automatically every 30 minutes.",
+          "Filtered now-showing listings from six UAE cinema chains — VOX, Star, Cinema City, Cine Royal, Reel and Roxy — refreshed automatically every 30 minutes.",
       },
-      { property: "og:title", content: "UAE Cinema Showtimes — VOX, Star, Novo & More" },
+      { property: "og:title", content: "UAE Cinema Showtimes — VOX, Star, Roxy & More" },
       {
         property: "og:description",
         content:
-          "Browse films now showing at VOX, Star, Novo, Cinema City, Cine Royal, Reel and Roxy in Dubai, Abu Dhabi and across the Emirates.",
+          "Browse films now showing at VOX, Star, Cinema City, Cine Royal, Reel and Roxy in Dubai, Abu Dhabi and across the Emirates.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://www.showsouk.com/cinemas" },

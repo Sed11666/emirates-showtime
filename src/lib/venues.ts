@@ -89,13 +89,10 @@ export const VENUES: Venue[] = [
   { cinema: "reel", name: "Dubai Mall Cinema", city: "Dubai", lat: 25.203117, lng: 55.279006, url: "https://reelcinemas.com/en-ae/locations/the-dubai-mall" },
   { cinema: "reel", name: "Springs Souk Cinema", city: "Dubai", lat: 25.0666, lng: 55.1841, url: "https://reelcinemas.com/en-ae/locations/the-springs-souk", aliases: ["Spring Souk", "The Springs Souk"] },
 
-  // Novo
-  { cinema: "novo", name: "Dragon Mart Cinema", city: "Dubai", lat: 25.174961, lng: 55.417626, aliases: ["Dragon Mart 2"] },
-  { cinema: "novo", name: "Mega Mall Cinema", city: "Sharjah", lat: 25.3448, lng: 55.3987, aliases: ["Megamall", "Mega Mall Sharjah"] },
-  { cinema: "novo", name: "Sahara Center Cinema", city: "Sharjah", lat: 25.297543, lng: 55.372659 },
-  { cinema: "novo", name: "Buhaira Cinema", city: "Sharjah", lat: 25.33208, lng: 55.375704, aliases: ["Buhaira Center"] },
-  { cinema: "novo", name: "Manar Mall Cinema", city: "Ras Al Khaimah", lat: 25.785498, lng: 55.965447, aliases: ["Al Manar Mall"] },
-  { cinema: "novo", name: "Bawabat Al Sharq Mall Cinema", city: "Abu Dhabi", lat: 24.311121, lng: 54.621092 },
+  // Novo — removed 2026-11-21: no UAE showtimes anywhere since at least 8 Nov
+  // and uae.novocinemas.com redirects to Qatar; the owner reports the chain
+  // has shut its UAE operation. Its six pages 308 to the nearest city page
+  // (vercel.json). To restore: the six entries are in git history (8705920).
 
   // Roxy
   { cinema: "roxy", name: "City Walk Cinema", city: "Dubai", lat: 25.207635, lng: 55.262574 },

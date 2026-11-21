@@ -100,8 +100,8 @@ function TermsPage() {
 
       <Section title="3. Booking is between you and the cinema">
         <p>
-          Clicking a showtime takes you to a third-party website operated by VOX, Star, Novo,
-          Roxy, Reel, Cinema City or Cine Royal. Everything from that point — the price you pay,
+          Clicking a showtime takes you to a third-party website operated by VOX, Star, Roxy,
+          Reel, Cinema City or Cine Royal. Everything from that point — the price you pay,
           the seat you get, the terms you agree to, and any refund, exchange or cancellation —
           is a matter between you and that cinema under their terms.
         </p>
