@@ -48,6 +48,7 @@ import { useUserLocation } from "@/hooks/useUserLocation";
 import { UAE_CITIES } from "@/lib/listings";
 import { DAY_COUNT, toDayKey } from "@/lib/days";
 import { browsePageHeaders } from "@/lib/cache-headers";
+import { trackBookingTap } from "@/lib/attribution";
 
 const ORIGIN = "https://www.showsouk.com";
 
@@ -745,6 +746,9 @@ function CinemasPage() {
                                   href={href ?? undefined}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={() =>
+                                    trackBookingTap(filmSlug(film.title), film.cinema, venue.venue)
+                                  }
                                   title={
                                     exact
                                       ? undefined
