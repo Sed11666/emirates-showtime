@@ -18,6 +18,7 @@ import { MapPin } from "lucide-react";
 import type { VenueShowtimes } from "@/lib/cinemas";
 import { bookingTarget } from "@/lib/venues";
 import { formatDistance } from "@/lib/showtimes";
+import { trackBookingTap } from "@/lib/attribution";
 
 /**
  * How many screenings share each URL, across every venue of one film.
@@ -117,6 +118,7 @@ export function VenueShowtimesBlock({
               href={href ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackBookingTap(filmSlug, chain, venue.venue)}
               title={
                 exact
                   ? undefined

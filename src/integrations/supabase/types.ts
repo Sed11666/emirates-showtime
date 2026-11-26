@@ -544,6 +544,51 @@ export type Database = {
           },
         ]
       }
+      site_events: {
+        Row: {
+          campaign: string | null
+          cinema: string | null
+          created_at: string
+          device: string | null
+          film: string | null
+          id: number
+          kind: string
+          medium: string | null
+          path: string | null
+          session_id: string
+          source: string
+          venue: string | null
+        }
+        Insert: {
+          campaign?: string | null
+          cinema?: string | null
+          created_at?: string
+          device?: string | null
+          film?: string | null
+          id?: never
+          kind: string
+          medium?: string | null
+          path?: string | null
+          session_id: string
+          source?: string
+          venue?: string | null
+        }
+        Update: {
+          campaign?: string | null
+          cinema?: string | null
+          created_at?: string
+          device?: string | null
+          film?: string | null
+          id?: never
+          kind?: string
+          medium?: string | null
+          path?: string | null
+          session_id?: string
+          source?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -586,6 +631,8 @@ export type Database = {
         Args: { p_rows: Json; p_run: Json; p_token: string }
         Returns: Json
       }
+      log_site_event: { Args: { p_event: Json }; Returns: boolean }
+      marketing_report: { Args: { p_days?: number }; Returns: Json }
       page_cache_get: {
         Args: { p_token: string; p_urls: string[] }
         Returns: {

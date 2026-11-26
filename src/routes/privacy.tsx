@@ -99,8 +99,8 @@ function PrivacyPage() {
 
       <Section title="What we keep in your browser">
         <p>
-          We use local storage rather than tracking cookies. Four small values, all readable and
-          clearable from your browser settings:
+          We use browser storage rather than tracking cookies. A few small values, all readable
+          and clearable from your browser settings:
         </p>
         <Points>
           <li>your appearance choice — light, dark or system</li>
@@ -109,6 +109,10 @@ function PrivacyPage() {
           <li>
             a note of what you were doing if you were asked to sign in, so you can carry on
             afterwards
+          </li>
+          <li>
+            for the length of one browser tab only, a random visit number and the site that sent
+            you here (for example Google or Instagram), described under Analytics
           </li>
         </Points>
         <p>None of these identify you, and none are shared with anyone.</p>
@@ -121,13 +125,20 @@ function PrivacyPage() {
           cookie-free, report in aggregate, and do not follow you to other websites or build a
           profile of you.
         </p>
+        <p>
+          We also keep our own simple count, in our database, of where visits come from and how
+          often someone taps through to a cinema&apos;s booking page, with the film, cinema and
+          venue tapped. It records no IP address, no name and no account, only a random number
+          that is forgotten when you close the tab and whether you are on a phone or a computer.
+          We use it to learn which of our posts and links are useful.
+        </p>
       </Section>
 
       <Section title="Who else your browser talks to">
         <p>Loading a page on ShowSouk asks your browser to contact:</p>
         <Points>
           <li>
-            <Lead>Supabase</Lead> — our database and sign-in
+            <Lead>Supabase</Lead> — our database, sign-in and the visit count
           </li>
           <li>
             <Lead>Vercel</Lead> — hosting, and the analytics

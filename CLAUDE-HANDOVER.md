@@ -178,6 +178,19 @@ empty page would blank a film until the next lap).
 
 ---
 
+## 0e. Marketing tracking (2026-11-26)
+
+Vercel Analytics custom events need Pro, so channel attribution is first-party.
+`lib/attribution.ts` logs one `visit` per tab session (utm_source, else the
+referrer host folded to a name, else `direct`) and a `booking_tap` from every
+time chip (`venue-showtimes.tsx` onClick), into `site_events` via the
+SECURITY DEFINER `log_site_event` (validates, trims, one visit per session per
+30 min, 60 events per session per 10 min). Counts production hostnames only,
+skips `/admin*` and bots. No IP, UA or user id. `/admin/marketing` reads
+`marketing_report(p_days)`, which raises for non-admins. SQL:
+`supabase/setup/05-site-events.sql` (folded into 01-schema.sql). Tag every link
+posted on social with `utm_source`/`utm_medium`/`utm_campaign`.
+
 ## 0d. Novo removed from the site (2026-11-21)
 
 Novo published no UAE showtimes anywhere — cinemauae's six Novo venue pages

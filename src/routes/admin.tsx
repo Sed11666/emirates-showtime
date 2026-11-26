@@ -200,9 +200,14 @@ function AdminPage() {
             Your listing goes live on ShowSouk the moment you publish it.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/admin/seo">SEO health</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/marketing">Marketing</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/seo">SEO health</Link>
+          </Button>
+        </div>
       </div>
 
 

@@ -20,6 +20,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AdminMarketingRouteImport } from './routes/admin_.marketing'
 import { Route as AdminSeoRouteImport } from './routes/admin_.seo'
 import { Route as CinemasChainRouteImport } from './routes/cinemas_.$chain'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
@@ -88,6 +89,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMarketingRoute = AdminMarketingRouteImport.update({
+  id: '/admin_/marketing',
+  path: '/admin/marketing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminSeoRoute = AdminSeoRouteImport.update({
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/marketing': typeof AdminMarketingRoute
   '/admin/seo': typeof AdminSeoRoute
   '/cinemas/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/marketing': typeof AdminMarketingRoute
   '/admin/seo': typeof AdminSeoRoute
   '/cinemas/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
@@ -233,6 +241,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin_/marketing': typeof AdminMarketingRoute
   '/admin_/seo': typeof AdminSeoRoute
   '/cinemas_/$chain': typeof CinemasChainRoute
   '/listing/$id': typeof ListingIdRoute
@@ -262,6 +271,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/marketing'
     | '/admin/seo'
     | '/cinemas/$chain'
     | '/listing/$id'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/marketing'
     | '/admin/seo'
     | '/cinemas/$chain'
     | '/listing/$id'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin_/marketing'
     | '/admin_/seo'
     | '/cinemas_/$chain'
     | '/listing/$id'
@@ -344,6 +356,7 @@ export interface RootRouteChildren {
   SearchRoute: typeof SearchRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  AdminMarketingRoute: typeof AdminMarketingRoute
   AdminSeoRoute: typeof AdminSeoRoute
   CinemasChainRoute: typeof CinemasChainRoute
   ListingIdRoute: typeof ListingIdRoute
@@ -437,6 +450,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/marketing': {
+      id: '/admin_/marketing'
+      path: '/admin/marketing'
+      fullPath: '/admin/marketing'
+      preLoaderRoute: typeof AdminMarketingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/seo': {
@@ -552,6 +572,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchRoute: SearchRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  AdminMarketingRoute: AdminMarketingRoute,
   AdminSeoRoute: AdminSeoRoute,
   CinemasChainRoute: CinemasChainRoute,
   ListingIdRoute: ListingIdRoute,

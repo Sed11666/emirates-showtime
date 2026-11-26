@@ -149,6 +149,9 @@ All tables in `public`, RLS enabled.
   `film_keys[]`, `fetched_at`.
 - **listings** — manually curated entries from `/admin`.
 - **user_roles** — `(user_id, role)`. Roles live here, **never** on a profile row.
+- **site_events** — anonymous marketing counts (`visit`, `booking_tap`) written by
+  `lib/attribution.ts` through `log_site_event`; read only via the admin-only
+  `marketing_report()` on `/admin/marketing`. Production host only, no IP/UA.
 
 ### Writing scraped data
 

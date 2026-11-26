@@ -24,6 +24,7 @@ import { SiteHeader, SiteFooter } from "@/components/site-chrome";
 import { THEME_INIT_SCRIPT } from "@/hooks/useTheme";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { initAttribution } from "@/lib/attribution";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -219,6 +220,12 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Anonymous visit-source count for /admin/marketing (lib/attribution.ts).
+  // Client-only, once per tab session; never blocks or alters the render.
+  useEffect(() => {
+    initAttribution();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
