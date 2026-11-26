@@ -40,6 +40,7 @@ import { venueBlocks } from "@/lib/showtimes";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { NewPill } from "@/components/film-block-header";
 import { browsePageHeaders } from "@/lib/cache-headers";
+import { ShareFilmButton } from "@/components/share-film";
 
 /**
  * Cities this film actually plays in, busiest first.
@@ -150,6 +151,23 @@ export const Route = createFileRoute("/movie/$slug")({
     const cities = citiesFor(loaderData?.films);
     const chains = [...new Set((loaderData?.films ?? []).map((film) => film.cinema))];
     const where = cities.length > 0 ? cities.slice(0, 2).join(" & ") : "the UAE";
+    // Link-preview image (WhatsApp, Instagram DMs, X). Only TMDB artwork,
+    // whose sizes are fixed by the URL, so width/height are true: the root's
+    // 1200x630 would otherwise be inherited and wrong. Backdrop first (16:9,
+    // w1280 = 1280x720, the large card); then the poster (w500 = 500x750, the
+    // compact card); else the site-wide image stands.
+    const films = loaderData?.films ?? [];
+    const backdrop = films
+      .map((film) => film.backdrop_url)
+      .find((url): url is string => !!url && url.startsWith("https://image.tmdb.org/t/p/w1280/"));
+    const poster = films
+      .map((film) => film.poster_url)
+      .find((url): url is string => !!url && url.startsWith("https://image.tmdb.org/t/p/w500/"));
+    const preview = backdrop
+      ? { url: backdrop, width: "1280", height: "720", card: "summary_large_image", alt: `${name}` }
+      : poster
+        ? { url: poster, width: "500", height: "750", card: "summary", alt: `${name} poster` }
+        : null;
     return {
       meta: [
         { title: titleTag(name, cities) },
@@ -161,7 +179,17 @@ export const Route = createFileRoute("/movie/$slug")({
         },
         { property: "og:type", content: "video.movie" },
         { property: "og:url", content: canonical },
-        { name: "twitter:card", content: "summary_large_image" },
+        // The film's own artwork is what a WhatsApp share should show; the
+        // site-wide card says nothing about which film was sent.
+        ...(preview
+          ? [
+              { property: "og:image", content: preview.url },
+              { property: "og:image:width", content: preview.width },
+              { property: "og:image:height", content: preview.height },
+              { property: "og:image:alt", content: preview.alt },
+              { name: "twitter:card", content: preview.card },
+            ]
+          : [{ name: "twitter:card", content: "summary_large_image" }]),
       ],
       links: [{ rel: "canonical", href: canonical }],
     };
@@ -380,6 +408,7 @@ function MovieShowtimesPage() {
                 "Now showing in UAE cinemas"}
             </p>
           </div>
+          {primary ? <ShareFilmButton title={primary.title} slug={slug} /> : null}
         </div>
       </div>
 

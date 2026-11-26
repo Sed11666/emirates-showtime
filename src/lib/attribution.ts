@@ -152,3 +152,21 @@ export function trackBookingTap(film: string, cinema: string, venue: string) {
     device: attr.device,
   });
 }
+
+/** A share button was pressed (channel: "whatsapp", "native", ...). */
+export function trackShare(film: string, channel: string) {
+  if (shouldSkip()) return;
+  const attr = read();
+  if (!attr) return;
+  send({
+    kind: "share",
+    session_id: attr.session_id,
+    path: window.location.pathname,
+    film,
+    venue: channel,
+    source: attr.source,
+    medium: attr.medium,
+    campaign: attr.campaign,
+    device: attr.device,
+  });
+}
